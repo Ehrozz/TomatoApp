@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "160472928974",
+    "project_id": "tomatoapp-88154",
+    "storage_bucket": "tomatoapp-88154.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:160472928974:android:3d9ef8fbd110492619369f",
+        "android_client_info": {
+          "package_name": "com.android.tomatoapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDwDnKe6AIn41VlJs5Vd0mcuRSEqHecEmc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,15 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.TomatoApp" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Customize your light theme here. -->
+<!--        <item name="colorPrimary">@color/navyblue</item>-->
+<!--        <item name="colorOnPrimary">@color/softofffwhite</item>-->
+<!--        <item name="colorSecondary">@color/tomatored</item>-->
+<!--        <item name="colorOnSecondary">@color/softofffwhite</item>-->
+<!--        <item name="colorSurface">@color/lightnavyblue</item>-->
+<!--        <item name="colorOnSurface">@color/softofffwhite</item>-->
+<!--        <item name="colorError">@color/warmorange</item>-->
+    </style>
+
+    <style name="Theme.TomatoApp" parent="Base.Theme.TomatoApp" />
+</resources>

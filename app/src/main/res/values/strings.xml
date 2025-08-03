@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">TomatoApp</string>
+    <string name="email">Email</string>
+    <string name="login">Login</string>
+    <string name="password">Password</string>
+    <string name="btn_login">Login</string>
+    <string name="register">Register</string>
+    <string name="btn_register">Register</string>
+    <string name="login_now">Login Now</string>
+    <string name="register_now">Register Now</string>
+    <string name="logout">Logout</string>
+    <string name="tomato_app">Tomato App</string>
+    <string name="work_program">Work Program</string>
+    <string name="ipm">IPM</string>
+    <string name="cost">Cost</string>
+    <string name="pending">Pending</string>
+    <string name="wk">Work Program</string>
+    <string name="select">Select</string>
+    <string name="tasks_for_cultivar">Tasks for [Cultivar]</string>
+    <string name="task_1_n_task_2_n_task_3">- Task 1\n- Task 2\n- Task 3</string>
+    <string name="capture">Capture</string>
+    <string name="scan">SCAN</string>
+    <string name="information">INFORMATION</string>
+    <string name="which_tomato_cultivar_do_you_want_to_plant">Which tomato cultivar do you want to plant?</string>
+    <string name="open">open</string>
+    <string name="close">close</string>
+    <string name="navigation_drawer_open">drawer_open</string>
+    <string name="navigation_drawer_close">drawer_close</string>
+</resources>
