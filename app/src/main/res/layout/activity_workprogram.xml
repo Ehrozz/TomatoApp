@@ -28,124 +28,13 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- Calendar -->
-        <com.prolificinteractive.materialcalendarview.MaterialCalendarView
-            android:id="@+id/CalendarView"
+        <!-- Scrollable content (Calendar + Legends) -->
+        <ScrollView
+            android:id="@+id/scrollContainer"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            app:mcv_showOtherDates="all"
+            android:layout_height="0dp"
+            android:fillViewport="true"
             app:layout_constraintTop_toBottomOf="@id/wkTitle"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent" />
-
-        <!-- Legends for Phases -->
-        <LinearLayout
-            android:id="@+id/legendContainer"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginTop="8dp"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
-            app:layout_constraintTop_toBottomOf="@id/CalendarView"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
-
-            <!-- Phase 1 -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="4dp">
-                <View
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:background="@drawable/phase1" />
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="Phase 1: Land and Seed Preparation" />
-            </LinearLayout>
-
-            <!-- Phase 2 -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="4dp">
-                <View
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:background="@drawable/phase2" />
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="Phase 2: Tressing, Fertilizer, Pesticide" />
-            </LinearLayout>
-
-            <!-- Phase 3 -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="4dp">
-                <View
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:background="@drawable/phase3" />
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="Phase 3: Flower to Yield" />
-            </LinearLayout>
-
-            <!-- Phase 4 -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="4dp">
-                <View
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:background="@drawable/phase4" />
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="Phase 4: Harvesting" />
-            </LinearLayout>
-
-            <!-- Phase 5 -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-                <View
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:background="@drawable/phase5" />
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="Phase 5: Post-Harvest" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <!-- Cultivar Card -->
-        <androidx.cardview.widget.CardView
-            android:id="@+id/cultivarCard"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_margin="16dp"
-            android:backgroundTint="#FFFFFF"
-            app:cardElevation="12dp"
-            app:cardCornerRadius="16dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent">
@@ -156,31 +45,184 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
-                <TextView
-                    android:id="@+id/cultivarQuestion"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
-                    android:text="@string/which_tomato_cultivar_do_you_want_to_plant"
-                    android:textColor="#333333"
-                    android:textSize="18sp" />
-
-                <Spinner
-                    android:id="@+id/cultivarSpinner"
+                <!-- Calendar -->
+                <com.prolificinteractive.materialcalendarview.MaterialCalendarView
+                    android:id="@+id/CalendarView"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:minHeight="48dp"
-                    android:spinnerMode="dropdown" />
+                    app:mcv_showOtherDates="all"
+                    android:layout_marginBottom="12dp" />
 
-                <Button
-                    android:id="@+id/btnSelectCultivar"
-                    android:layout_width="wrap_content"
+                <!-- Legends for Phases -->
+                <LinearLayout
+                    android:id="@+id/legendContainer"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="end"
-                    android:backgroundTint="#A1887F"
-                    android:text="@string/select"
-                    android:textColor="#FFFFFF" />
+                    android:orientation="vertical">
+
+                    <!-- Phase 1 -->
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="4dp">
+                        <View
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:background="@drawable/phase1" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="Phase 1: Land and Seed Preparation" />
+                    </LinearLayout>
+
+                    <!-- Phase 2 -->
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="4dp">
+                        <View
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:background="@drawable/phase2" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="Phase 2: Tressing, Fertilizer, Pesticide" />
+                    </LinearLayout>
+
+                    <!-- Phase 3 -->
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="4dp">
+                        <View
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:background="@drawable/phase3" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="Phase 3: Flower to Yield" />
+                    </LinearLayout>
+
+                    <!-- Phase 4 -->
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="4dp">
+                        <View
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:background="@drawable/phase4" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="Phase 4: Harvesting" />
+                    </LinearLayout>
+
+                    <!-- Phase 5 -->
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+                        <View
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:background="@drawable/phase5" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="Phase 5: Post-Harvest" />
+                    </LinearLayout>
+                </LinearLayout>
             </LinearLayout>
+        </ScrollView>
+
+        <!-- Floating Form Card -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/floatingFormCard"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_margin="24dp"
+            android:visibility="gone"
+            android:backgroundTint="#FFFFFF"
+            app:cardElevation="16dp"
+            app:cardCornerRadius="20dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <!-- ScrollView added here -->
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:fillViewport="true">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Land Area"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="4dp"/>
+
+                    <EditText
+                        android:id="@+id/landAreaInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="12dp"
+                        android:hint="Enter Land Area (sq.m)"
+                        android:inputType="number"
+                        android:minHeight="48dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Select Cultivar"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="4dp"/>
+
+                    <Spinner
+                        android:id="@+id/cultivarSpinner"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="48dp"
+                        android:spinnerMode="dropdown"
+                        android:layout_marginBottom="12dp" />
+
+                    <DatePicker
+                        android:id="@+id/startDatePicker"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:calendarViewShown="true"
+                        android:layout_marginBottom="16dp" />
+
+                    <Button
+                        android:id="@+id/btnSelectCultivar"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Save Work Program"
+                        android:backgroundTint="#A1887F"
+                        android:textColor="#FFFFFF" />
+                </LinearLayout>
+            </ScrollView>
         </androidx.cardview.widget.CardView>
 
     </androidx.constraintlayout.widget.ConstraintLayout>

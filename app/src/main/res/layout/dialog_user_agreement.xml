@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <!-- Terms & Conditions Text -->
+    <TextView
+        android:id="@+id/txtAgreement"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="By using this app, you agree to the following:\n\n1. Use the app responsibly.\n2. Developers are not liable for misuse.\n3. Data may be collected to improve services."
+        android:textSize="16sp"
+        android:lineSpacingExtra="4dp"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Checkbox -->
+    <CheckBox
+        android:id="@+id/chkAgree"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="I agree with the Terms and Conditions" />
+
+    <!-- Done Button -->
+    <Button
+        android:id="@+id/btnDone"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Done"
+        android:enabled="false"
+        android:layout_marginTop="16dp" />
+</LinearLayout>

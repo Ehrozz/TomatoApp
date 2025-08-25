@@ -23,7 +23,7 @@ public class DiseaseView extends AppCompatActivity {
     ActionBarDrawerToggle toggle;
 
     // 🔹 Disease details UI
-    TextView diseaseTitle, diseaseDescription, diseaseSymptoms, diseaseCause, diseaseCure, pestDescription;
+    TextView diseaseTitle, diseaseDescription, diseaseSymptoms, diseaseCause, diseaseCure, diseasePrevention, pestDescription;
     ImageView diseaseImage, pestImage;
 
     @Override

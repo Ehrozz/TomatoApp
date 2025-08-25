@@ -32,6 +32,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Material3.Light">
         <activity
+            android:name=".DetectionHistoryActivity"
+            android:exported="false" />
+        <activity
+            android:name=".DetectionResults"
+            android:exported="false" />
+        <activity
             android:name=".DiseaseView"
             android:exported="false" />
         <activity

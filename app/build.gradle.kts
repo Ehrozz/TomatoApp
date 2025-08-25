@@ -55,4 +55,6 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:$camerax_version")
     implementation("androidx.camera:camera-view:$camerax_version")
 
+    implementation("org.tensorflow:tensorflow-lite:2.12.0")
+
 }

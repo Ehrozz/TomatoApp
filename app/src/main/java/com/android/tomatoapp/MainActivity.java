@@ -71,7 +71,7 @@ public class MainActivity extends AppCompatActivity {
             textView.setText("Welcome " + user.getEmail());
         }
 
-        // ✅ Right-side drawer toggle
+        // Right-side drawer toggle
         toggle = new ActionBarDrawerToggle(this, drawerLayout, R.string.open, R.string.close);
         drawerLayout.addDrawerListener(toggle);
         toggle.syncState();

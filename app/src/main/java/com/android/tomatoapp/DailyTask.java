@@ -2,6 +2,7 @@ package com.android.tomatoapp;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Button;
@@ -18,7 +19,12 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
-import java.util.HashMap;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
 
 public class DailyTask extends AppCompatActivity {
 
@@ -31,6 +37,8 @@ public class DailyTask extends AppCompatActivity {
     DrawerLayout drawerLayout;
     NavigationView navigationView;
     ActionBarDrawerToggle toggle;
+
+    private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,6 +54,17 @@ public class DailyTask extends AppCompatActivity {
         String date = getIntent().getStringExtra("date");
         String programId = getIntent().getStringExtra("programId");
 
+        // ✅ FIX: use the correct key from Workprogram.java
+        String startDate = getIntent().getStringExtra("programStartDate");
+
+        String growthHabit = getIntent().getStringExtra("growthHabit");
+        int maturityDays = getIntent().getIntExtra("maturityDays", 0);
+
+        // 🔹 Fallback if startDate is missing
+        if (startDate == null || startDate.isEmpty()) {
+            startDate = sdf.format(new Date()); // today
+        }
+
         // 🔹 Detect whether this came from a saved program or a new program
         if (programId == null || programId.isEmpty()) {
             isNewProgram = true;
@@ -53,13 +72,22 @@ public class DailyTask extends AppCompatActivity {
 
         dailyTaskTitle.setText("Tasks for " + cultivar + " on " + date);
 
-        // 🔹 Example cultivar tasks
-        HashMap<String, String> exampleTasks = new HashMap<>();
-        exampleTasks.put("Day 1", "- Prepare soil\n- Irrigation\n- Seed sowing");
-        exampleTasks.put("Day 5", "- Fertilizer application\n- Weeding");
-        exampleTasks.put("Day 30", "- Staking\n- Pest check");
+        // 🔹 Compute current day number relative to start date
+        int dayNumber = calculateDayNumber(startDate, date);
 
-        taskList.setText("- Watering\n- Fertilizing\n- Pest monitoring");
+        // 🔹 Fetch tasks using TaskSchedule
+        List<String> tasks;
+        if (dayNumber > 0) {
+            tasks = TaskSchedule.getTasksForDay(growthHabit, maturityDays, dayNumber);
+        } else {
+            tasks = null;
+        }
+
+        if (tasks == null || tasks.isEmpty()) {
+            taskList.setText("No tasks scheduled for today.");
+        } else {
+            taskList.setText("- " + TextUtils.join("\n- ", tasks));
+        }
 
         // 🔹 Firebase ref only if it's a saved program
         String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
@@ -76,6 +104,8 @@ public class DailyTask extends AppCompatActivity {
         }
 
         // 🔹 Handle completion
+        DatabaseReference finalTaskRef = taskRef;
+        String finalStartDate = startDate;
         btnComplete.setOnClickListener(v -> {
             if (isNewProgram) {
                 Intent resultIntent = new Intent();
@@ -83,14 +113,15 @@ public class DailyTask extends AppCompatActivity {
                 setResult(RESULT_OK, resultIntent);
                 Toast.makeText(this, "Task marked complete (new program).", Toast.LENGTH_SHORT).show();
                 finish();
-            } else {
-                taskRef.child(date).setValue("completed")
+            } else if (finalTaskRef != null) {
+                finalTaskRef.child(date).setValue("completed")
                         .addOnSuccessListener(unused -> {
                             Toast.makeText(this, "Marked as complete!", Toast.LENGTH_SHORT).show();
 
                             Intent resultIntent = new Intent();
                             resultIntent.putExtra("date", date);
                             resultIntent.putExtra("programId", programId);
+                            resultIntent.putExtra("programStartDate", finalStartDate);
                             setResult(RESULT_OK, resultIntent);
 
                             finish();
@@ -124,6 +155,20 @@ public class DailyTask extends AppCompatActivity {
             drawerLayout.closeDrawers();
             return true;
         });
+    }
+
+    private int calculateDayNumber(String startDate, String currentDate) {
+        try {
+            Date start = sdf.parse(startDate);
+            Date current = sdf.parse(currentDate);
+            if (start == null || current == null) return -1;
+
+            long diff = current.getTime() - start.getTime();
+            return (int) (diff / (1000 * 60 * 60 * 24)) + 1;
+        } catch (ParseException e) {
+            e.printStackTrace();
+            return -1;
+        }
     }
 
     // 🔹 Inflate the back button
