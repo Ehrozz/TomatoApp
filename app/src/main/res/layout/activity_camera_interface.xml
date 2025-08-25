@@ -19,9 +19,19 @@
         android:id="@+id/captureBtn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Capture"
+        android:text="@string/capture"
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
         android:layout_marginBottom="32dp"/>
+
+    <ImageButton
+        android:id="@+id/openGalleryButton"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:src="@android:drawable/ic_menu_gallery"
+        android:background="@android:color/transparent"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
+        android:layout_margin="16dp" />
 
 </RelativeLayout>

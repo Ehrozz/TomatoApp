@@ -1,6 +1,7 @@
 package com.android.tomatoapp;
 
 import android.content.Intent;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -15,6 +16,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
+import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.google.android.material.navigation.NavigationView;
@@ -25,15 +27,19 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.prolificinteractive.materialcalendarview.CalendarDay;
+import com.prolificinteractive.materialcalendarview.DayViewDecorator;
+import com.prolificinteractive.materialcalendarview.DayViewFacade;
 import com.prolificinteractive.materialcalendarview.MaterialCalendarView;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+
 
 public class Workprogram extends AppCompatActivity {
 
@@ -61,6 +67,15 @@ public class Workprogram extends AppCompatActivity {
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
     private ActionBarDrawerToggle toggle;
+
+    // --- Cultivar Data (2D Array: name, habit, maturity days) ---
+    private final Object[][] cultivarsData = {
+            {"Diamante Max", "Determinate", 65},
+            {"Athena", "Indeterminate", 75},
+            {"Ilocos Red", "Determinate", 70},
+            {"Apollo", "Semi-determinate", 80},
+            {"Ruby", "Indeterminate", 85}
+    };
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -120,7 +135,7 @@ public class Workprogram extends AppCompatActivity {
                     .child("tasks");
 
             attachLogsListener();
-
+            addPhaseDecorators(); // add phase colors
             setCalendarClickListener();
 
         } else {
@@ -156,7 +171,6 @@ public class Workprogram extends AppCompatActivity {
                 dbRef.child(id).setValue(model).addOnSuccessListener(unused -> {
                     Toast.makeText(this, "Work Program saved successfully!", Toast.LENGTH_LONG).show();
 
-                    // Initialize logsRef for new program
                     logsRef = FirebaseDatabase.getInstance()
                             .getReference("users")
                             .child(userId)
@@ -164,11 +178,28 @@ public class Workprogram extends AppCompatActivity {
                             .child(programId)
                             .child("tasks");
 
-                    logsRef.child(selectedDate).setValue("pending");
+                    int maturityDays = getMaturityDays(selectedCultivar);
+                    if (maturityDays > 0) {
+                        try {
+                            Date start = sdf.parse(selectedDate);
+                            if (start != null) {
+                                Calendar cal = Calendar.getInstance();
+                                cal.setTime(start);
+
+                                for (int i = 0; i < maturityDays; i++) {
+                                    String dayKey = sdf.format(cal.getTime());
+                                    logsRef.child(dayKey).setValue("pending");
+                                    cal.add(Calendar.DAY_OF_YEAR, 1);
+                                }
+                            }
+                        } catch (ParseException e) {
+                            e.printStackTrace();
+                        }
+                    }
 
                     attachLogsListener();
-
                     programStartDate = selectedDate;
+                    addPhaseDecorators(); // add phase colors
                     setCalendarClickListener();
 
                 }).addOnFailureListener(e -> {
@@ -179,6 +210,95 @@ public class Workprogram extends AppCompatActivity {
                 cultivarCard.setVisibility(CardView.GONE);
             });
         }
+    }
+
+    // --- Add phase decorators (optimized) ---
+    private void addPhaseDecorators() {
+        if (programStartDate.isEmpty() || selectedCultivar.isEmpty()) return;
+
+        int maturityDays = getMaturityDays(selectedCultivar);
+        if (maturityDays <= 0) return;
+
+        // Split into 5 phases evenly
+        int phaseDuration = maturityDays / 5;
+        int remainder = maturityDays % 5; // distribute leftover days to last phase
+
+        Drawable p1 = ContextCompat.getDrawable(this, R.drawable.phase1);
+        Drawable p2 = ContextCompat.getDrawable(this, R.drawable.phase2);
+        Drawable p3 = ContextCompat.getDrawable(this, R.drawable.phase3);
+        Drawable p4 = ContextCompat.getDrawable(this, R.drawable.phase4);
+        Drawable p5 = ContextCompat.getDrawable(this, R.drawable.phase5);
+
+        try {
+            Date start = sdf.parse(programStartDate);
+            if (start == null) return;
+
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(start);
+
+            // Sets of days for each phase
+            HashSet<CalendarDay> phase1 = new HashSet<>();
+            HashSet<CalendarDay> phase2 = new HashSet<>();
+            HashSet<CalendarDay> phase3 = new HashSet<>();
+            HashSet<CalendarDay> phase4 = new HashSet<>();
+            HashSet<CalendarDay> phase5 = new HashSet<>();
+
+            for (int phase = 0; phase < 5; phase++) {
+                int duration = (phase == 4) ? phaseDuration + remainder : phaseDuration;
+                for (int d = 0; d < duration; d++) {
+                    CalendarDay cd = CalendarDay.from(cal);
+                    switch (phase) {
+                        case 0: phase1.add(cd); break;
+                        case 1: phase2.add(cd); break;
+                        case 2: phase3.add(cd); break;
+                        case 3: phase4.add(cd); break;
+                        case 4: phase5.add(cd); break;
+                    }
+                    cal.add(Calendar.DAY_OF_YEAR, 1);
+                }
+            }
+
+            // Apply one decorator per phase
+            calendarView.addDecorator(new PhaseRangeDecorator(phase1, p1));
+            calendarView.addDecorator(new PhaseRangeDecorator(phase2, p2));
+            calendarView.addDecorator(new PhaseRangeDecorator(phase3, p3));
+            calendarView.addDecorator(new PhaseRangeDecorator(phase4, p4));
+            calendarView.addDecorator(new PhaseRangeDecorator(phase5, p5));
+
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // --- Phase Range Decorator ---
+    public static class PhaseRangeDecorator implements DayViewDecorator {
+        private final HashSet<CalendarDay> dates;
+        private final Drawable drawable;
+
+        public PhaseRangeDecorator(HashSet<CalendarDay> dates, Drawable drawable) {
+            this.dates = dates;
+            this.drawable = drawable;
+        }
+
+        @Override
+        public boolean shouldDecorate(CalendarDay day) {
+            return dates.contains(day);
+        }
+
+        @Override
+        public void decorate(DayViewFacade view) {
+            view.setBackgroundDrawable(drawable);
+        }
+    }
+
+    // --- Get maturity days by cultivar name ---
+    private int getMaturityDays(String cultivar) {
+        for (Object[] c : cultivarsData) {
+            if (c[0].equals(cultivar)) {
+                return (int) c[2];
+            }
+        }
+        return 0;
     }
 
     // --- Set click listener for calendar ---
@@ -198,7 +318,6 @@ public class Workprogram extends AppCompatActivity {
         });
     }
 
-    // --- Attach ValueEventListener for logsRef ---
     private void attachLogsListener() {
         if (logsRef == null) return;
 
@@ -208,6 +327,8 @@ public class Workprogram extends AppCompatActivity {
                 completedDates.clear();
                 missedDates.clear();
 
+                Date today = new Date(); // current date
+
                 for (DataSnapshot child : snapshot.getChildren()) {
                     String dateKey = child.getKey();
                     String status = child.getValue(String.class);
@@ -216,14 +337,35 @@ public class Workprogram extends AppCompatActivity {
                     CalendarDay cd = parseCalendarDay(dateKey);
                     if (cd == null) continue;
 
-                    if ("completed".equals(status)) {
-                        completedDates.add(cd);
-                    } else if ("missed".equals(status)) {
-                        missedDates.add(cd);
+                    try {
+                        Date taskDate = sdf.parse(dateKey);
+
+                        if ("completed".equals(status)) {
+                            completedDates.add(cd);
+
+                        } else if ("missed".equals(status)) {
+                            missedDates.add(cd);
+
+                        } else if ("pending".equals(status)) {
+                            if (taskDate != null && taskDate.before(today)) {
+                                // Auto-convert pending → missed for past dates
+                                logsRef.child(dateKey).setValue("missed");
+                                missedDates.add(cd);
+                            }
+                        }
+
+                    } catch (ParseException e) {
+                        e.printStackTrace();
                     }
                 }
 
+                // Clear old decorators
                 calendarView.removeDecorators();
+
+                // First, add phase decorators (background)
+                addPhaseDecorators();
+
+                // Then, add completed/missed decorators (on top)
                 calendarView.addDecorator(new CompletedDecorator(completedDates, Workprogram.this));
                 calendarView.addDecorator(new MissedDecorator(missedDates, Workprogram.this));
             }
@@ -286,9 +428,6 @@ public class Workprogram extends AppCompatActivity {
     public static class WorkProgramModel {
         public String cultivar;
         public String startDate;
-
-        public WorkProgramModel() { }
-
         public WorkProgramModel(String cultivar, String startDate) {
             this.cultivar = cultivar;
             this.startDate = startDate;

@@ -18,7 +18,6 @@
     <string name="select">Select</string>
     <string name="tasks_for_cultivar">Tasks for [Cultivar]</string>
     <string name="task_1_n_task_2_n_task_3">- Task 1\n- Task 2\n- Task 3</string>
-    <string name="capture">Capture</string>
     <string name="scan">SCAN</string>
     <string name="information">INFORMATION</string>
     <string name="which_tomato_cultivar_do_you_want_to_plant">Which tomato cultivar do you want to plant?</string>
@@ -26,4 +25,5 @@
     <string name="close">close</string>
     <string name="navigation_drawer_open">drawer_open</string>
     <string name="navigation_drawer_close">drawer_close</string>
+    <string name="capture">Capture</string>
 </resources>

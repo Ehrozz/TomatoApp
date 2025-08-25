@@ -14,6 +14,13 @@
     <uses-permission
         android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
         tools:ignore="ScopedStorage" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29"
+        tools:ignore="ScopedStorage" />
 
     <application
         android:allowBackup="true"
@@ -24,6 +31,9 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Material3.Light">
+        <activity
+            android:name=".DiseaseView"
+            android:exported="false" />
         <activity
             android:name=".Cost"
             android:exported="false" />
@@ -61,6 +71,16 @@
         <activity
             android:name=".MainActivity"
             android:exported="true" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths" />
+        </provider>
     </application>
 
 </manifest>

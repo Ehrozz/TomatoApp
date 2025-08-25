@@ -4,9 +4,10 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.ArrayAdapter;
-import android.widget.ListView;
+import android.widget.ImageView;
+import android.widget.TextView;
 
+import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
@@ -15,45 +16,52 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 
-import java.util.ArrayList;
-import java.util.Arrays;
+public class DiseaseView extends AppCompatActivity {
 
-public class InformationInterface extends AppCompatActivity {
-
-    ListView diseaseListView;
-    ArrayAdapter<String> adapter;
-    ArrayList<String> diseaseList = new ArrayList<>(Arrays.asList(
-            "Tomato Leaf Curl Virus",
-            "Early Blight",
-            "Late Blight",
-            "Bacterial Wilt",
-            "Fusarium Wilt",
-            "Anthracnose ",
-            "Black Leaf Mold"
-    ));
-
-    // 🔹 Drawer
     DrawerLayout drawerLayout;
     NavigationView navigationView;
     ActionBarDrawerToggle toggle;
 
+    // 🔹 Disease details UI
+    TextView diseaseTitle, diseaseDescription, diseaseSymptoms, diseaseCause, diseaseCure, pestDescription;
+    ImageView diseaseImage, pestImage;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_information_interface);
+        EdgeToEdge.enable(this);
+        setContentView(R.layout.activity_disease_view);
 
-        diseaseListView = findViewById(R.id.diseaseListView);
-        adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, diseaseList);
-        diseaseListView.setAdapter(adapter);
+        // 🔹 Initialize views
+        diseaseTitle = findViewById(R.id.diseaseTitle);
+        diseaseImage = findViewById(R.id.diseaseImage);
+        diseaseDescription = findViewById(R.id.diseaseDescription);
+        diseaseSymptoms = findViewById(R.id.diseaseSymptoms);
+        diseaseCause = findViewById(R.id.diseaseCause);
+        diseaseCure = findViewById(R.id.diseaseCure);
+        pestImage = findViewById(R.id.pestImage);
+        pestDescription = findViewById(R.id.pestDescription);
 
-        // 🔹 Item click removes from list
-        diseaseListView.setOnItemClickListener((parent, view, position, id) -> {
-            String selectedDisease = (String) parent.getItemAtPosition(position);
+        // 🔹 Get data from InformationInterface
+        Intent intent = getIntent();
+        if (intent != null) {
+            diseaseTitle.setText(intent.getStringExtra("diseaseTitle"));
+            diseaseDescription.setText(intent.getStringExtra("diseaseDescription"));
+            diseaseSymptoms.setText(intent.getStringExtra("diseaseSymptoms"));
+            diseaseCause.setText(intent.getStringExtra("diseaseCause"));
+            diseaseCure.setText(intent.getStringExtra("diseaseCure"));
+            pestDescription.setText(intent.getStringExtra("pestDescription"));
 
-            Intent intent = new Intent(InformationInterface.this, DiseaseView.class);
-            intent.putExtra("disease_name", selectedDisease);
-            startActivity(intent);
-        });
+            // For images, pass resource ID
+            int diseaseImgRes = intent.getIntExtra("diseaseImage", 0);
+            if (diseaseImgRes != 0) {
+                diseaseImage.setImageResource(diseaseImgRes);
+            }
+            int pestImgRes = intent.getIntExtra("pestImage", 0);
+            if (pestImgRes != 0) {
+                pestImage.setImageResource(pestImgRes);
+            }
+        }
 
         // 🔹 Drawer setup
         drawerLayout = findViewById(R.id.drawer_layout);
@@ -80,7 +88,6 @@ public class InformationInterface extends AppCompatActivity {
         });
     }
 
-    // 🔹 Inflate the back button
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_back, menu);

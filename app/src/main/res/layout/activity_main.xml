@@ -106,6 +106,7 @@
 
             <!-- Cost Card -->
             <androidx.cardview.widget.CardView
+                android:id="@+id/costCard"
                 android:layout_width="match_parent"
                 android:layout_height="175dp"
                 android:layout_marginBottom="16dp"
@@ -134,7 +135,7 @@
         android:id="@+id/navigation_view"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
-        android:layout_gravity="end"
+        android:layout_gravity="start"
         app:menu="@menu/drawer_menu" />
 
 </androidx.drawerlayout.widget.DrawerLayout>

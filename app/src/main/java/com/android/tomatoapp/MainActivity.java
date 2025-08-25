@@ -27,6 +27,7 @@ public class MainActivity extends AppCompatActivity {
     TextView textView;
     CardView workprogramselectionCard;
     CardView IPMCard;
+    CardView CostCard;
     DrawerLayout drawerLayout;
     NavigationView navigationView;
     ActionBarDrawerToggle toggle;
@@ -42,6 +43,7 @@ public class MainActivity extends AppCompatActivity {
         user = mAuth.getCurrentUser();
         workprogramselectionCard = findViewById(R.id.wpsCard);
         IPMCard = findViewById(R.id.ipmCard);
+        CostCard = findViewById(R.id.costCard);
 
         drawerLayout = findViewById(R.id.drawer_layout);
         navigationView = findViewById(R.id.navigation_view);
@@ -53,6 +55,11 @@ public class MainActivity extends AppCompatActivity {
 
         IPMCard.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, IPM.class);
+            startActivity(intent);
+        });
+
+        CostCard.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, Cost.class);
             startActivity(intent);
         });
 
@@ -101,12 +108,11 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // ✅ Handle toggle with right drawer
         if (item.getItemId() == android.R.id.home) {
-            if (drawerLayout.isDrawerOpen(GravityCompat.END)) {
-                drawerLayout.closeDrawer(GravityCompat.END);
+            if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                drawerLayout.closeDrawer(GravityCompat.START);
             } else {
-                drawerLayout.openDrawer(GravityCompat.END);
+                drawerLayout.openDrawer(GravityCompat.START);
             }
             return true;
         }
