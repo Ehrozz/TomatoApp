@@ -1,5 +1,6 @@
 package com.android.tomatoapp;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.Menu;
@@ -16,6 +17,9 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 
+import java.util.Objects;
+
+/** @noinspection ALL*/
 public class Cost extends AppCompatActivity {
 
     DrawerLayout drawerLayout;
@@ -28,9 +32,7 @@ public class Cost extends AppCompatActivity {
     // Output fields
     private TextView expenseOutput, incomeOutput, roiOutput;
 
-    // Button
-    private Button calculateButton;
-
+    @SuppressLint({"CutPasteId", "DefaultLocale", "SetTextI18n"})
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -44,7 +46,7 @@ public class Cost extends AppCompatActivity {
         drawerLayout.addDrawerListener(toggle);
         toggle.syncState();
 
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(true);
         getSupportActionBar().setTitle("Tomato App");
 
         navigationView.setNavigationItemSelectedListener(item -> {
@@ -73,17 +75,18 @@ public class Cost extends AppCompatActivity {
         roiOutput = findViewById(R.id.output_roi);
 
         // Bind button
-        calculateButton = findViewById(R.id.btn_calculate);
+        // Button
+        Button calculateButton = findViewById(R.id.btn_calculate);
 
         // Button logic
         calculateButton.setOnClickListener(v -> {
             try {
                 // Get inputs
                 double landArea = Double.parseDouble(landAreaInput.getText().toString());
-                String cultivar = cultivarInput.getText().toString();
+                cultivarInput.getText().toString();
                 int numberOfTrees = Integer.parseInt(numberOfTreesInput.getText().toString());
                 double fertilizer = Double.parseDouble(fertilizerInput.getText().toString());
-                double totalFertilizer = Double.parseDouble(totalFertilizerInput.getText().toString());
+                Double.parseDouble(totalFertilizerInput.getText().toString());
 
                 // Dummy calculation logic (replace with real formula)
                 double expense = fertilizer * numberOfTrees;
