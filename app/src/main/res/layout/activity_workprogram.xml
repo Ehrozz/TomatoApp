@@ -7,14 +7,12 @@
     android:layout_height="match_parent"
     tools:context=".Workprogram">
 
-    <!-- Main content -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/main"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:fitsSystemWindows="true">
 
-        <!-- Title -->
         <TextView
             android:id="@+id/wkTitle"
             android:layout_width="wrap_content"
@@ -28,7 +26,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- Scrollable content (Calendar + Legends) -->
         <ScrollView
             android:id="@+id/scrollContainer"
             android:layout_width="0dp"
@@ -45,7 +42,6 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
-                <!-- Calendar -->
                 <com.prolificinteractive.materialcalendarview.MaterialCalendarView
                     android:id="@+id/CalendarView"
                     android:layout_width="match_parent"
@@ -53,14 +49,12 @@
                     app:mcv_showOtherDates="all"
                     android:layout_marginBottom="12dp" />
 
-                <!-- Legends for Phases -->
                 <LinearLayout
                     android:id="@+id/legendContainer"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
 
-                    <!-- Phase 1 -->
                     <LinearLayout
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -77,7 +71,6 @@
                             android:text="Phase 1: Land and Seed Preparation" />
                     </LinearLayout>
 
-                    <!-- Phase 2 -->
                     <LinearLayout
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -94,7 +87,6 @@
                             android:text="Phase 2: Tressing, Fertilizer, Pesticide" />
                     </LinearLayout>
 
-                    <!-- Phase 3 -->
                     <LinearLayout
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -111,7 +103,6 @@
                             android:text="Phase 3: Flower to Yield" />
                     </LinearLayout>
 
-                    <!-- Phase 4 -->
                     <LinearLayout
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -128,7 +119,6 @@
                             android:text="Phase 4: Harvesting" />
                     </LinearLayout>
 
-                    <!-- Phase 5 -->
                     <LinearLayout
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -147,7 +137,6 @@
             </LinearLayout>
         </ScrollView>
 
-        <!-- Floating Form Card -->
         <androidx.cardview.widget.CardView
             android:id="@+id/floatingFormCard"
             android:layout_width="0dp"
@@ -162,7 +151,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent">
 
-            <!-- ScrollView added here -->
             <ScrollView
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
@@ -227,7 +215,6 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <!-- Navigation Drawer -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/navigation_view"
         android:layout_width="wrap_content"

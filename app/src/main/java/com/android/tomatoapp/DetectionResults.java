@@ -32,7 +32,6 @@ public class DetectionResults extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_detection_results);
 
-        // Initialize detection views
         detectionTitle = findViewById(R.id.detectionTitle);
         detectionImage = findViewById(R.id.detectionImage);
         detectionDescription = findViewById(R.id.detectionDescription);
@@ -45,7 +44,6 @@ public class DetectionResults extends AppCompatActivity {
         pestDescription = findViewById(R.id.pestDescription);
         detectionAccuracy = findViewById(R.id.detectionAccuracy);
 
-        // Get data from intent
         Intent intent = getIntent();
         if (intent != null) {
             detectionTitle.setText(intent.getStringExtra("title"));
@@ -71,7 +69,6 @@ public class DetectionResults extends AppCompatActivity {
             }
         }
 
-        // Drawer setup
         drawerLayout = findViewById(R.id.drawer_layout);
         navigationView = findViewById(R.id.nav_view);
 

@@ -22,7 +22,6 @@ public class DiseaseView extends AppCompatActivity {
     NavigationView navigationView;
     ActionBarDrawerToggle toggle;
 
-    // 🔹 Disease details UI
     TextView diseaseTitle, diseaseDescription, diseaseSymptoms, diseaseCause, diseaseCure, diseasePrevention, pestDescription;
     ImageView diseaseImage, pestImage;
 
@@ -32,7 +31,6 @@ public class DiseaseView extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_disease_view);
 
-        // 🔹 Initialize views
         diseaseTitle = findViewById(R.id.diseaseTitle);
         diseaseImage = findViewById(R.id.diseaseImage);
         diseaseDescription = findViewById(R.id.diseaseDescription);
@@ -42,7 +40,6 @@ public class DiseaseView extends AppCompatActivity {
         pestImage = findViewById(R.id.pestImage);
         pestDescription = findViewById(R.id.pestDescription);
 
-        // 🔹 Get data from InformationInterface
         Intent intent = getIntent();
         if (intent != null) {
             diseaseTitle.setText(intent.getStringExtra("diseaseTitle"));
@@ -52,7 +49,6 @@ public class DiseaseView extends AppCompatActivity {
             diseaseCure.setText(intent.getStringExtra("diseaseCure"));
             pestDescription.setText(intent.getStringExtra("pestDescription"));
 
-            // For images, pass resource ID
             int diseaseImgRes = intent.getIntExtra("diseaseImage", 0);
             if (diseaseImgRes != 0) {
                 diseaseImage.setImageResource(diseaseImgRes);
@@ -63,7 +59,6 @@ public class DiseaseView extends AppCompatActivity {
             }
         }
 
-        // 🔹 Drawer setup
         drawerLayout = findViewById(R.id.drawer_layout);
         navigationView = findViewById(R.id.nav_view);
 
@@ -94,14 +89,13 @@ public class DiseaseView extends AppCompatActivity {
         return true;
     }
 
-    // 🔹 Handle toggle + back button
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (toggle.onOptionsItemSelected(item)) {
             return true;
         }
         if (item.getItemId() == R.id.action_back) {
-            finish(); // Go back to previous activity
+            finish();
             return true;
         }
         return super.onOptionsItemSelected(item);

@@ -7,7 +7,6 @@
     android:layout_height="match_parent"
     tools:context=".Cost">
 
-    <!-- Main Content -->
     <LinearLayout
         android:id="@+id/main"
         android:layout_width="match_parent"
@@ -16,7 +15,6 @@
         android:padding="16dp"
         android:layout_marginTop="115dp">
 
-        <!-- Land Area -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -41,7 +39,6 @@
                 android:inputType="numberDecimal" />
         </LinearLayout>
 
-        <!-- Cultivar -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -65,14 +62,12 @@
                 android:hint="Enter cultivar" />
         </LinearLayout>
 
-        <!-- Divider -->
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
             android:background="#BDBDBD"
             android:layout_marginVertical="8dp" />
 
-        <!-- Number of Trees -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -97,7 +92,6 @@
                 android:inputType="number" />
         </LinearLayout>
 
-        <!-- Fertilizer -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -122,7 +116,6 @@
                 android:inputType="numberDecimal" />
         </LinearLayout>
 
-        <!-- Total Fertilizer -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -147,14 +140,12 @@
                 android:textSize="16sp" />
         </LinearLayout>
 
-        <!-- Divider -->
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
             android:background="#BDBDBD"
             android:layout_marginVertical="8dp" />
 
-        <!-- Calculate Button -->
         <Button
             android:id="@+id/btn_calculate"
             android:layout_width="match_parent"
@@ -163,7 +154,6 @@
             android:textColor="@android:color/white"
             android:layout_marginBottom="12dp" />
 
-        <!-- Expense/Income/ROI Box -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -178,7 +168,6 @@
                 android:orientation="vertical"
                 android:padding="8dp">
 
-                <!-- Expense -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -203,7 +192,6 @@
                         android:textSize="16sp" />
                 </LinearLayout>
 
-                <!-- Income -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -228,7 +216,6 @@
                         android:textSize="16sp" />
                 </LinearLayout>
 
-                <!-- ROI -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -256,7 +243,6 @@
         </androidx.cardview.widget.CardView>
     </LinearLayout>
 
-    <!-- Navigation Drawer -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/nav_view"
         android:layout_width="wrap_content"

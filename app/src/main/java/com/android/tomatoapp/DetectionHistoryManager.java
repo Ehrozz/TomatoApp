@@ -13,7 +13,6 @@ public class DetectionHistoryManager {
     private static final String PREF_NAME = "detection_history";
     private static final String KEY_HISTORY = "history";
 
-    // Save a new detection with full details
     public static void addHistory(Context context,
                                   String imageUri,
                                   String title,
@@ -53,7 +52,6 @@ public class DetectionHistoryManager {
         }
     }
 
-    // Retrieve all history
     public static ArrayList<JSONObject> getHistory(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         String historyJson = prefs.getString(KEY_HISTORY, "[]");
@@ -70,7 +68,6 @@ public class DetectionHistoryManager {
         return historyList;
     }
 
-    // Clear history
     public static void clearHistory(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         prefs.edit().remove(KEY_HISTORY).apply();

@@ -36,17 +36,13 @@ public class DetectionHistoryActivity extends AppCompatActivity {
 
         loadHistory();
 
-        // Click on a history item to view full detection details
         historyListView.setOnItemClickListener((parent, view, position, id) -> {
             if (historyData == null || historyData.isEmpty()) return;
             JSONObject selectedEntry = historyData.get(position);
             try {
                 Intent intent = new Intent(DetectionHistoryActivity.this, DetectionResults.class);
                 intent.putExtra("title", selectedEntry.getString("disease"));
-                intent.putExtra("accuracy", selectedEntry.getString("accuracy"));
                 intent.putExtra("imageUri", selectedEntry.getString("imageUri"));
-
-                // Also pass full details if available
                 intent.putExtra("description", selectedEntry.optString("description", ""));
                 intent.putExtra("symptoms", selectedEntry.optString("symptoms", ""));
                 intent.putExtra("cause", selectedEntry.optString("cause", ""));
@@ -55,6 +51,7 @@ public class DetectionHistoryActivity extends AppCompatActivity {
                 intent.putExtra("pestTitle", selectedEntry.optString("pestTitle", ""));
                 intent.putExtra("pestDescription", selectedEntry.optString("pestDescription", ""));
                 intent.putExtra("pestImageUri", selectedEntry.optString("pestImageUri", ""));
+                intent.putExtra("accuracy", selectedEntry.getString("accuracy"));
 
                 startActivity(intent);
             } catch (Exception e) {
@@ -78,7 +75,6 @@ public class DetectionHistoryActivity extends AppCompatActivity {
                 String disease = entry.getString("disease");
                 long timestamp = entry.getLong("timestamp");
 
-                // Only show disease name + detection date
                 String date = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                         .format(new Date(timestamp));
 

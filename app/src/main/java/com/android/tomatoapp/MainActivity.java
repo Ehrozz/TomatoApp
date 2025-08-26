@@ -2,11 +2,16 @@ package com.android.tomatoapp;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 import androidx.core.graphics.Insets;
@@ -68,8 +73,34 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
             finish();
         } else {
-            textView.setText("Welcome " + user.getEmail());
+            SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
+            boolean isFirstLogin = prefs.getBoolean("isFirstLogin_" + user.getUid(), true);
+
+            if (isFirstLogin) {
+                // First-time login → show "Welcome"
+                textView.setText("Welcome " + user.getEmail());
+
+                // Mark as not first login anymore
+                SharedPreferences.Editor editor = prefs.edit();
+                editor.putBoolean("isFirstLogin_" + user.getUid(), false);
+                editor.apply();
+            } else {
+                // Re-login → show random greeting
+                String[] greetings = {
+                        "Good morning",
+                        "Good day",
+                        "Hello",
+                        "Hi there",
+                        "Glad to see you back"
+                };
+
+                java.util.Random random = new java.util.Random();
+                int index = random.nextInt(greetings.length);
+                textView.setText(greetings[index] + " " + user.getDisplayName());
+            }
         }
+
+
 
         // Right-side drawer toggle
         toggle = new ActionBarDrawerToggle(this, drawerLayout, R.string.open, R.string.close);
@@ -78,8 +109,6 @@ public class MainActivity extends AppCompatActivity {
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-
-            // Mirror the hamburger so it points the right way
             toggle.getDrawerArrowDrawable().setDirection(
                     androidx.appcompat.graphics.drawable.DrawerArrowDrawable.ARROW_DIRECTION_END
             );
@@ -104,6 +133,38 @@ public class MainActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+
+        // Show User Agreement if not accepted yet
+        SharedPreferences prefs = getSharedPreferences("AppPrefs", MODE_PRIVATE);
+        boolean accepted = prefs.getBoolean("UserAgreementAccepted", false);
+        if (!accepted) {
+            showUserAgreementDialog(prefs);
+        }
+    }
+
+    // Show the Agreement Popup
+    private void showUserAgreementDialog(SharedPreferences prefs) {
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_user_agreement, null);
+
+        CheckBox chkAgree = dialogView.findViewById(R.id.chkAgree);
+        Button btnDone = dialogView.findViewById(R.id.btnDone);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("User Agreement")
+                .setView(dialogView)
+                .setCancelable(false) // must accept
+                .create();
+
+        chkAgree.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            btnDone.setEnabled(isChecked);
+        });
+
+        btnDone.setOnClickListener(v -> {
+            prefs.edit().putBoolean("UserAgreementAccepted", true).apply();
+            dialog.dismiss(); // allow user to continue
+        });
+
+        dialog.show();
     }
 
     @Override

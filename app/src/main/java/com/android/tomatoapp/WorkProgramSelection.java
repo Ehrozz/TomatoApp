@@ -35,7 +35,6 @@ public class WorkProgramSelection extends AppCompatActivity {
     private DatabaseReference dbRef;
     private String userId;
 
-    // 🔹 Drawer
     DrawerLayout drawerLayout;
     NavigationView navigationView;
     ActionBarDrawerToggle toggle;
@@ -96,7 +95,6 @@ public class WorkProgramSelection extends AppCompatActivity {
             startActivity(intent);
         });
 
-        // 🔹 Drawer setup
         drawerLayout = findViewById(R.id.drawer_layout);
         navigationView = findViewById(R.id.navigation_view);
 
@@ -121,21 +119,19 @@ public class WorkProgramSelection extends AppCompatActivity {
         });
     }
 
-    // 🔹 Inflate the back button
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_back, menu);
         return true;
     }
 
-    // 🔹 Handle toggle + back button
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (toggle.onOptionsItemSelected(item)) {
             return true;
         }
         if (item.getItemId() == R.id.action_back) {
-            finish(); // Go back to previous activity
+            finish();
             return true;
         }
         return super.onOptionsItemSelected(item);

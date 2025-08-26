@@ -32,7 +32,6 @@ public class InformationInterface extends AppCompatActivity {
             "Black Leaf Mold"
     ));
 
-    // 🔹 Drawer
     DrawerLayout drawerLayout;
     NavigationView navigationView;
     ActionBarDrawerToggle toggle;
@@ -46,7 +45,6 @@ public class InformationInterface extends AppCompatActivity {
         adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, diseaseList);
         diseaseListView.setAdapter(adapter);
 
-        // 🔹 Item click removes from list
         diseaseListView.setOnItemClickListener((parent, view, position, id) -> {
             String selectedDisease = (String) parent.getItemAtPosition(position);
 
@@ -55,7 +53,6 @@ public class InformationInterface extends AppCompatActivity {
             startActivity(intent);
         });
 
-        // 🔹 Drawer setup
         drawerLayout = findViewById(R.id.drawer_layout);
         navigationView = findViewById(R.id.nav_view);
 
@@ -64,7 +61,7 @@ public class InformationInterface extends AppCompatActivity {
         toggle.syncState();
 
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        getSupportActionBar().setTitle("Tomato App"); // same as other activities
+        getSupportActionBar().setTitle("Tomato App");
 
         navigationView.setNavigationItemSelectedListener(item -> {
             int id = item.getItemId();
@@ -80,14 +77,12 @@ public class InformationInterface extends AppCompatActivity {
         });
     }
 
-    // 🔹 Inflate the back button
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_back, menu);
         return true;
     }
 
-    // 🔹 Handle toggle + back button
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (toggle.onOptionsItemSelected(item)) {

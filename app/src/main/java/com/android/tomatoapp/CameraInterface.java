@@ -69,7 +69,8 @@ public class CameraInterface extends AppCompatActivity {
         captureBtn.setOnClickListener(v -> capturePhoto());
         openGalleryBtn.setOnClickListener(v -> openGallery());
 
-        loadLabels(); // Load labels from assets
+        // Load labels from assets
+        loadLabels();
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                 == PackageManager.PERMISSION_GRANTED) {
@@ -144,10 +145,9 @@ public class CameraInterface extends AppCompatActivity {
                                 "Photo saved: " + photoFile.getAbsolutePath(),
                                 Toast.LENGTH_SHORT).show();
 
-                        // Run Teachable Machine detection
                         HashMap<String, String> detectionResults = runTeachableMachineDetection(photoUri);
 
-                        // ✅ Save detection with all details to history
+                        // Save detection with all details to history
                         DetectionHistoryManager.addHistory(
                                 CameraInterface.this,
                                 photoUri.toString(),

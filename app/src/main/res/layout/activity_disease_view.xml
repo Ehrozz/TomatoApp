@@ -20,7 +20,6 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- Disease Title -->
             <TextView
                 android:id="@+id/diseaseTitle"
                 android:layout_width="wrap_content"
@@ -30,7 +29,6 @@
                 android:textStyle="bold"
                 android:paddingBottom="8dp" />
 
-            <!-- Disease Image -->
             <ImageView
                 android:id="@+id/diseaseImage"
                 android:layout_width="match_parent"
@@ -40,7 +38,6 @@
                 android:contentDescription="Disease image"
                 android:layout_marginBottom="8dp" />
 
-            <!-- Brief Description -->
             <TextView
                 android:id="@+id/diseaseDescription"
                 android:layout_width="wrap_content"
@@ -49,14 +46,12 @@
                 android:textSize="16sp"
                 android:paddingBottom="16dp" />
 
-            <!-- Divider -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:background="#CCCCCC"
                 android:layout_marginVertical="8dp" />
 
-            <!-- Symptoms -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -73,14 +68,12 @@
                 android:textSize="16sp"
                 android:paddingBottom="16dp" />
 
-            <!-- Divider -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:background="#CCCCCC"
                 android:layout_marginVertical="8dp" />
 
-            <!-- Cause -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -97,14 +90,12 @@
                 android:textSize="16sp"
                 android:paddingBottom="16dp" />
 
-            <!-- Divider -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:background="#CCCCCC"
                 android:layout_marginVertical="8dp" />
 
-            <!-- Cure -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -121,14 +112,12 @@
                 android:textSize="16sp"
                 android:paddingBottom="16dp" />
 
-            <!-- Divider -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:background="#CCCCCC"
                 android:layout_marginVertical="8dp" />
 
-            <!-- Prevention -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -145,14 +134,12 @@
                 android:textSize="16sp"
                 android:paddingBottom="16dp" />
 
-            <!-- Divider -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:background="#CCCCCC"
                 android:layout_marginVertical="8dp" />
 
-            <!-- Pest Section -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

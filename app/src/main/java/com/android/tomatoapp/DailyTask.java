@@ -33,7 +33,6 @@ public class DailyTask extends AppCompatActivity {
 
     private boolean isNewProgram = false;
 
-    // 🔹 Drawer
     DrawerLayout drawerLayout;
     NavigationView navigationView;
     ActionBarDrawerToggle toggle;
@@ -49,33 +48,29 @@ public class DailyTask extends AppCompatActivity {
         taskList = findViewById(R.id.taskList);
         btnComplete = findViewById(R.id.btnComplete);
 
-        // 🔹 Get intent extras
         String cultivar = getIntent().getStringExtra("cultivar");
         String date = getIntent().getStringExtra("date");
         String programId = getIntent().getStringExtra("programId");
 
-        // ✅ FIX: use the correct key from Workprogram.java
         String startDate = getIntent().getStringExtra("programStartDate");
 
         String growthHabit = getIntent().getStringExtra("growthHabit");
         int maturityDays = getIntent().getIntExtra("maturityDays", 0);
 
-        // 🔹 Fallback if startDate is missing
+        // Fallback if startDate is missing
         if (startDate == null || startDate.isEmpty()) {
-            startDate = sdf.format(new Date()); // today
+            startDate = sdf.format(new Date());
         }
 
-        // 🔹 Detect whether this came from a saved program or a new program
+        // Detect whether existing or new workprogram
         if (programId == null || programId.isEmpty()) {
             isNewProgram = true;
         }
 
         dailyTaskTitle.setText("Tasks for " + cultivar + " on " + date);
 
-        // 🔹 Compute current day number relative to start date
         int dayNumber = calculateDayNumber(startDate, date);
 
-        // 🔹 Fetch tasks using TaskSchedule
         List<String> tasks;
         if (dayNumber > 0) {
             tasks = TaskSchedule.getTasksForDay(growthHabit, maturityDays, dayNumber);
@@ -89,7 +84,6 @@ public class DailyTask extends AppCompatActivity {
             taskList.setText("- " + TextUtils.join("\n- ", tasks));
         }
 
-        // 🔹 Firebase ref only if it's a saved program
         String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
         DatabaseReference taskRef;
         if (!isNewProgram) {
@@ -103,7 +97,6 @@ public class DailyTask extends AppCompatActivity {
             taskRef = null;
         }
 
-        // 🔹 Handle completion
         DatabaseReference finalTaskRef = taskRef;
         String finalStartDate = startDate;
         btnComplete.setOnClickListener(v -> {
@@ -132,7 +125,6 @@ public class DailyTask extends AppCompatActivity {
             }
         });
 
-        // 🔹 Drawer setup
         drawerLayout = findViewById(R.id.drawer_layout);
         navigationView = findViewById(R.id.navigation_view);
 
@@ -171,14 +163,14 @@ public class DailyTask extends AppCompatActivity {
         }
     }
 
-    // 🔹 Inflate the back button
+    // back button
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_back, menu);
         return true;
     }
 
-    // 🔹 Handle toggle + back button
+    // Handle toggle & back button
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (toggle.onOptionsItemSelected(item)) {

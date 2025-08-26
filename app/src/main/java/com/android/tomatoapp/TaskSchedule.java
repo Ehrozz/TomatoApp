@@ -16,7 +16,6 @@ public class TaskSchedule {
     public static List<String> getTasksForDay(String growthHabit, int maturityDays, int dayNumber) {
         List<String> tasks = new ArrayList<>();
 
-        // Calculate phase
         int phaseDuration = maturityDays / 5;
         int phase = Math.min((dayNumber - 1) / phaseDuration + 1, 5);
 

@@ -5,7 +5,6 @@
     android:orientation="vertical"
     android:padding="20dp">
 
-    <!-- Terms & Conditions Text -->
     <TextView
         android:id="@+id/txtAgreement"
         android:layout_width="match_parent"
@@ -15,14 +14,12 @@
         android:lineSpacingExtra="4dp"
         android:layout_marginBottom="16dp" />
 
-    <!-- Checkbox -->
     <CheckBox
         android:id="@+id/chkAgree"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="I agree with the Terms and Conditions" />
 
-    <!-- Done Button -->
     <Button
         android:id="@+id/btnDone"
         android:layout_width="match_parent"

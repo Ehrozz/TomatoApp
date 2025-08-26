@@ -8,7 +8,6 @@ public class DiseaseData {
 
     static {
 
-        // ✅ Healthy Tomato (no disease)
         diseaseMap.put("Healthy Tomato", new DiseaseInfo(
                 "This tomato plant shows no visible signs of disease. Leaves, stems, and fruits appear normal and healthy.",
                 "No disease-causing pathogen present.",
@@ -21,7 +20,6 @@ public class DiseaseData {
                 "No pests present."
         ));
 
-        // 🔹 Tomato Leaf Curl Virus (TLCV)
         diseaseMap.put("Tomato Leaf Curl Virus (TLCV)", new DiseaseInfo(
                 "TYLCV-infected tomato plants show stunted growth, yellowing and curling of leaves, reduced flowering, and poor fruit set. Severe cases can result in 50–100% yield loss.",
                 "Viral disease transmitted mainly by the insect vector whitefly (Bemisia tabaci). Can also be possibly seed-transmitted.",
@@ -43,7 +41,6 @@ public class DiseaseData {
                 "Whitefly (Bemisia tabaci) → Small sap-sucking insect with powdery white wings. Feeds on leaf undersides, causing leaf curling, yellowing, and transmitting TLCV."
         ));
 
-        // 🔹 Early Blight (Alternaria solani)
         diseaseMap.put("Early Blight (Alternaria solani)", new DiseaseInfo(
                 "A fungal disease of tomato and potato caused by Alternaria solani. Infection usually starts on older leaves near the ground and can affect leaves, stems, and fruits.",
                 "Soilborne fungus that thrives in warm, humid, wet conditions. Spreads by wind, rain splash, contaminated tools, and crop debris.",
@@ -64,7 +61,6 @@ public class DiseaseData {
                 "Alternaria solani → soilborne fungus surviving in debris, spreads by rain splash, wind, and contaminated tools."
         ));
 
-        // 🔹 Late Blight (Phytophthora infestans)
         diseaseMap.put("Late Blight (Phytophthora infestans)", new DiseaseInfo(
                 "Highly destructive disease that can devastate entire tomato fields within days under favorable conditions.",
                 "Causal organism: Phytophthora infestans, a water mold (oomycete). Survives in plant debris and spreads rapidly via spores in cool, wet conditions.",
@@ -84,7 +80,6 @@ public class DiseaseData {
                 "Phytophthora infestans → spreads via wind and rain, thrives in cool humid weather, infects tomato & potato."
         ));
 
-        // 🔹 Bacterial Wilt (Ralstonia solanacearum)
         diseaseMap.put("Bacterial Wilt (Ralstonia solanacearum)", new DiseaseInfo(
                 "Causes sudden wilting of tomato plants, even when soil moisture is adequate.",
                 "Soilborne bacterium entering through root wounds. Persists in soil, infects vascular tissue, blocks water movement.",
@@ -105,7 +100,6 @@ public class DiseaseData {
                 "Ralstonia solanacearum → soilborne bacterium that spreads via infected soil, water, or plant debris. Difficult to eradicate."
         ));
 
-        // 🔹 Fusarium Wilt (Fusarium oxysporum)
         diseaseMap.put("Fusarium Wilt (Fusarium oxysporum)", new DiseaseInfo(
                 "Soilborne fungus that infects roots, spreads through vascular tissue, and causes wilting.",
                 "Persists in soil for many years. Enters through root wounds and blocks water transport.",
@@ -126,7 +120,6 @@ public class DiseaseData {
                 "Fusarium oxysporum → soilborne fungus spreading via debris, contaminated soil, and water."
         ));
 
-        // 🔹 Anthracnose (Colletotrichum spp.)
         diseaseMap.put("Anthracnose (Colletotrichum spp.)", new DiseaseInfo(
                 "Fungal disease that mainly affects ripening fruits, causing sunken black spots.",
                 "Caused by Colletotrichum spp. Spores spread by rain splash, irrigation, insects, and contaminated tools.",
@@ -146,7 +139,6 @@ public class DiseaseData {
                 "Colletotrichum spp. → fungus infecting fruits, survives in crop debris, spread by splashing water."
         ));
 
-        // 🔹 Black Leaf Mold (Pseudocercospora fuligena)
         diseaseMap.put("Black Leaf Mold (Pseudocercospora fuligena)", new DiseaseInfo(
                 "Fungal disease causing yellow patches on leaves and black mold underneath.",
                 "Fungus infects older leaves under humid conditions. Spreads via wind-blown spores.",

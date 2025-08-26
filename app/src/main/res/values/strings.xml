@@ -26,4 +26,5 @@
     <string name="navigation_drawer_open">drawer_open</string>
     <string name="navigation_drawer_close">drawer_close</string>
     <string name="capture">Capture</string>
+    <string name="default_web_client_id">160472928974-7h66d1ivo7299ofe76a82g74ksp16q4d.apps.googleusercontent.com</string>
 </resources>

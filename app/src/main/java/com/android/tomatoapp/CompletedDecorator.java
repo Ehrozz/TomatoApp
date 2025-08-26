@@ -23,7 +23,7 @@ public class CompletedDecorator implements DayViewDecorator {
 
     public CompletedDecorator(HashSet<CalendarDay> dates, Context context) {
         this.dates = new HashSet<>(dates);
-        this.radius = 8f; // size of dot
+        this.radius = 8f;
         this.color = ContextCompat.getColor(context, R.color.green);
     }
 

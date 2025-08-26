@@ -7,7 +7,6 @@
     android:layout_height="match_parent"
     tools:context=".IPM">
 
-    <!-- Main Content -->
     <RelativeLayout
         android:id="@+id/main"
         android:layout_width="match_parent"
@@ -20,7 +19,6 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="60dp">
 
-            <!-- First row of cards -->
             <LinearLayout
                 android:id="@+id/cardRow1"
                 android:layout_width="0dp"
@@ -57,7 +55,6 @@
                 </androidx.cardview.widget.CardView>
             </LinearLayout>
 
-            <!-- Second row of cards -->
             <LinearLayout
                 android:id="@+id/cardRow2"
                 android:layout_width="0dp"
@@ -96,7 +93,6 @@
         </androidx.constraintlayout.widget.ConstraintLayout>
     </RelativeLayout>
 
-    <!-- Navigation Drawer -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/nav_view"
         android:layout_width="wrap_content"

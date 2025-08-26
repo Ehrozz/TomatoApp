@@ -22,10 +22,8 @@ public class Cost extends AppCompatActivity {
     NavigationView navigationView;
     ActionBarDrawerToggle toggle;
 
-    // Input fields
     private EditText landAreaInput, cultivarInput, numberOfTreesInput, fertilizerInput, totalFertilizerInput;
 
-    // Output fields
     private TextView expenseOutput, incomeOutput, roiOutput;
 
     // Button
@@ -72,10 +70,8 @@ public class Cost extends AppCompatActivity {
         incomeOutput = findViewById(R.id.output_income);
         roiOutput = findViewById(R.id.output_roi);
 
-        // Bind button
         calculateButton = findViewById(R.id.btn_calculate);
 
-        // Button logic
         calculateButton.setOnClickListener(v -> {
             try {
                 // Get inputs
@@ -85,9 +81,9 @@ public class Cost extends AppCompatActivity {
                 double fertilizer = Double.parseDouble(fertilizerInput.getText().toString());
                 double totalFertilizer = Double.parseDouble(totalFertilizerInput.getText().toString());
 
-                // Dummy calculation logic (replace with real formula)
+                // Dummy calculation logic (for replace with the real formula)
                 double expense = fertilizer * numberOfTrees;
-                double income = (landArea * numberOfTrees) * 10; // assume ₱10 per unit
+                double income = (landArea * numberOfTrees) * 10;
                 double roi = (income - expense) / expense * 100;
 
                 // Set results

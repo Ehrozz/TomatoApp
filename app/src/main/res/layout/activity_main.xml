@@ -5,132 +5,210 @@
     android:id="@+id/drawer_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/soft_cream"
     tools:context=".MainActivity">
 
-    <!-- Main Content -->
-    <ScrollView
+    <LinearLayout
         android:id="@+id/main"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:fillViewport="true">
+        android:orientation="vertical"
+        android:padding="16dp">
 
-        <LinearLayout
-            android:layout_width="match_parent"
+        <!-- Header -->
+        <TextView
+            android:id="@+id/TomatoApp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
+            android:text="@string/tomato_app"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="@color/dark_gray"
+            android:layout_marginBottom="16dp" />
 
-            <!-- Toolbar Row (aligns content to the right) -->
+        <!-- Weather Forecast Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/weatherCard"
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="6dp"
+            app:cardBackgroundColor="@color/white">
+
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:orientation="horizontal"
-                android:gravity="end"
-                android:layout_marginBottom="8dp">
+                android:gravity="center_vertical"
+                android:padding="16dp">
 
-                <!-- Tomato App Title -->
-                <TextView
-                    android:id="@+id/TomatoApp"
+                <ImageView
+                    android:id="@+id/weatherIcon"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:src="@android:drawable/ic_menu_compass"
+                    app:tint="@color/tomato_red"
+                    android:layout_marginEnd="16dp" />
+
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/tomato_app"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/weatherCondition"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Sunny"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/dark_gray" />
+
+                    <TextView
+                        android:id="@+id/weatherTemp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="28°C"
+                        android:textSize="16sp"
+                        android:textColor="@color/green" />
+
+                    <TextView
+                        android:id="@+id/weatherLocation"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Lopez, Quezon"
+                        android:textSize="14sp"
+                        android:textColor="@color/dark_gray" />
+                </LinearLayout>
             </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
-            <!-- Saved Cultivars Label -->
-            <TextView
-                android:id="@+id/savedCultivarsLabel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Saved Cultivars:"
-                android:textSize="16sp"
-                android:layout_marginBottom="4dp"
-                android:visibility="gone"/>
+        <!-- Saved Cultivars Section (hidden by default) -->
+        <TextView
+            android:id="@+id/savedCultivarsLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Saved Cultivars:"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp"
+            android:visibility="gone"
+            android:textColor="@color/dark_gray" />
 
-            <!-- Saved Cultivars List -->
-            <ListView
-                android:id="@+id/savedCultivarsListView"
+        <ListView
+            android:id="@+id/savedCultivarsListView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:divider="@android:color/darker_gray"
+            android:dividerHeight="1dp"
+            android:visibility="gone" />
+
+        <!-- Work Program Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/wpsCard"
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="6dp"
+            app:cardBackgroundColor="@color/tomato_red">
+
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:divider="@android:color/darker_gray"
-                android:dividerHeight="1dp"
-                android:visibility="gone"/>
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:padding="16dp">
 
-            <!-- Work Program Card -->
-            <androidx.cardview.widget.CardView
-                android:id="@+id/wpsCard"
+                <ImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@android:drawable/ic_menu_agenda"
+                    android:layout_marginEnd="12dp"
+                    app:tint="@color/white" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/work_program"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/white" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- IPM Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/ipmCard"
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="6dp"
+            app:cardBackgroundColor="@color/fresh_green">
+
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="175dp"
-                android:layout_marginTop="16dp"
-                android:layout_marginBottom="16dp"
-                app:cardCornerRadius="20dp"
-                app:cardElevation="10dp">
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:padding="16dp">
 
-                <RelativeLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent">
+                <ImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@android:drawable/ic_menu_info_details"
+                    android:layout_marginEnd="12dp"
+                    app:tint="@color/white" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_centerInParent="true"
-                        android:text="@string/work_program"
-                        android:textColor="#A1887F"
-                        android:textSize="25sp" />
-                </RelativeLayout>
-            </androidx.cardview.widget.CardView>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Integrated Pest Management"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/white" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
-            <!-- IPM Card -->
-            <androidx.cardview.widget.CardView
-                android:id="@+id/ipmCard"
+        <!-- Cost Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/costCard"
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:layout_marginBottom="24dp"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="6dp"
+            app:cardBackgroundColor="@color/warm_orange">
+
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="175dp"
-                android:layout_marginBottom="16dp"
-                app:cardCornerRadius="20dp"
-                app:cardElevation="10dp">
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:padding="16dp">
 
-                <RelativeLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent">
+                <ImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@android:drawable/ic_menu_sort_by_size"
+                    android:layout_marginEnd="12dp"
+                    app:tint="@color/white" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_centerInParent="true"
-                        android:text="@string/ipm"
-                        android:textColor="#A1887F"
-                        android:textSize="25sp" />
-                </RelativeLayout>
-            </androidx.cardview.widget.CardView>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/cost"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/white" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
-            <!-- Cost Card -->
-            <androidx.cardview.widget.CardView
-                android:id="@+id/costCard"
-                android:layout_width="match_parent"
-                android:layout_height="175dp"
-                android:layout_marginBottom="16dp"
-                app:cardCornerRadius="20dp"
-                app:cardElevation="10dp">
+    </LinearLayout>
 
-                <RelativeLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_centerInParent="true"
-                        android:text="@string/cost"
-                        android:textColor="#A1887F"
-                        android:textSize="25sp" />
-                </RelativeLayout>
-            </androidx.cardview.widget.CardView>
-
-        </LinearLayout>
-    </ScrollView>
-
-    <!-- Navigation Drawer (Slide Menu) -->
+    <!-- Drawer Menu -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/navigation_view"
         android:layout_width="wrap_content"

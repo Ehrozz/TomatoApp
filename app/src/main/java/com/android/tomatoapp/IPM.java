@@ -33,7 +33,6 @@ public class IPM extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_ipm);
 
-        // --- Card logic (kept as-is)
         ScanCard = findViewById(R.id.scanCard);
         InformationCard = findViewById(R.id.infoCard);
 
@@ -53,7 +52,6 @@ public class IPM extends AppCompatActivity {
             return insets;
         });
 
-        // --- Drawer setup (integrated from WorkProgramSelection.java)
         drawerLayout = findViewById(R.id.drawer_layout);
         navigationView = findViewById(R.id.nav_view);
 
@@ -61,7 +59,6 @@ public class IPM extends AppCompatActivity {
         drawerLayout.addDrawerListener(toggle);
         toggle.syncState();
 
-        // Enable hamburger + title
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setTitle("Tomato App");
@@ -81,7 +78,6 @@ public class IPM extends AppCompatActivity {
         });
     }
 
-    // --- Back button menu
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_back, menu);
