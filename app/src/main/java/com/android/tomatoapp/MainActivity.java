@@ -64,7 +64,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         CostCard.setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, Cost.class);
+            Intent intent = new Intent(MainActivity.this, CostSelection.class);
             startActivity(intent);
         });
 

@@ -7,11 +7,15 @@
     android:layout_height="match_parent"
     tools:context=".Workprogram">
 
+
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/main"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:fitsSystemWindows="true">
+
+
 
         <TextView
             android:id="@+id/wkTitle"
@@ -84,7 +88,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
-                            android:text="Phase 2: Tressing, Fertilizer, Pesticide" />
+                            android:text="Phase 2: Vegitative" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -100,7 +104,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
-                            android:text="Phase 3: Flower to Yield" />
+                            android:text="Phase 3: Flowering" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -116,7 +120,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
-                            android:text="Phase 4: Harvesting" />
+                            android:text="Phase 4: Maturity" />
                     </LinearLayout>
 
                     <LinearLayout

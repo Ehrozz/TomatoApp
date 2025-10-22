@@ -95,7 +95,7 @@ public class Workprogram extends AppCompatActivity {
             {"Reina F1", "Semi-determinate", "105", "125"},
             {"Renata F1", "Semi-determinate", "105", "125"},
             {"Rubellite F1", "Semi-determinate", "90", "110"},
-            {"TOM-055 F1", "Semi-indeterminate", "60", "75"},
+            {"TOM-055 F1", "Semi-determinate", "60", "75"},
             {"TOM-262 OP", "Determinate", "60", "75"},
             {"Dalwangan Tm1", "Determinate", "90", "110"},
             {"Dalwangan Tm2", "Determinate", "90", "110"},
@@ -120,7 +120,7 @@ public class Workprogram extends AppCompatActivity {
         drawerLayout.addDrawerListener(toggle);
         toggle.syncState();
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        getSupportActionBar().setTitle("Tomato App");
+        getSupportActionBar().setTitle("Work Program");
         navigationView.setNavigationItemSelectedListener(item -> {
             if (item.getItemId() == R.id.nav_home) finish();
             drawerLayout.closeDrawers();
@@ -149,7 +149,7 @@ public class Workprogram extends AppCompatActivity {
         if (cultivar != null && startDate != null && passedProgramId != null) {
             // Existing program
             cultivarCard.setVisibility(CardView.GONE);
-            wkTitle.setText("Work Program\nCultivar: " + cultivar + "\nStart Date: " + startDate);
+            wkTitle.setText("Work Program\nCultivar: " + cultivar + "\nDate Start : " + startDate);
             selectedCultivar = cultivar;
             programStartDate = startDate;
             programId = passedProgramId;
