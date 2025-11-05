@@ -66,8 +66,10 @@ public class DiseaseView extends AppCompatActivity {
         drawerLayout.addDrawerListener(toggle);
         toggle.syncState();
 
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        getSupportActionBar().setTitle("Tomato App"); // same as other activities
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().setTitle(R.string.disease_information);
+        }
 
         navigationView.setNavigationItemSelectedListener(item -> {
             int id = item.getItemId();
@@ -85,17 +87,12 @@ public class DiseaseView extends AppCompatActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_back, menu);
-        return true;
+        return true; // no back button menu
     }
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (toggle.onOptionsItemSelected(item)) {
-            return true;
-        }
-        if (item.getItemId() == R.id.action_back) {
-            finish();
             return true;
         }
         return super.onOptionsItemSelected(item);

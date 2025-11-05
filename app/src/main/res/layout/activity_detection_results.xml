@@ -25,9 +25,10 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Detection Result"
-                android:textSize="24sp"
+                android:textSize="@dimen/text_size_large"
                 android:textStyle="bold"
-                android:paddingBottom="8dp" />
+                android:textColor="@color/text_primary"
+                android:paddingBottom="@dimen/spacing_small" />
 
             <ImageView
                 android:id="@+id/detectionImage"
@@ -38,41 +39,68 @@
                 android:contentDescription="Detected image"
                 android:layout_marginBottom="8dp" />
 
-            <TextView
-                android:id="@+id/detectionDescription"
-                android:layout_width="wrap_content"
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Details about the detected result."
-                android:textSize="16sp"
-                android:paddingBottom="16dp" />
+                android:layout_marginBottom="@dimen/spacing_medium"
+                app:cardCornerRadius="@dimen/corner_radius_medium"
+                app:cardElevation="@dimen/elevation_card"
+                app:cardBackgroundColor="@color/surface">
+                
+                <TextView
+                    android:id="@+id/detectionDescription"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Details about the detected result."
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="@color/text_primary"
+                    android:padding="@dimen/spacing_medium" />
+            </com.google.android.material.card.MaterialCardView>
 
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:background="#CCCCCC"
-                android:layout_marginVertical="8dp" />
+                android:background="@color/divider"
+                android:layout_marginVertical="@dimen/spacing_small" />
 
-            <TextView
-                android:layout_width="wrap_content"
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Symptoms"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:paddingBottom="4dp" />
+                android:layout_marginBottom="@dimen/spacing_medium"
+                app:cardCornerRadius="@dimen/corner_radius_medium"
+                app:cardElevation="@dimen/elevation_card"
+                app:cardBackgroundColor="@color/surface">
+                
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/spacing_medium">
+                    
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Symptoms"
+                        android:textSize="@dimen/text_size_title"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_primary"
+                        android:paddingBottom="@dimen/spacing_tiny" />
 
-            <TextView
-                android:id="@+id/detectionSymptoms"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Symptoms go here."
-                android:textSize="16sp"
-                android:paddingBottom="16dp" />
+                    <TextView
+                        android:id="@+id/detectionSymptoms"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Symptoms go here."
+                        android:textSize="@dimen/text_size_body"
+                    android:textColor="@color/text_primary" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:background="#CCCCCC"
-                android:layout_marginVertical="8dp" />
+                android:background="@color/divider"
+                android:layout_marginVertical="@dimen/spacing_small" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -93,8 +121,8 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:background="#CCCCCC"
-                android:layout_marginVertical="8dp" />
+                android:background="@color/divider"
+                android:layout_marginVertical="@dimen/spacing_small" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -115,8 +143,8 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:background="#CCCCCC"
-                android:layout_marginVertical="8dp" />
+                android:background="@color/divider"
+                android:layout_marginVertical="@dimen/spacing_small" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -137,8 +165,8 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:background="#CCCCCC"
-                android:layout_marginVertical="8dp" />
+                android:background="@color/divider"
+                android:layout_marginVertical="@dimen/spacing_small" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -178,8 +206,8 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:background="#CCCCCC"
-                android:layout_marginVertical="8dp" />
+                android:background="@color/divider"
+                android:layout_marginVertical="@dimen/spacing_small" />
 
             <TextView
                 android:id="@+id/detectionAccuracy"

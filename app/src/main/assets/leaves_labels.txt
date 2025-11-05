@@ -1,0 +1,5 @@
+0 early blight
+1 healty
+2 late blight
+3 leaf mold
+4 leaf curl

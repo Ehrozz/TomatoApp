@@ -12,7 +12,8 @@
     <string name="tomato_app">Tomato App</string>
     <string name="work_program">Work Program</string>
     <string name="ipm">IPM</string>
-    <string name="cost">Cost</string>
+    <string name="integrated_pest_management">Integrated Pest Management</string>
+    <string name="cost">Projected Income/Expenses</string>
     <string name="pending">Pending</string>
     <string name="wk">Work Program</string>
     <string name="select">Select</string>
@@ -20,6 +21,11 @@
     <string name="task_1_n_task_2_n_task_3">- Task 1\n- Task 2\n- Task 3</string>
     <string name="scan">SCAN</string>
     <string name="information">INFORMATION</string>
+    <string name="scan_section">Scan</string>
+    <string name="information_section">Information</string>
+    <string name="detection_results">Detection Results</string>
+    <string name="daily_task">Daily Task</string>
+    <string name="disease_information">Disease Information</string>
     <string name="which_tomato_cultivar_do_you_want_to_plant">Which tomato cultivar do you want to plant?</string>
     <string name="open">open</string>
     <string name="close">close</string>

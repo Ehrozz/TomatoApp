@@ -61,7 +61,7 @@ public class IPM extends AppCompatActivity {
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            getSupportActionBar().setTitle("Tomato App");
+            getSupportActionBar().setTitle(R.string.integrated_pest_management);
         }
 
         navigationView.setNavigationItemSelectedListener(item -> {
@@ -80,16 +80,12 @@ public class IPM extends AppCompatActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_back, menu);
-        return true;
+        return true; // no back button menu
     }
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (toggle.onOptionsItemSelected(item)) {
-            return true;
-        } else if (item.getItemId() == R.id.action_back) {
-            finish();
             return true;
         }
         return super.onOptionsItemSelected(item);

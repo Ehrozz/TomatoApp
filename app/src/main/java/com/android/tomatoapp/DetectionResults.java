@@ -56,7 +56,18 @@ public class DetectionResults extends AppCompatActivity {
             pestDescription.setText(intent.getStringExtra("pestDescription"));
 
             String acc = intent.getStringExtra("accuracy");
-            detectionAccuracy.setText("Detection Accuracy: " + (acc != null ? acc : ""));
+            String topPredictions = intent.getStringExtra("topPredictions");
+            String confidenceWarning = intent.getStringExtra("confidenceWarning");
+            
+            // Display accuracy with top predictions if available
+            String accuracyText = "Detection Accuracy: " + (acc != null ? acc : "");
+            if (topPredictions != null && !topPredictions.isEmpty()) {
+                accuracyText += "\nTop Predictions: " + topPredictions;
+            }
+            if (confidenceWarning != null && !confidenceWarning.isEmpty()) {
+                accuracyText = "⚠️ " + confidenceWarning + "\n\n" + accuracyText;
+            }
+            detectionAccuracy.setText(accuracyText);
 
             String imageUriStr = intent.getStringExtra("imageUri");
             if (imageUriStr != null) {
@@ -76,8 +87,10 @@ public class DetectionResults extends AppCompatActivity {
         drawerLayout.addDrawerListener(toggle);
         toggle.syncState();
 
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        getSupportActionBar().setTitle("Tomato App");
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().setTitle(R.string.detection_results);
+        }
 
         navigationView.setNavigationItemSelectedListener(item -> {
             int id = item.getItemId();
@@ -95,17 +108,12 @@ public class DetectionResults extends AppCompatActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_back, menu);
-        return true;
+        return true; // no back button menu
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (toggle.onOptionsItemSelected(item)) {
-            return true;
-        }
-        if (item.getItemId() == R.id.action_back) {
-            finish(); // go back to previous activity
             return true;
         }
         return super.onOptionsItemSelected(item);

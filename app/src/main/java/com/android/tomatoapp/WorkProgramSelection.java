@@ -17,10 +17,12 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -28,6 +30,7 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
 import androidx.cardview.widget.CardView;
+import androidx.core.content.ContextCompat;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -58,7 +61,16 @@ public class WorkProgramSelection extends AppCompatActivity {
 
         btnAdd = findViewById(R.id.addButton);
 
-        userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        // Check if user is logged in
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) {
+            Toast.makeText(this, "Please log in to continue", Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(this, Login.class));
+            finish();
+            return;
+        }
+        
+        userId = currentUser.getUid();
         dbRef = FirebaseDatabase.getInstance().getReference("users").child(userId).child("workPrograms");
 
         dbRef.addValueEventListener(new ValueEventListener() {
@@ -94,8 +106,10 @@ public class WorkProgramSelection extends AppCompatActivity {
         drawerLayout.addDrawerListener(toggle);
         toggle.syncState();
 
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        getSupportActionBar().setTitle("Work Program");
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().setTitle("Work Program");
+        }
 
         navigationView.setNavigationItemSelectedListener(item -> {
             int id = item.getItemId();
@@ -113,17 +127,12 @@ public class WorkProgramSelection extends AppCompatActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_back, menu);
-        return true;
+        return true; // no back button menu
     }
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (toggle.onOptionsItemSelected(item)) {
-            return true;
-        }
-        if (item.getItemId() == R.id.action_back) {
-            finish();
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -175,19 +184,19 @@ public class WorkProgramSelection extends AppCompatActivity {
             };
 
             int colorIndex = position % bgColors.length;
-            int bgColor = holder.itemView.getResources().getColor(bgColors[colorIndex]);
+            int bgColor = ContextCompat.getColor(holder.itemView.getContext(), bgColors[colorIndex]);
 
             holder.card.setCardBackgroundColor(bgColor);
 
             // Adjust text color for readability
             if (colorIndex == 0 || colorIndex == 1 || colorIndex == 2) {
                 // Dark backgrounds → white text
-                holder.name.setTextColor(holder.itemView.getResources().getColor(android.R.color.white));
-                holder.date.setTextColor(holder.itemView.getResources().getColor(android.R.color.white));
+                holder.name.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), android.R.color.white));
+                holder.date.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), android.R.color.white));
             } else {
                 // Light backgrounds → dark text
-                holder.name.setTextColor(holder.itemView.getResources().getColor(android.R.color.black));
-                holder.date.setTextColor(holder.itemView.getResources().getColor(android.R.color.darker_gray));
+                holder.name.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), android.R.color.black));
+                holder.date.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), android.R.color.darker_gray));
             }
 
             // Click → open Workprogram

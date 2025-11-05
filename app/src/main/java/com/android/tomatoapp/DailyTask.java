@@ -16,6 +16,7 @@ import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
@@ -84,7 +85,16 @@ public class DailyTask extends AppCompatActivity {
             taskList.setText("- " + TextUtils.join("\n- ", tasks));
         }
 
-        String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        // Check if user is logged in
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) {
+            Toast.makeText(this, "Please log in to continue", Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(this, Login.class));
+            finish();
+            return;
+        }
+        
+        String userId = currentUser.getUid();
         DatabaseReference taskRef;
         if (!isNewProgram) {
             taskRef = FirebaseDatabase.getInstance()
@@ -99,6 +109,7 @@ public class DailyTask extends AppCompatActivity {
 
         DatabaseReference finalTaskRef = taskRef;
         String finalStartDate = startDate;
+        
         btnComplete.setOnClickListener(v -> {
             if (isNewProgram) {
                 Intent resultIntent = new Intent();
@@ -132,8 +143,10 @@ public class DailyTask extends AppCompatActivity {
         drawerLayout.addDrawerListener(toggle);
         toggle.syncState();
 
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        getSupportActionBar().setTitle("Tomato App");
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().setTitle(R.string.daily_task);
+        }
 
         navigationView.setNavigationItemSelectedListener(item -> {
             int id = item.getItemId();
@@ -163,21 +176,17 @@ public class DailyTask extends AppCompatActivity {
         }
     }
 
-    // back button
+
+    // no back button
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_back, menu);
         return true;
     }
 
-    // Handle toggle & back button
+    // Handle toggle only
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (toggle.onOptionsItemSelected(item)) {
-            return true;
-        }
-        if (item.getItemId() == R.id.action_back) {
-            finish();
             return true;
         }
         return super.onOptionsItemSelected(item);

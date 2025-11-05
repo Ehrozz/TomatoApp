@@ -2,13 +2,14 @@
     <!-- Base application theme. -->
     <style name="Base.Theme.TomatoApp" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Customize your light theme here. -->
-<!--        <item name="colorPrimary">@color/navyblue</item>-->
-<!--        <item name="colorOnPrimary">@color/softofffwhite</item>-->
-<!--        <item name="colorSecondary">@color/tomatored</item>-->
-<!--        <item name="colorOnSecondary">@color/softofffwhite</item>-->
-<!--        <item name="colorSurface">@color/lightnavyblue</item>-->
-<!--        <item name="colorOnSurface">@color/softofffwhite</item>-->
-<!--        <item name="colorError">@color/warmorange</item>-->
+        <item name="colorPrimary">@color/tomato_red</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/fresh_green</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorError">@color/error</item>
+        <item name="android:windowBackground">@color/background</item>
     </style>
 
     <style name="Theme.TomatoApp" parent="Base.Theme.TomatoApp" />

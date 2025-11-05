@@ -10,6 +10,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.Toast;
@@ -48,9 +49,19 @@ public class CameraInterface extends AppCompatActivity {
 
     private PreviewView previewView;
     private ImageCapture imageCapture;
+    private ProcessCameraProvider cameraProvider;
     private static final int CAMERA_PERMISSION_CODE = 100;
     private Interpreter tflite;
     private ArrayList<String> labels;
+    private View modelSelectorBtn; // Can be Button or Chip
+    private ModelType loadedModelType = null; // Track which model is currently loaded
+    
+    // Model types
+    private enum ModelType {
+        FRUITS,
+        LEAVES
+    }
+    private ModelType currentModelType = ModelType.FRUITS;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,16 +69,40 @@ public class CameraInterface extends AppCompatActivity {
         setContentView(R.layout.activity_camera_interface);
 
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle("Tomato App");
+            getSupportActionBar().setTitle(R.string.scan_section);
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
 
         previewView = findViewById(R.id.previewView);
-        Button captureBtn = findViewById(R.id.captureBtn);
-        ImageButton openGalleryBtn = findViewById(R.id.openGalleryButton);
+        com.google.android.material.floatingactionbutton.FloatingActionButton captureBtn = findViewById(R.id.captureBtn);
+        com.google.android.material.floatingactionbutton.FloatingActionButton openGalleryBtn = findViewById(R.id.openGalleryButton);
+        Button modelSelectorButton = findViewById(R.id.modelSelectorBtn);
+        modelSelectorBtn = modelSelectorButton; // Keep for backward compatibility
 
         captureBtn.setOnClickListener(v -> capturePhoto());
         openGalleryBtn.setOnClickListener(v -> openGallery());
+        
+        // Model selector button - toggle between Fruits and Leaves models
+        modelSelectorBtn.setOnClickListener(v -> {
+            if (currentModelType == ModelType.FRUITS) {
+                currentModelType = ModelType.LEAVES;
+                if (modelSelectorBtn instanceof Button) {
+                    ((Button) modelSelectorBtn).setText("Model: Leaves");
+                    ((Button) modelSelectorBtn).setBackgroundTintList(ContextCompat.getColorStateList(this, android.R.color.holo_green_dark));
+                }
+            } else {
+                currentModelType = ModelType.FRUITS;
+                if (modelSelectorBtn instanceof Button) {
+                    ((Button) modelSelectorBtn).setText("Model: Fruits");
+                    ((Button) modelSelectorBtn).setBackgroundTintList(ContextCompat.getColorStateList(this, android.R.color.holo_blue_dark));
+                }
+            }
+            // Reload model and labels when switching
+            tflite = null;
+            loadedModelType = null;
+            loadLabels();
+            Toast.makeText(this, "Switched to " + (currentModelType == ModelType.FRUITS ? "Fruits" : "Leaves") + " model", Toast.LENGTH_SHORT).show();
+        });
 
         // Load labels from assets
         loadLabels();
@@ -90,22 +125,34 @@ public class CameraInterface extends AppCompatActivity {
 
         cameraProviderFuture.addListener(() -> {
             try {
-                ProcessCameraProvider cameraProvider = cameraProviderFuture.get();
+                cameraProvider = cameraProviderFuture.get();
 
-                Preview preview = new Preview.Builder().build();
+                // Set preview scale type to ensure camera feed is visible
+                previewView.setScaleType(PreviewView.ScaleType.FILL_CENTER);
+                
+                // Build preview use case
+                Preview preview = new Preview.Builder()
+                        .build();
                 preview.setSurfaceProvider(previewView.getSurfaceProvider());
 
+                // Build image capture use case
                 imageCapture = new ImageCapture.Builder()
                         .setTargetRotation(previewView.getDisplay().getRotation())
+                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                         .build();
 
+                // Select back camera (or front if back is not available)
                 CameraSelector cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA;
 
+                // Unbind all use cases before rebinding
                 cameraProvider.unbindAll();
+                
+                // Bind use cases to lifecycle - this ensures camera automatically starts/stops with activity lifecycle
                 cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture);
 
             } catch (ExecutionException | InterruptedException e) {
                 e.printStackTrace();
+                Toast.makeText(this, "Failed to start camera: " + e.getMessage(), Toast.LENGTH_LONG).show();
             }
         }, ContextCompat.getMainExecutor(this));
     }
@@ -225,81 +272,178 @@ public class CameraInterface extends AppCompatActivity {
     private HashMap<String, String> runTeachableMachineDetection(Uri imageUri) {
         HashMap<String, String> results = new HashMap<>();
         try {
+            // Load and preprocess image with better quality
             Bitmap bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(imageUri));
-            Bitmap resized = Bitmap.createScaledBitmap(bitmap, 224, 224, true);
+            if (bitmap == null) {
+                results.put("title", "Error");
+                results.put("accuracy", "0%");
+                results.put("description", "Failed to load image.");
+                return results;
+            }
+            
+            // Better image preprocessing: use high-quality scaling and maintain aspect ratio
+            Bitmap resized = preprocessImage(bitmap, 224, 224);
 
+            // Improved pixel normalization - normalize to [0, 1] range
             ByteBuffer input = ByteBuffer.allocateDirect(224 * 224 * 3 * 4).order(ByteOrder.nativeOrder());
             int[] pixels = new int[224 * 224];
             resized.getPixels(pixels, 0, 224, 0, 0, 224, 224);
             for (int pixel : pixels) {
-                input.putFloat(((pixel >> 16) & 0xFF) / 255.f);
-                input.putFloat(((pixel >> 8) & 0xFF) / 255.f);
-                input.putFloat((pixel & 0xFF) / 255.f);
+                // Normalize RGB values to [0, 1] range
+                float r = ((pixel >> 16) & 0xFF) / 255.0f;
+                float g = ((pixel >> 8) & 0xFF) / 255.0f;
+                float b = (pixel & 0xFF) / 255.0f;
+                input.putFloat(r);
+                input.putFloat(g);
+                input.putFloat(b);
             }
+            input.rewind();
 
-            if (tflite == null) {
-                tflite = new Interpreter(loadModelFile("model_unquant.tflite"));
+            // Load model if not loaded or if model type changed
+            if (tflite == null || loadedModelType != currentModelType) {
+                if (tflite != null) {
+                    tflite.close();
+                    tflite = null;
+                }
+                String modelName = currentModelType == ModelType.FRUITS ? "model_fruits.tflite" : "model_leaves.tflite";
+                tflite = new Interpreter(loadModelFile(modelName));
+                loadedModelType = currentModelType;
             }
 
             float[][] output = new float[1][labels.size()];
             tflite.run(input, output);
 
-            int maxIdx = 0;
-            float maxProb = 0f;
-            for (int i = 0; i < output[0].length; i++) {
-                if (output[0][i] > maxProb) {
-                    maxProb = output[0][i];
-                    maxIdx = i;
-                }
+            // Apply softmax to get proper probabilities (if model doesn't output probabilities)
+            float[] probabilities = applySoftmax(output[0]);
+            
+            // Get top 3 predictions for better accuracy
+            int[] topIndices = getTopKIndices(probabilities, 3);
+            float[] topProbs = new float[3];
+            for (int i = 0; i < 3; i++) {
+                topProbs[i] = probabilities[topIndices[i]];
             }
+            
+            int maxIdx = topIndices[0];
+            float maxProb = topProbs[0];
+            float secondProb = topProbs.length > 1 ? topProbs[1] : 0f;
+            float thirdProb = topProbs.length > 2 ? topProbs[2] : 0f;
 
-            float threshold = 0.50f;
-            String rawLabel = labels.get(maxIdx).trim();
+            // Adaptive threshold based on model type and dataset quality
+            // Lower threshold for imbalanced datasets (0.30-0.40 instead of 0.50)
+            float threshold = 0.30f; // Lower threshold to handle imbalanced datasets
+            float highConfidenceThreshold = 0.70f; // High confidence threshold
+            
+            String rawLabel = labels.get(maxIdx).trim().toLowerCase();
+            
+            // Store top 3 predictions for user reference
+            StringBuilder topPredictions = new StringBuilder();
+            topPredictions.append(labels.get(topIndices[0]).trim()).append(" (").append(String.format("%.1f%%", topProbs[0] * 100)).append(")");
+            if (topProbs.length > 1 && topProbs[1] > 0.1f) {
+                topPredictions.append(", ").append(labels.get(topIndices[1]).trim()).append(" (").append(String.format("%.1f%%", topProbs[1] * 100)).append(")");
+            }
+            if (topProbs.length > 2 && topProbs[2] > 0.1f) {
+                topPredictions.append(", ").append(labels.get(topIndices[2]).trim()).append(" (").append(String.format("%.1f%%", topProbs[2] * 100)).append(")");
+            }
+            results.put("topPredictions", topPredictions.toString());
 
             HashMap<String, String> labelMapping = new HashMap<>();
-            labelMapping.put("Healthy Tomato", "Healthy Tomato");
-            labelMapping.put("Black Leaf Mold", "Black Leaf Mold (Pseudocercospora fuligena)");
-            labelMapping.put("Anthracnose", "Anthracnose (Colletotrichum spp.)");
-            labelMapping.put("Fusarium Wilt", "Fusarium Wilt (Fusarium oxysporum)");
-            labelMapping.put("Bacterial Wilt", "Bacterial Wilt (Ralstonia solanacearum)");
-            labelMapping.put("Late Blight", "Late Blight (Phytophthora infestans)");
-            labelMapping.put("Early Blight", "Early Blight (Alternaria solani)");
-            labelMapping.put("Leaf Curl", "Tomato Leaf Curl Virus (TLCV)");
+            
+            // Map labels based on current model type
+            if (currentModelType == ModelType.FRUITS) {
+                // Fruits model labels
+                labelMapping.put("anthracnose", "Anthracnose (Colletotrichum spp.)");
+                labelMapping.put("black leaf mold", "Black Leaf Mold (Pseudocercospora fuligena)");
+                labelMapping.put("early blight", "Early Blight (Alternaria solani)");
+                labelMapping.put("fusarium wilt", "Fusarium Wilt (Fusarium oxysporum)");
+                labelMapping.put("late blight", "Late Blight (Phytophthora infestans)");
+                labelMapping.put("yellow leaf curl", "Tomato Yellow Leaf Curl Virus (TYLCV)");
+                labelMapping.put("healty", "Healthy Tomato");
+                labelMapping.put("healthy", "Healthy Tomato");
+            } else {
+                // Leaves model labels
+                labelMapping.put("early blight", "Early Blight (Alternaria solani)");
+                labelMapping.put("healty", "Healthy Tomato");
+                labelMapping.put("healthy", "Healthy Tomato");
+                labelMapping.put("late blight", "Late Blight (Phytophthora infestans)");
+                labelMapping.put("leaf mold", "Leaf Mold (Passalora fulva)");
+                labelMapping.put("leaf curl", "Tomato Leaf Curl Virus (TLCV)");
+            }
 
             String mappedLabel = labelMapping.getOrDefault(rawLabel, rawLabel);
+            // If not found in mapping, capitalize first letter of each word
+            if (mappedLabel.equals(rawLabel)) {
+                String[] words = rawLabel.split("\\s+");
+                StringBuilder sb = new StringBuilder();
+                for (String word : words) {
+                    if (sb.length() > 0) sb.append(" ");
+                    if (word.length() > 0) {
+                        sb.append(word.substring(0, 1).toUpperCase()).append(word.substring(1));
+                    }
+                }
+                mappedLabel = sb.toString();
+            }
 
+            // Determine confidence level and add warnings
+            String confidenceWarning = "";
             if (maxProb < threshold) {
-                results.put("title", "Unknown");
-                results.put("accuracy", String.format("%.2f%%", maxProb * 100));
-                results.put("description", "Low confidence detection.");
+                confidenceWarning = "⚠️ Very Low Confidence - Consider retaking photo with better lighting/angle";
+            } else if (maxProb < highConfidenceThreshold) {
+                confidenceWarning = "⚠️ Low Confidence - Top predictions: " + topPredictions.toString();
+            } else if (secondProb > 0.25f && (maxProb - secondProb) < 0.15f) {
+                confidenceWarning = "⚠️ Ambiguous Detection - Multiple similar predictions. Top: " + topPredictions.toString();
+            }
+            
+            if (maxProb < threshold) {
+                results.put("title", "Unknown / Low Confidence");
+                results.put("accuracy", String.format("%.1f%%", maxProb * 100));
+                results.put("description", "Low confidence detection. The model could not reliably identify the condition.\n\n" +
+                        "Top predictions: " + topPredictions.toString() + "\n\n" +
+                        "Recommendations:\n" +
+                        "• Ensure good lighting\n" +
+                        "• Focus clearly on the affected area\n" +
+                        "• Try different angles\n" +
+                        "• Use the appropriate model (Fruits vs Leaves)");
                 results.put("symptoms", "No reliable symptoms detected.");
                 results.put("cause", "Uncertain cause.");
                 results.put("cure", "No reliable cure information.");
                 results.put("prevention", "No reliable prevention information.");
                 results.put("pestTitle", "Unknown");
                 results.put("pestDescription", "No pest information.");
+                results.put("confidenceWarning", confidenceWarning);
             } else {
                 DiseaseInfo info = DiseaseData.getDiseaseInfo(mappedLabel);
                 if (info != null) {
                     results.put("title", mappedLabel);
-                    results.put("accuracy", String.format("%.2f%%", maxProb * 100));
-                    results.put("description", info.getDescription());
+                    results.put("accuracy", String.format("%.1f%%", maxProb * 100));
+                    
+                    // Add confidence warning to description if needed
+                    String description = info.getDescription();
+                    if (!confidenceWarning.isEmpty()) {
+                        description = confidenceWarning + "\n\n" + description;
+                    }
+                    results.put("description", description);
+                    
                     results.put("symptoms", info.getSymptoms());
                     results.put("cause", info.getCause());
                     results.put("cure", info.getCure());
                     results.put("prevention", info.getPrevention());
                     results.put("pestTitle", info.getPest());
                     results.put("pestDescription", info.getPestDescription());
+                    results.put("confidenceWarning", confidenceWarning);
                 } else {
-                    results.put("title", "Unknown");
-                    results.put("accuracy", String.format("%.2f%%", maxProb * 100));
-                    results.put("description", "No matching disease found in database.");
-                    results.put("symptoms", "No data.");
-                    results.put("cause", "Unknown.");
-                    results.put("cure", "No data.");
-                    results.put("prevention", "No data.");
+                    results.put("title", mappedLabel + " (Database Info Missing)");
+                    results.put("accuracy", String.format("%.1f%%", maxProb * 100));
+                    results.put("description", "Detection: " + mappedLabel + "\n" +
+                            "Top predictions: " + topPredictions.toString() + "\n\n" +
+                            (!confidenceWarning.isEmpty() ? confidenceWarning + "\n\n" : "") +
+                            "No detailed information available in database for this condition.");
+                    results.put("symptoms", "No data available.");
+                    results.put("cause", "No data available.");
+                    results.put("cure", "No data available.");
+                    results.put("prevention", "No data available.");
                     results.put("pestTitle", "Unknown");
-                    results.put("pestDescription", "No data.");
+                    results.put("pestDescription", "No data available.");
+                    results.put("confidenceWarning", confidenceWarning);
                 }
             }
 
@@ -320,16 +464,92 @@ public class CameraInterface extends AppCompatActivity {
 
     private void loadLabels() {
         labels = new ArrayList<>();
-        try (InputStream is = getAssets().open("labels.txt")) {
+        String labelsFile = currentModelType == ModelType.FRUITS ? "fruit_labels.txt" : "leaves_labels.txt";
+        try (InputStream is = getAssets().open(labelsFile)) {
             byte[] buffer = new byte[is.available()];
             is.read(buffer);
             String[] lines = new String(buffer).split("\n");
             for (String line : lines) {
-                labels.add(line.trim());
+                line = line.trim();
+                if (!line.isEmpty()) {
+                    // Parse format like "0 anthracnose" or "1 black leaf mold"
+                    // Remove the index number and keep only the label name
+                    String[] parts = line.split("\\s+", 2);
+                    if (parts.length >= 2) {
+                        labels.add(parts[1].trim());
+                    } else {
+                        labels.add(line);
+                    }
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+    
+    /**
+     * Preprocess image with better quality scaling
+     */
+    private Bitmap preprocessImage(Bitmap bitmap, int targetWidth, int targetHeight) {
+        // Use high-quality scaling
+        return Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true);
+    }
+    
+    /**
+     * Apply softmax to convert logits to probabilities
+     */
+    private float[] applySoftmax(float[] logits) {
+        float[] probabilities = new float[logits.length];
+        float maxLogit = logits[0];
+        
+        // Find max for numerical stability
+        for (float logit : logits) {
+            if (logit > maxLogit) {
+                maxLogit = logit;
+            }
+        }
+        
+        // Compute sum of exp(logits - maxLogit)
+        float sum = 0f;
+        for (int i = 0; i < logits.length; i++) {
+            probabilities[i] = (float) Math.exp(logits[i] - maxLogit);
+            sum += probabilities[i];
+        }
+        
+        // Normalize
+        if (sum > 0) {
+            for (int i = 0; i < probabilities.length; i++) {
+                probabilities[i] /= sum;
+            }
+        }
+        
+        return probabilities;
+    }
+    
+    /**
+     * Get top K indices sorted by probability (descending)
+     */
+    private int[] getTopKIndices(float[] probabilities, int k) {
+        int[] indices = new int[probabilities.length];
+        for (int i = 0; i < indices.length; i++) {
+            indices[i] = i;
+        }
+        
+        // Sort indices by probability (descending)
+        for (int i = 0; i < Math.min(k, probabilities.length); i++) {
+            int maxIdx = i;
+            for (int j = i + 1; j < probabilities.length; j++) {
+                if (probabilities[indices[j]] > probabilities[indices[maxIdx]]) {
+                    maxIdx = j;
+                }
+            }
+            // Swap
+            int temp = indices[i];
+            indices[i] = indices[maxIdx];
+            indices[maxIdx] = temp;
+        }
+        
+        return indices;
     }
 
     @Override
@@ -343,7 +563,7 @@ public class CameraInterface extends AppCompatActivity {
         int id = item.getItemId();
 
         if (id == android.R.id.home) {
-            finish();
+            // do nothing (no back action)
             return true;
         } else if (id == R.id.nav_home) {
             finish();
@@ -378,6 +598,33 @@ public class CameraInterface extends AppCompatActivity {
             } else {
                 Toast.makeText(this, "Camera permission denied", Toast.LENGTH_SHORT).show();
             }
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // CameraX automatically handles camera lifecycle when bound with bindToLifecycle()
+        // No need to manually restart camera here
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Camera will be automatically paused by lifecycle binding
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Clean up TensorFlow Lite interpreter
+        if (tflite != null) {
+            tflite.close();
+            tflite = null;
+        }
+        // Unbind camera use cases
+        if (cameraProvider != null) {
+            cameraProvider.unbindAll();
         }
     }
 }

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
     android:layout_width="match_parent"
@@ -11,28 +12,52 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_gravity="center"
+        android:scaleType="fitCenter"
         tools:ignore="MissingConstraints"
-        tools:background="@android:color/darker_gray" />
+        tools:background="@android:color/black" />
 
-    <Button
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/captureBtn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/capture"
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
-        android:layout_marginBottom="32dp"
+        android:layout_marginBottom="@dimen/spacing_xlarge"
+        android:src="@android:drawable/ic_menu_camera"
+        android:contentDescription="@string/capture"
+        app:fabSize="normal"
+        app:elevation="@dimen/elevation_fab"
+        app:tint="@color/white"
         tools:ignore="RelativeOverlap" />
 
-    <ImageButton
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/openGalleryButton"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:src="@android:drawable/ic_menu_gallery"
-        android:background="@android:color/transparent"
+        android:contentDescription="@string/information"
         android:layout_alignParentBottom="true"
         android:layout_alignParentEnd="true"
-        android:layout_margin="16dp"
-        tools:ignore="ContentDescription" />
+        android:layout_margin="@dimen/spacing_medium"
+        app:fabSize="mini"
+        app:elevation="@dimen/elevation_fab"
+        app:tint="@color/white"
+        app:backgroundTint="@color/primary" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/modelSelectorBtn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Model: Fruits"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_margin="@dimen/spacing_medium"
+        android:paddingStart="@dimen/spacing_medium"
+        android:paddingEnd="@dimen/spacing_medium"
+        android:paddingTop="@dimen/spacing_small"
+        android:paddingBottom="@dimen/spacing_small"
+        android:backgroundTint="@color/primary"
+        android:textColor="@color/white"
+        style="@style/Widget.Material3.Button.OutlinedButton" />
 
 </RelativeLayout>

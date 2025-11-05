@@ -23,6 +23,7 @@ import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -66,6 +67,7 @@ public class Workprogram extends AppCompatActivity {
 
     private HashSet<CalendarDay> completedDates = new HashSet<>();
     private HashSet<CalendarDay> missedDates = new HashSet<>();
+    private HashSet<CalendarDay> accessibleDates = new HashSet<>(); // Dates that can be clicked
 
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
@@ -119,8 +121,10 @@ public class Workprogram extends AppCompatActivity {
                 R.string.navigation_drawer_open, R.string.navigation_drawer_close);
         drawerLayout.addDrawerListener(toggle);
         toggle.syncState();
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        getSupportActionBar().setTitle("Work Program");
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().setTitle("Work Program");
+        }
         navigationView.setNavigationItemSelectedListener(item -> {
             if (item.getItemId() == R.id.nav_home) finish();
             drawerLayout.closeDrawers();
@@ -136,7 +140,16 @@ public class Workprogram extends AppCompatActivity {
         wkTitle = findViewById(R.id.wkTitle);
         calendarView = findViewById(R.id.CalendarView);
 
-        userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        // Check if user is logged in
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) {
+            Toast.makeText(this, "Please log in to continue", Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(this, Login.class));
+            finish();
+            return;
+        }
+        
+        userId = currentUser.getUid();
         dbRef = FirebaseDatabase.getInstance().getReference("users")
                 .child(userId)
                 .child("workPrograms");
@@ -326,6 +339,32 @@ public class Workprogram extends AppCompatActivity {
         @Override public void decorate(DayViewFacade view) { view.setBackgroundDrawable(drawable); }
     }
 
+    // Decorator to disable non-accessible dates
+    public static class DisabledDateDecorator implements DayViewDecorator {
+        private final HashSet<CalendarDay> accessibleDates;
+        private final android.content.Context context;
+        
+        public DisabledDateDecorator(HashSet<CalendarDay> accessibleDates, android.content.Context context) {
+            this.accessibleDates = accessibleDates;
+            this.context = context;
+        }
+        
+        @Override
+        public boolean shouldDecorate(CalendarDay day) {
+            // Decorate dates that are NOT accessible (disable them)
+            return !accessibleDates.contains(day);
+        }
+        
+        @Override
+        public void decorate(DayViewFacade view) {
+            // Make non-accessible dates appear disabled and non-selectable
+            view.setDaysDisabled(true);
+            // Gray out the text to show it's disabled
+            view.addSpan(new android.text.style.ForegroundColorSpan(
+                    ContextCompat.getColor(context, android.R.color.darker_gray)));
+        }
+    }
+
     private int getMaturityDays(String cultivar) {
         for (String[] c : cultivarsData) {
             if (c[0].equals(cultivar)) {
@@ -343,39 +382,71 @@ public class Workprogram extends AppCompatActivity {
 
     private void setCalendarClickListener() {
         calendarView.setOnDateChangedListener((widget, date, selected) -> {
+            // Don't process if date is not selected (deselection)
+            if (!selected) {
+                return;
+            }
+            
             String clickedDate = String.format(Locale.getDefault(), "%04d-%02d-%02d",
                     date.getYear(), date.getMonth() + 1, date.getDay());
             if (isBeforeStartDate(clickedDate, programStartDate)) {
                 Toast.makeText(this, "No tasks available before start date!", Toast.LENGTH_SHORT).show();
+                // Deselect the date
+                widget.setDateSelected(date, false);
                 return;
             }
 
-            // 🔹 Get cultivar details (growth habit & maturity days)
-            String growthHabit = "";
-            int maturityDays = 0;
-            for (String[] c : cultivarsData) {
-                if (c[0].equals(selectedCultivar)) {
-                    growthHabit = c[1];
-                    try {
-                        maturityDays = Integer.parseInt(c[2]);
-                    } catch (NumberFormatException e) {
-                        maturityDays = 90; // fallback default
-                    }
-                    break;
+            // Always allow start date (day 1) to be accessible
+            if (clickedDate.equals(programStartDate)) {
+                openDailyTask(clickedDate);
+                return;
+            }
+
+            // Check if date is accessible (all previous days completed)
+            // Use parseCalendarDay to ensure consistent CalendarDay creation
+            CalendarDay clickedDay = parseCalendarDay(clickedDate);
+            if (clickedDay == null || !accessibleDates.contains(clickedDay)) {
+                // Also check if it's the start date (should always be accessible)
+                if (!clickedDate.equals(programStartDate)) {
+                    Toast.makeText(this, "Please complete previous day tasks first", Toast.LENGTH_LONG).show();
+                    // Deselect the date to prevent selection
+                    widget.setDateSelected(date, false);
+                    return;
                 }
             }
 
-            // 🔹 Pass all required info to DailyTask
-            Intent taskIntent = new Intent(Workprogram.this, DailyTask.class);
-            taskIntent.putExtra("cultivar", selectedCultivar);
-            taskIntent.putExtra("date", clickedDate);
-            taskIntent.putExtra("programId", programId);
-            taskIntent.putExtra("growthHabit", growthHabit);
-            taskIntent.putExtra("maturityDays", maturityDays);
-            taskIntent.putExtra("programStartDate", programStartDate);
-            startActivity(taskIntent);
+            // Date is accessible, open DailyTask
+            openDailyTask(clickedDate);
         });
     }
+
+    private void openDailyTask(String clickedDate) {
+        // 🔹 Get cultivar details (growth habit & maturity days)
+        String growthHabit = "";
+        int maturityDays = 0;
+        for (String[] c : cultivarsData) {
+            if (c[0].equals(selectedCultivar)) {
+                growthHabit = c[1];
+                try {
+                    maturityDays = Integer.parseInt(c[2]);
+                } catch (NumberFormatException e) {
+                    maturityDays = 90; // fallback default
+                }
+                break;
+            }
+        }
+
+        // 🔹 Pass all required info to DailyTask
+        Intent taskIntent = new Intent(Workprogram.this, DailyTask.class);
+        taskIntent.putExtra("cultivar", selectedCultivar);
+        taskIntent.putExtra("date", clickedDate);
+        taskIntent.putExtra("programId", programId);
+        taskIntent.putExtra("growthHabit", growthHabit);
+        taskIntent.putExtra("maturityDays", maturityDays);
+        taskIntent.putExtra("programStartDate", programStartDate);
+        startActivity(taskIntent);
+    }
+
 
     private void attachLogsListener() {
         if (logsRef == null) return;
@@ -384,28 +455,195 @@ public class Workprogram extends AppCompatActivity {
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 completedDates.clear();
                 missedDates.clear();
+                accessibleDates.clear();
                 Date today = new Date();
 
+                // Store all task statuses
+                java.util.HashMap<String, String> taskStatuses = new java.util.HashMap<>();
                 for (DataSnapshot child : snapshot.getChildren()) {
                     String dateKey = child.getKey();
                     String status = child.getValue(String.class);
-                    if (status == null) continue;
-                    CalendarDay cd = parseCalendarDay(dateKey);
-                    if (cd == null) continue;
-
-                    try {
-                        Date taskDate = sdf.parse(dateKey);
-                        if ("completed".equals(status)) {
-                            completedDates.add(cd);
-                        } else if ("missed".equals(status)) {
-                            missedDates.add(cd);
-                        } else if ("pending".equals(status) && taskDate != null && taskDate.before(today)) {
-                            logsRef.child(dateKey).setValue("missed");
-                            missedDates.add(cd);
-                        }
-                    } catch (ParseException e) {
-                        e.printStackTrace();
+                    if (status != null) {
+                        taskStatuses.put(dateKey, status);
                     }
+                }
+
+                // Process dates and determine accessible dates
+                try {
+                    Date start = sdf.parse(programStartDate);
+                    if (start == null) return;
+                    
+                    Calendar cal = Calendar.getInstance();
+                    cal.setTime(start);
+                    
+                    // Calculate accessible dates: a date is accessible if all previous dates are completed or missed
+                    Calendar checkCal = Calendar.getInstance();
+                    checkCal.setTime(start);
+                    Date endDate = today;
+                    // Add some future dates to check
+                    Calendar futureCal = Calendar.getInstance();
+                    futureCal.setTime(today);
+                    futureCal.add(Calendar.DAY_OF_YEAR, 90); // Check up to 90 days ahead
+                    if (futureCal.getTime().after(endDate)) {
+                        endDate = futureCal.getTime();
+                    }
+                    
+                    while (!checkCal.getTime().after(endDate)) {
+                        String dateKey = sdf.format(checkCal.getTime());
+                        CalendarDay cd = parseCalendarDay(dateKey);
+                        if (cd == null) {
+                            checkCal.add(Calendar.DAY_OF_YEAR, 1);
+                            continue;
+                        }
+                        
+                        // Always allow start date (day 1) to be accessible
+                        if (dateKey.equals(programStartDate)) {
+                            accessibleDates.add(cd);
+                            // Process status for display
+                            String status = taskStatuses.get(dateKey);
+                            if ("completed".equals(status)) {
+                                completedDates.add(cd);
+                                // When Day 1 is completed, make Day 2 accessible
+                                Calendar nextCal = Calendar.getInstance();
+                                nextCal.setTime(checkCal.getTime());
+                                nextCal.add(Calendar.DAY_OF_YEAR, 1);
+                                String nextDateKey = sdf.format(nextCal.getTime());
+                                CalendarDay nextDay = parseCalendarDay(nextDateKey);
+                                if (nextDay != null) {
+                                    accessibleDates.add(nextDay);
+                                }
+                            } else if ("missed".equals(status)) {
+                                missedDates.add(cd);
+                                // When Day 1 is missed, make Day 2 accessible
+                                Calendar nextCal = Calendar.getInstance();
+                                nextCal.setTime(checkCal.getTime());
+                                nextCal.add(Calendar.DAY_OF_YEAR, 1);
+                                String nextDateKey = sdf.format(nextCal.getTime());
+                                CalendarDay nextDay = parseCalendarDay(nextDateKey);
+                                if (nextDay != null) {
+                                    accessibleDates.add(nextDay);
+                                }
+                            } else if ("pending".equals(status)) {
+                                Date taskDate = sdf.parse(dateKey);
+                                if (taskDate != null && taskDate.before(today)) {
+                                    // Mark as missed if past due
+                                    logsRef.child(dateKey).setValue("missed");
+                                    missedDates.add(cd);
+                                }
+                            }
+                            checkCal.add(Calendar.DAY_OF_YEAR, 1);
+                            continue; // Skip to next date
+                        }
+                        
+                        // Check if this date is accessible
+                        // A date is accessible if ALL previous dates are completed or missed
+                        boolean isAccessible = true;
+                        Calendar prevCal = Calendar.getInstance();
+                        prevCal.setTime(start);
+                        
+                        // Check all previous dates - if ANY previous date is pending, current date is NOT accessible
+                        while (prevCal.getTime().before(checkCal.getTime())) {
+                            String prevDateKey = sdf.format(prevCal.getTime());
+                            String prevStatus = taskStatuses.get(prevDateKey);
+                            Date prevDate = prevCal.getTime();
+                            
+                            // Check previous date status
+                            if ("pending".equals(prevStatus)) {
+                                // Previous date is pending - current date is NOT accessible
+                                isAccessible = false;
+                                break;
+                            } else if ("completed".equals(prevStatus) || "missed".equals(prevStatus)) {
+                                // Previous date is completed or missed - this is good, continue checking
+                                // No action needed, continue to next previous date
+                            } else if (prevStatus == null) {
+                                // Status doesn't exist in Firebase
+                                if (prevDate.before(today)) {
+                                    // Should have been created but wasn't - not accessible
+                                    isAccessible = false;
+                                    break;
+                                }
+                                // If it's today or future and status is null, that's okay (not created yet)
+                            } else {
+                                // Unknown status - treat as not accessible if before today
+                                if (prevDate.before(today)) {
+                                    isAccessible = false;
+                                    break;
+                                }
+                            }
+                            
+                            prevCal.add(Calendar.DAY_OF_YEAR, 1);
+                        }
+                        
+                        // If all previous dates passed the check, the current date is accessible
+                        
+                        if (isAccessible) {
+                            accessibleDates.add(cd);
+                            
+                            // Process status for display
+                            String status = taskStatuses.get(dateKey);
+                            if ("completed".equals(status)) {
+                                completedDates.add(cd);
+                                // When a date is completed, make the next day accessible
+                                Calendar nextCal = Calendar.getInstance();
+                                nextCal.setTime(checkCal.getTime());
+                                nextCal.add(Calendar.DAY_OF_YEAR, 1);
+                                String nextDateKey = sdf.format(nextCal.getTime());
+                                CalendarDay nextDay = parseCalendarDay(nextDateKey);
+                                if (nextDay != null) {
+                                    accessibleDates.add(nextDay);
+                                }
+                            } else if ("missed".equals(status)) {
+                                missedDates.add(cd);
+                                // When a date is missed, make the next day accessible (user can continue)
+                                Calendar nextCal = Calendar.getInstance();
+                                nextCal.setTime(checkCal.getTime());
+                                nextCal.add(Calendar.DAY_OF_YEAR, 1);
+                                String nextDateKey = sdf.format(nextCal.getTime());
+                                CalendarDay nextDay = parseCalendarDay(nextDateKey);
+                                if (nextDay != null) {
+                                    accessibleDates.add(nextDay);
+                                }
+                            } else if ("pending".equals(status)) {
+                                Date taskDate = sdf.parse(dateKey);
+                                if (taskDate != null && taskDate.before(today)) {
+                                    // Mark as missed if past due
+                                    logsRef.child(dateKey).setValue("missed");
+                                    missedDates.add(cd);
+                                }
+                            }
+                        } else {
+                            // Date is not accessible - ensure it's not in accessibleDates
+                            accessibleDates.remove(cd);
+                        }
+                        
+                        checkCal.add(Calendar.DAY_OF_YEAR, 1);
+                    }
+                    
+                    // Post-process: Explicitly make next day accessible for all completed/missed dates
+                    // This ensures that when a date is completed, the next day is always accessible
+                    Calendar postCal = Calendar.getInstance();
+                    postCal.setTime(start);
+                    while (!postCal.getTime().after(endDate)) {
+                        String dateKey = sdf.format(postCal.getTime());
+                        String status = taskStatuses.get(dateKey);
+                        
+                        // If this date is completed or missed, make the next day accessible
+                        if ("completed".equals(status) || "missed".equals(status)) {
+                            Calendar nextCal = Calendar.getInstance();
+                            nextCal.setTime(postCal.getTime());
+                            nextCal.add(Calendar.DAY_OF_YEAR, 1);
+                            String nextDateKey = sdf.format(nextCal.getTime());
+                            CalendarDay nextDay = parseCalendarDay(nextDateKey);
+                            if (nextDay != null) {
+                                accessibleDates.add(nextDay);
+                            }
+                        }
+                        
+                        postCal.add(Calendar.DAY_OF_YEAR, 1);
+                    }
+                    
+                } catch (ParseException e) {
+                    e.printStackTrace();
                 }
 
                 // Clear all decorators first
@@ -414,6 +652,9 @@ public class Workprogram extends AppCompatActivity {
                 // Re-add phase backgrounds
                 addPhaseDecorators();
 
+                // ✅ Add decorator to disable non-accessible dates FIRST (before other decorators)
+                calendarView.addDecorator(new DisabledDateDecorator(new HashSet<>(accessibleDates), Workprogram.this));
+                
                 // ✅ Add dots under numbers
                 calendarView.addDecorator(new CompletedDecorator(new HashSet<>(completedDates), Workprogram.this));
                 calendarView.addDecorator(new MissedDecorator(new HashSet<>(missedDates), Workprogram.this));
@@ -423,6 +664,7 @@ public class Workprogram extends AppCompatActivity {
             public void onCancelled(@NonNull DatabaseError error) { }
         });
     }
+
 
 
     private boolean isBeforeStartDate(String clickedDate, String startDate) {
@@ -446,12 +688,11 @@ public class Workprogram extends AppCompatActivity {
     }
 
     @Override public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_back, menu); return true;
+        return true; // no back button menu
     }
 
     @Override public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (toggle.onOptionsItemSelected(item)) return true;
-        else if (item.getItemId() == R.id.action_back) { finish(); return true; }
         return super.onOptionsItemSelected(item);
     }
 

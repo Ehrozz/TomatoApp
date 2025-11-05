@@ -63,4 +63,7 @@ dependencies {
 
     implementation("org.tensorflow:tensorflow-lite:2.12.0")
 
+    // Location services for fetching device location (weather)
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+
 }
