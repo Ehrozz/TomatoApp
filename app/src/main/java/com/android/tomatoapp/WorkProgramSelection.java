@@ -4,6 +4,8 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
@@ -31,6 +33,7 @@ import com.google.firebase.database.ValueEventListener;
 
 import androidx.cardview.widget.CardView;
 import androidx.core.content.ContextCompat;
+import androidx.appcompat.app.AlertDialog;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,9 +44,13 @@ public class WorkProgramSelection extends AppCompatActivity {
     private FloatingActionButton btnAdd;
     private CultivarAdapter adapter;
     private List<Cultivar> cultivarList = new ArrayList<>();
+    private TextView programCountText;
+    private View emptyState;
+    private ImageView headerMenuButton;
 
     private DatabaseReference dbRef;
     private String userId;
+    private String currentSortOrder = "date_desc"; // Default: newest first
 
     DrawerLayout drawerLayout;
     NavigationView navigationView;
@@ -60,6 +67,9 @@ public class WorkProgramSelection extends AppCompatActivity {
         recyclerView.setAdapter(adapter);
 
         btnAdd = findViewById(R.id.addButton);
+        programCountText = findViewById(R.id.programCountText);
+        emptyState = findViewById(R.id.emptyState);
+        headerMenuButton = findViewById(R.id.headerMenuButton);
 
         // Check if user is logged in
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -84,9 +94,33 @@ public class WorkProgramSelection extends AppCompatActivity {
                     String startDate = child.child("startDate").getValue(String.class);
 
                     if (programId != null && cultivar != null && startDate != null) {
-                        cultivarList.add(new Cultivar(programId, cultivar, startDate, R.drawable.ic_launcher_foreground));
+                        cultivarList.add(new Cultivar(programId, cultivar, startDate, R.mipmap.ic_logo));
                     }
                 }
+                
+                // Update program count
+                int count = cultivarList.size();
+                if (programCountText != null) {
+                    if (count == 1) {
+                        programCountText.setText("1 program");
+                    } else {
+                        programCountText.setText(String.format("%d programs", count));
+                    }
+                }
+                
+                // Show/hide empty state
+                if (emptyState != null && recyclerView != null) {
+                    if (count == 0) {
+                        emptyState.setVisibility(View.VISIBLE);
+                        recyclerView.setVisibility(View.GONE);
+                    } else {
+                        emptyState.setVisibility(View.GONE);
+                        recyclerView.setVisibility(View.VISIBLE);
+                    }
+                }
+                
+                // Apply current sort order
+                sortPrograms(currentSortOrder);
                 adapter.notifyDataSetChanged();
             }
 
@@ -123,6 +157,60 @@ public class WorkProgramSelection extends AppCompatActivity {
             drawerLayout.closeDrawers();
             return true;
         });
+
+        // Header menu button - Sort options
+        headerMenuButton.setOnClickListener(v -> showSortMenu());
+    }
+
+    private void showSortMenu() {
+        String[] sortOptions = {
+            "Newest First",
+            "Oldest First",
+            "Name (A-Z)",
+            "Name (Z-A)"
+        };
+
+        new AlertDialog.Builder(this)
+                .setTitle("Sort Work Programs")
+                .setItems(sortOptions, (dialog, which) -> {
+                    switch (which) {
+                        case 0: // Newest First
+                            sortPrograms("date_desc");
+                            break;
+                        case 1: // Oldest First
+                            sortPrograms("date_asc");
+                            break;
+                        case 2: // Name A-Z
+                            sortPrograms("name_asc");
+                            break;
+                        case 3: // Name Z-A
+                            sortPrograms("name_desc");
+                            break;
+                    }
+                })
+                .show();
+    }
+
+    private void sortPrograms(String sortOrder) {
+        currentSortOrder = sortOrder;
+        
+        switch (sortOrder) {
+            case "date_desc": // Newest first
+                cultivarList.sort((a, b) -> b.date.compareTo(a.date));
+                break;
+            case "date_asc": // Oldest first
+                cultivarList.sort((a, b) -> a.date.compareTo(b.date));
+                break;
+            case "name_asc": // A-Z
+                cultivarList.sort((a, b) -> a.name.compareToIgnoreCase(b.name));
+                break;
+            case "name_desc": // Z-A
+                cultivarList.sort((a, b) -> b.name.compareToIgnoreCase(a.name));
+                break;
+        }
+        
+        adapter.notifyDataSetChanged();
+        Toast.makeText(this, "Sorted", Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -171,32 +259,53 @@ public class WorkProgramSelection extends AppCompatActivity {
         public void onBindViewHolder(@NonNull CultivarViewHolder holder, int position) {
             Cultivar item = items.get(position);
             holder.name.setText(item.name);
-            holder.date.setText(item.date);
+            
+            // Format date as "Started: YYYY-MM-DD"
+            holder.date.setText(String.format("Started: %s", item.date));
             holder.image.setImageResource(item.imageRes);
 
-            // 🍅 Rotate through tomato-themed colors
+            // 🍅 Rotate through tomato-themed colors with better contrast
             int[] bgColors = {
                     R.color.tomato_red,
-                    R.color.ripe_orange,
                     R.color.fresh_green,
-                    R.color.golden_yellow,
-                    R.color.soft_cream
+                    R.color.warm_orange,
+                    R.color.sidebar_dark_green,
+                    R.color.ripe_orange
             };
 
             int colorIndex = position % bgColors.length;
             int bgColor = ContextCompat.getColor(holder.itemView.getContext(), bgColors[colorIndex]);
-
             holder.card.setCardBackgroundColor(bgColor);
 
-            // Adjust text color for readability
-            if (colorIndex == 0 || colorIndex == 1 || colorIndex == 2) {
-                // Dark backgrounds → white text
+            // All backgrounds are vibrant, so use white text for better contrast
                 holder.name.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), android.R.color.white));
                 holder.date.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), android.R.color.white));
-            } else {
-                // Light backgrounds → dark text
-                holder.name.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), android.R.color.black));
-                holder.date.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), android.R.color.darker_gray));
+            
+            // Update status indicator and text
+            if (holder.statusIndicator != null) {
+                // Green for active programs
+                holder.statusIndicator.setBackground(ContextCompat.getDrawable(
+                    holder.itemView.getContext(), R.drawable.circle_green));
+            }
+            if (holder.statusText != null) {
+                holder.statusText.setText("Active");
+                holder.statusText.setTextColor(ContextCompat.getColor(
+                    holder.itemView.getContext(), android.R.color.white));
+            }
+
+            // Delete button click → show confirmation and delete
+            if (holder.deleteButton != null) {
+                holder.deleteButton.setOnClickListener(v -> {
+                    // Show confirmation dialog
+                    new AlertDialog.Builder(WorkProgramSelection.this)
+                            .setTitle("Delete Work Program")
+                            .setMessage(String.format("Are you sure you want to delete '%s'?\n\nThis will also delete all associated tasks and cannot be undone.", item.name))
+                            .setPositiveButton("Delete", (dialog, which) -> {
+                                deleteWorkProgram(item.programId, position);
+                            })
+                            .setNegativeButton("Cancel", null)
+                            .show();
+                });
             }
 
             // Click → open Workprogram
@@ -208,6 +317,28 @@ public class WorkProgramSelection extends AppCompatActivity {
                 startActivity(intent);
             });
         }
+        
+        private void deleteWorkProgram(String programId, int position) {
+            WorkProgramSelection activity = WorkProgramSelection.this;
+            if (activity.dbRef == null || programId == null) return;
+            
+            // Delete from Firebase
+            activity.dbRef.child(programId).removeValue()
+                    .addOnSuccessListener(aVoid -> {
+                        // Also delete associated routine logs
+                        DatabaseReference routineLogsRef = FirebaseDatabase.getInstance()
+                                .getReference("users")
+                                .child(activity.userId)
+                                .child("routineLogs")
+                                .child(programId);
+                        routineLogsRef.removeValue();
+                        
+                        Toast.makeText(activity, "Work program deleted", Toast.LENGTH_SHORT).show();
+                    })
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(activity, "Failed to delete: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            });
+        }
 
 
         @Override
@@ -216,9 +347,10 @@ public class WorkProgramSelection extends AppCompatActivity {
         }
 
         class CultivarViewHolder extends RecyclerView.ViewHolder {
-            TextView name, date;
-            ImageView image;
+            TextView name, date, statusText;
+            ImageView image, deleteButton;
             CardView card;
+            View statusIndicator;
 
             CultivarViewHolder(@NonNull View itemView) {
                 super(itemView);
@@ -226,6 +358,9 @@ public class WorkProgramSelection extends AppCompatActivity {
                 date = itemView.findViewById(R.id.cultivarDate);
                 image = itemView.findViewById(R.id.cultivarImage);
                 card = itemView.findViewById(R.id.cultivarCard);
+                statusText = itemView.findViewById(R.id.statusText);
+                statusIndicator = itemView.findViewById(R.id.statusIndicator);
+                deleteButton = itemView.findViewById(R.id.deleteButton);
             }
         }
     }

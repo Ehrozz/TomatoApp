@@ -5,10 +5,13 @@ import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -50,8 +53,17 @@ public class Workprogram extends AppCompatActivity {
     private EditText landAreaInput;
     private DatePicker startDatePicker;
     private Button btnSubmitForm;
-    private TextView wkTitle;
     private MaterialCalendarView calendarView;
+    
+    // New UI elements
+    private com.google.android.material.card.MaterialCardView headerCard;
+    private ImageView cultivarImage;
+    private TextView cultivarNameText;
+    private TextView startDateText;
+    private LinearLayout calendarHeader;
+    private ImageView headerCultivarImage;
+    private TextView headerCultivarName;
+    private TextView headerStartDate;
 
     private String selectedCultivar = "";
     private String selectedDate = "";
@@ -137,8 +149,17 @@ public class Workprogram extends AppCompatActivity {
         landAreaInput = findViewById(R.id.landAreaInput);
         startDatePicker = findViewById(R.id.startDatePicker);
         btnSubmitForm = findViewById(R.id.btnSelectCultivar);
-        wkTitle = findViewById(R.id.wkTitle);
         calendarView = findViewById(R.id.CalendarView);
+        
+        // New UI elements
+        headerCard = findViewById(R.id.headerCard);
+        cultivarImage = findViewById(R.id.cultivarImage);
+        cultivarNameText = findViewById(R.id.cultivarNameText);
+        startDateText = findViewById(R.id.startDateText);
+        calendarHeader = findViewById(R.id.calendarHeader);
+        headerCultivarImage = findViewById(R.id.headerCultivarImage);
+        headerCultivarName = findViewById(R.id.headerCultivarName);
+        headerStartDate = findViewById(R.id.headerStartDate);
 
         // Check if user is logged in
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -160,12 +181,17 @@ public class Workprogram extends AppCompatActivity {
         String passedProgramId = intent.getStringExtra("programId");
 
         if (cultivar != null && startDate != null && passedProgramId != null) {
-            // Existing program
+            // Existing program - show header card with cultivar info
             cultivarCard.setVisibility(CardView.GONE);
-            wkTitle.setText("Work Program\nCultivar: " + cultivar + "\nDate Start : " + startDate);
+            headerCard.setVisibility(View.VISIBLE);
+            calendarHeader.setVisibility(View.GONE);
+            
             selectedCultivar = cultivar;
             programStartDate = startDate;
             programId = passedProgramId;
+            
+            // Update header card with cultivar info
+            updateCultivarInfo(cultivar, startDate);
 
             logsRef = FirebaseDatabase.getInstance()
                     .getReference("users")
@@ -181,7 +207,8 @@ public class Workprogram extends AppCompatActivity {
         } else {
             // New program form
             cultivarCard.setVisibility(CardView.VISIBLE);
-            wkTitle.setText("Add New Work Program");
+            headerCard.setVisibility(View.GONE);
+            calendarHeader.setVisibility(View.GONE);
 
             String[] cultivarNames = new String[cultivarsData.length];
             for (int i = 0; i < cultivarsData.length; i++) {
@@ -257,11 +284,13 @@ public class Workprogram extends AppCompatActivity {
                     addPhaseDecorators();
                     setCalendarClickListener();
 
+                    // Show header card with cultivar info
+                    headerCard.setVisibility(View.VISIBLE);
+                    calendarHeader.setVisibility(View.GONE);
+                    updateCultivarInfo(selectedCultivar, selectedDate);
+
                 }).addOnFailureListener(e -> Toast.makeText(this, "Failed to save: " + e.getMessage(), Toast.LENGTH_LONG).show());
 
-                wkTitle.setText("Work Program\nCultivar: " + selectedCultivar +
-                        "\nStart Date: " + selectedDate +
-                        "\nLand Area: " + landArea);
                 cultivarCard.setVisibility(CardView.GONE);
             });
         }
@@ -694,6 +723,36 @@ public class Workprogram extends AppCompatActivity {
     @Override public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (toggle.onOptionsItemSelected(item)) return true;
         return super.onOptionsItemSelected(item);
+    }
+
+    /**
+     * Updates the cultivar information in the header card
+     */
+    private void updateCultivarInfo(String cultivar, String startDate) {
+        if (cultivarNameText != null) {
+            cultivarNameText.setText(cultivar);
+        }
+        if (startDateText != null) {
+            startDateText.setText("Start Date: " + startDate);
+        }
+        if (cultivarImage != null) {
+            // Set cultivar-specific image (for now using default, can be extended)
+            cultivarImage.setImageResource(getCultivarImageResource(cultivar));
+        }
+    }
+
+    /**
+     * Gets the image resource for a specific cultivar
+     * Currently returns default logo, but can be extended to map specific cultivars to images
+     */
+    private int getCultivarImageResource(String cultivar) {
+        // For now, use default logo for all cultivars
+        // This can be extended to map specific cultivars to specific images
+        // Example:
+        // if (cultivar.contains("Victory")) return R.mipmap.victory_tomato;
+        // if (cultivar.contains("HOPE")) return R.mipmap.hope_tomato;
+        // etc.
+        return R.mipmap.ic_logo;
     }
 
     public static class WorkProgramModel {

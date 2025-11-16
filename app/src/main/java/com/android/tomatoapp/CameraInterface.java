@@ -13,6 +13,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -68,41 +69,54 @@ public class CameraInterface extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_camera_interface);
 
+        // Hide action bar for full-screen camera experience
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle(R.string.scan_section);
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().hide();
         }
 
         previewView = findViewById(R.id.previewView);
-        com.google.android.material.floatingactionbutton.FloatingActionButton captureBtn = findViewById(R.id.captureBtn);
-        com.google.android.material.floatingactionbutton.FloatingActionButton openGalleryBtn = findViewById(R.id.openGalleryButton);
-        Button modelSelectorButton = findViewById(R.id.modelSelectorBtn);
-        modelSelectorBtn = modelSelectorButton; // Keep for backward compatibility
-
+        
+        // Capture button (now MaterialCardView)
+        View captureBtn = findViewById(R.id.captureBtn);
         captureBtn.setOnClickListener(v -> capturePhoto());
+        
+        // Gallery button (hidden by default, can be accessed via menu)
+        com.google.android.material.floatingactionbutton.FloatingActionButton openGalleryBtn = findViewById(R.id.openGalleryButton);
         openGalleryBtn.setOnClickListener(v -> openGallery());
+        
+        // Model selector button (now MaterialCardView)
+        modelSelectorBtn = findViewById(R.id.modelSelectorBtn);
         
         // Model selector button - toggle between Fruits and Leaves models
         modelSelectorBtn.setOnClickListener(v -> {
             if (currentModelType == ModelType.FRUITS) {
                 currentModelType = ModelType.LEAVES;
-                if (modelSelectorBtn instanceof Button) {
-                    ((Button) modelSelectorBtn).setText("Model: Leaves");
-                    ((Button) modelSelectorBtn).setBackgroundTintList(ContextCompat.getColorStateList(this, android.R.color.holo_green_dark));
-                }
+                // Update icon or visual indicator if needed
+                Toast.makeText(this, "Switched to Leaves model", Toast.LENGTH_SHORT).show();
             } else {
                 currentModelType = ModelType.FRUITS;
-                if (modelSelectorBtn instanceof Button) {
-                    ((Button) modelSelectorBtn).setText("Model: Fruits");
-                    ((Button) modelSelectorBtn).setBackgroundTintList(ContextCompat.getColorStateList(this, android.R.color.holo_blue_dark));
-                }
+                Toast.makeText(this, "Switched to Fruits model", Toast.LENGTH_SHORT).show();
             }
             // Reload model and labels when switching
             tflite = null;
             loadedModelType = null;
             loadLabels();
-            Toast.makeText(this, "Switched to " + (currentModelType == ModelType.FRUITS ? "Fruits" : "Leaves") + " model", Toast.LENGTH_SHORT).show();
         });
+        
+        // Back button
+        ImageButton backButton = findViewById(R.id.backButton);
+        backButton.setOnClickListener(v -> finish());
+        
+        // Menu button
+        ImageButton menuButton = findViewById(R.id.menuButton);
+        menuButton.setOnClickListener(v -> {
+            // Show menu options (gallery, settings, etc.)
+            openGalleryBtn.setVisibility(openGalleryBtn.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
+        });
+        
+        // Header title
+        TextView headerTitle = findViewById(R.id.headerTitle);
+        headerTitle.setText(R.string.scan_section);
 
         // Load labels from assets
         loadLabels();

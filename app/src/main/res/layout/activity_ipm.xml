@@ -5,99 +5,265 @@
     android:id="@+id/drawer_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/soft_cream"
     tools:context=".IPM">
 
-    <RelativeLayout
+    <!-- Main Content -->
+    <LinearLayout
         android:id="@+id/main"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:fitsSystemWindows="true">
 
-
-        <androidx.constraintlayout.widget.ConstraintLayout
-            android:id="@+id/constraintLayout"
+        <!-- Spacer for Action Bar -->
+        <View
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="60dp">
+            android:layout_height="?attr/actionBarSize" />
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:fillViewport="true">
 
             <LinearLayout
-                android:id="@+id/cardRow1"
-                android:layout_width="0dp"
-                android:layout_height="175dp"
-                android:orientation="horizontal"
-                android:padding="10dp"
-                android:layout_marginTop="20dp"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent">
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
 
-                <androidx.cardview.widget.CardView
+                <!-- Header Section -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="24dp"
+                    app:cardBackgroundColor="@color/white"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="4dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="20dp">
+
+                        <ImageView
+                            android:layout_width="64dp"
+                            android:layout_height="64dp"
+                            android:layout_gravity="center_horizontal"
+                            android:layout_marginBottom="12dp"
+                            android:src="@mipmap/ic_logo"
+                            android:contentDescription="IPM Logo"
+                            android:scaleType="centerCrop" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center_horizontal"
+                            android:text="Integrated Pest Management"
+                            android:textColor="@color/text_primary"
+                            android:textSize="22sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center_horizontal"
+                            android:layout_marginTop="8dp"
+                            android:text="Identify and manage pests and diseases effectively"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="14sp"
+                            android:gravity="center" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Scan Card -->
+                <com.google.android.material.card.MaterialCardView
                     android:id="@+id/scanCard"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_margin="10dp"
-                    android:layout_weight="1"
+                    android:layout_width="match_parent"
+                    android:layout_height="200dp"
+                    android:layout_marginBottom="16dp"
+                    app:cardBackgroundColor="@color/white"
                     app:cardCornerRadius="20dp"
-                    app:cardElevation="20dp">
+                    app:cardElevation="6dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?android:attr/selectableItemBackground">
 
                     <RelativeLayout
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent">
+                        android:layout_height="match_parent"
+                        android:padding="24dp">
 
-                        <TextView
-                            android:layout_width="wrap_content"
+                        <!-- Background Gradient Effect -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@drawable/scan_card_gradient"
+                            android:alpha="0.1" />
+
+                        <!-- Content -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_centerHorizontal="true"
-                            android:layout_marginTop="50dp"
-                            android:text="@string/scan"
-                            android:textColor="#A1887F"
-                            android:textSize="25sp" />
+                            android:orientation="vertical"
+                            android:layout_centerInParent="true"
+                            android:gravity="center">
+
+                            <!-- Icon Container -->
+                            <com.google.android.material.card.MaterialCardView
+                                android:layout_width="80dp"
+                                android:layout_height="80dp"
+                                android:layout_marginBottom="16dp"
+                                app:cardBackgroundColor="@color/scan_blue"
+                                app:cardCornerRadius="40dp"
+                                app:cardElevation="4dp">
+
+                                <ImageView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:src="@android:drawable/ic_menu_camera"
+                                    android:scaleType="centerInside"
+                                    android:padding="20dp"
+                                    app:tint="@color/white" />
+                            </com.google.android.material.card.MaterialCardView>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/scan"
+                                android:textColor="@color/text_primary"
+                                android:textSize="24sp"
+                                android:textStyle="bold"
+                                android:layout_marginBottom="4dp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Scan pests and diseases with camera"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="14sp" />
+                        </LinearLayout>
                     </RelativeLayout>
-                </androidx.cardview.widget.CardView>
-            </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
 
-            <LinearLayout
-                android:id="@+id/cardRow2"
-                android:layout_width="0dp"
-                android:layout_height="175dp"
-                android:orientation="horizontal"
-                android:padding="10dp"
-                android:layout_marginTop="20dp"
-                app:layout_constraintTop_toBottomOf="@id/cardRow1"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent">
-
-                <androidx.cardview.widget.CardView
+                <!-- Information Card -->
+                <com.google.android.material.card.MaterialCardView
                     android:id="@+id/infoCard"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_margin="10dp"
-                    android:layout_weight="1"
+                    android:layout_width="match_parent"
+                    android:layout_height="200dp"
+                    android:layout_marginBottom="16dp"
+                    app:cardBackgroundColor="@color/white"
                     app:cardCornerRadius="20dp"
-                    app:cardElevation="20dp">
+                    app:cardElevation="6dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?android:attr/selectableItemBackground">
 
                     <RelativeLayout
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent">
+                        android:layout_height="match_parent"
+                        android:padding="24dp">
+
+                        <!-- Background Gradient Effect -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@drawable/info_card_gradient"
+                            android:alpha="0.1" />
+
+                        <!-- Content -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:layout_centerInParent="true"
+                            android:gravity="center">
+
+                            <!-- Icon Container -->
+                            <com.google.android.material.card.MaterialCardView
+                                android:layout_width="80dp"
+                                android:layout_height="80dp"
+                                android:layout_marginBottom="16dp"
+                                app:cardBackgroundColor="@color/info_green"
+                                app:cardCornerRadius="40dp"
+                                app:cardElevation="4dp">
+
+                                <ImageView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:src="@android:drawable/ic_menu_info_details"
+                                    android:scaleType="centerInside"
+                                    android:padding="20dp"
+                                    app:tint="@color/white" />
+                            </com.google.android.material.card.MaterialCardView>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/information"
+                                android:textColor="@color/text_primary"
+                                android:textSize="24sp"
+                                android:textStyle="bold"
+                                android:layout_marginBottom="4dp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Browse pest and diseases information database"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="14sp" />
+                        </LinearLayout>
+                    </RelativeLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Quick Tips Card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardBackgroundColor="@color/white"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="4dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="20dp">
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_centerHorizontal="true"
-                            android:layout_marginTop="50dp"
-                            android:text="@string/information"
-                            android:textColor="#A1887F"
-                            android:textSize="25sp" />
-                    </RelativeLayout>
-                </androidx.cardview.widget.CardView>
-            </LinearLayout>
-        </androidx.constraintlayout.widget.ConstraintLayout>
-    </RelativeLayout>
+                            android:text="💡 Quick Tips"
+                            android:textColor="@color/text_primary"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="12dp" />
 
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="• Scan leaves regularly to catch pests early\n• Check both sides of leaves for hidden pests\n• Use information database for treatment options\n• Monitor weather conditions for pest activity"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="14sp"
+                            android:lineSpacingExtra="4dp" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+        </ScrollView>
+    </LinearLayout>
+
+    <!-- Navigation Drawer -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/nav_view"
-        android:layout_width="wrap_content"
+        android:layout_width="280dp"
         android:layout_height="match_parent"
         android:layout_gravity="start"
-        app:menu="@menu/drawer_menu" />
+        app:menu="@menu/drawer_menu"
+        app:headerLayout="@layout/nav_drawer_sidebar"
+        app:itemIconTint="@color/white"
+        app:itemTextColor="@color/white"
+        android:background="@color/sidebar_dark_green" />
 
 </androidx.drawerlayout.widget.DrawerLayout>

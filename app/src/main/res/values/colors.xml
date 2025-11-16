@@ -33,5 +33,19 @@
     <color name="confidence_high">#4CAF50</color>
     <color name="confidence_medium">#FFB347</color>
     <color name="confidence_low">#F44336</color>
+    
+    <!-- Dashboard Colors -->
+    <color name="sidebar_dark_green">#2E7D32</color>
+    <color name="financial_green">#4CAF50</color>
+    <color name="chart_orange">#FF9800</color>
+    
+    <!-- IPM Colors -->
+    <color name="scan_blue">#29B6F6</color>
+    <color name="info_green">#4CAF50</color>
+    
+    <!-- Calculator Colors -->
+    <color name="coral_red">#FF6B6B</color>
+    <color name="coral_red_dark">#E55555</color>
+    <color name="light_green">#81C784</color>
 </resources>
 

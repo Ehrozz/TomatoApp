@@ -72,4 +72,37 @@ public class DetectionHistoryManager {
         SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         prefs.edit().remove(KEY_HISTORY).apply();
     }
+
+    public static void removeDetection(Context context, JSONObject entryToRemove) {
+        SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        String historyJson = prefs.getString(KEY_HISTORY, "[]");
+
+        try {
+            JSONArray historyArray = new JSONArray(historyJson);
+            JSONArray newArray = new JSONArray();
+
+            // Find matching entry by comparing key fields
+            String targetImageUri = entryToRemove.optString("imageUri", "");
+            String targetDisease = entryToRemove.optString("disease", "");
+            long targetTimestamp = entryToRemove.optLong("timestamp", 0);
+
+            for (int i = 0; i < historyArray.length(); i++) {
+                JSONObject entry = historyArray.getJSONObject(i);
+                String imageUri = entry.optString("imageUri", "");
+                String disease = entry.optString("disease", "");
+                long timestamp = entry.optLong("timestamp", 0);
+
+                // Only keep entries that don't match
+                if (!(imageUri.equals(targetImageUri) && 
+                      disease.equals(targetDisease) && 
+                      timestamp == targetTimestamp)) {
+                    newArray.put(entry);
+                }
+            }
+
+            prefs.edit().putString(KEY_HISTORY, newArray.toString()).apply();
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
 }
