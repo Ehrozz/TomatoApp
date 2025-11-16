@@ -5,229 +5,338 @@
     android:id="@+id/drawer_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/white"
     tools:context=".DetectionResults">
 
-    <ScrollView
+    <!-- Main Content -->
+    <LinearLayout
         android:id="@+id/main"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@android:color/white"
-        android:layout_marginTop="110dp">
+        android:orientation="vertical"
+        android:fitsSystemWindows="true">
+
+        <!-- Spacer for Action Bar -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize" />
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:fillViewport="true">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+                android:paddingTop="8dp">
 
-            <TextView
-                android:id="@+id/detectionTitle"
-                android:layout_width="wrap_content"
+                <!-- Detection Image with Badge -->
+                <RelativeLayout
+                    android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Detection Result"
-                android:textSize="@dimen/text_size_large"
-                android:textStyle="bold"
-                android:textColor="@color/text_primary"
-                android:paddingBottom="@dimen/spacing_small" />
+                    android:background="@color/white">
 
             <ImageView
                 android:id="@+id/detectionImage"
                 android:layout_width="match_parent"
-                android:layout_height="200dp"
+                        android:layout_height="300dp"
                 android:scaleType="centerCrop"
                 android:src="@drawable/ic_launcher_foreground"
                 android:contentDescription="Detected image"
-                android:layout_marginBottom="8dp" />
+                        android:background="@color/divider" />
 
+                    <!-- Image Badge (White circle with number) -->
             <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="@dimen/spacing_medium"
-                app:cardCornerRadius="@dimen/corner_radius_medium"
-                app:cardElevation="@dimen/elevation_card"
-                app:cardBackgroundColor="@color/surface">
+                        android:id="@+id/imageBadge"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:layout_alignParentStart="true"
+                        android:layout_alignParentTop="true"
+                        android:layout_margin="12dp"
+                        app:cardBackgroundColor="@color/white"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="4dp">
                 
                 <TextView
-                    android:id="@+id/detectionDescription"
+                            android:id="@+id/badgeNumber"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Details about the detected result."
-                    android:textSize="@dimen/text_size_body"
+                            android:layout_height="match_parent"
+                            android:text="1"
                     android:textColor="@color/text_primary"
-                    android:padding="@dimen/spacing_medium" />
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:gravity="center" />
             </com.google.android.material.card.MaterialCardView>
+                </RelativeLayout>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/divider"
-                android:layout_marginVertical="@dimen/spacing_small" />
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="@dimen/spacing_medium"
-                app:cardCornerRadius="@dimen/corner_radius_medium"
-                app:cardElevation="@dimen/elevation_card"
-                app:cardBackgroundColor="@color/surface">
-                
+                <!-- Results Section -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="@dimen/spacing_medium">
+                    android:padding="20dp"
+                    android:background="@color/white">
+
+                    <!-- Header: "Identify View, 3879" and "Results" -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginBottom="12dp">
+
+                        <TextView
+                            android:id="@+id/identifyViewText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Identify View, 3879"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp"
+                        android:layout_marginBottom="4dp" />
+
+                    <TextView
+                        android:id="@+id/detectionContextInfo"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp"
+                        android:layout_marginBottom="4dp" />
                     
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Symptoms"
-                        android:textSize="@dimen/text_size_title"
-                        android:textStyle="bold"
+                            android:text="Results"
                         android:textColor="@color/text_primary"
-                        android:paddingBottom="@dimen/spacing_tiny" />
+                            android:textSize="24sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
 
-                    <TextView
-                        android:id="@+id/detectionSymptoms"
+                    <!-- Score/ID Tag (Orange) -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/scoreTag"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Symptoms go here."
-                        android:textSize="@dimen/text_size_body"
-                    android:textColor="@color/text_primary" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+                        android:layout_marginBottom="20dp"
+                        app:cardBackgroundColor="@color/warm_orange"
+                        app:cardCornerRadius="8dp"
+                        app:cardElevation="2dp">
 
+            <TextView
+                            android:id="@+id/scoreText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                            android:text="1011 - 628"
+                            android:textColor="@color/white"
+                            android:textSize="12sp"
+                android:textStyle="bold"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp"
+                            android:paddingTop="6dp"
+                            android:paddingBottom="6dp" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <!-- Findings List with Orange Circles -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="8dp">
+
+                        <!-- Left: Orange circles with connecting line -->
+                        <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:layout_marginEnd="16dp"
+                            android:gravity="center_horizontal">
+
+                            <!-- First Circle -->
+                            <View
+                                android:layout_width="16dp"
+                                android:layout_height="16dp"
+                                android:background="@drawable/orange_circle_dot" />
+
+                            <!-- Connecting Line -->
+                            <View
+                                android:layout_width="2dp"
+                                android:layout_height="40dp"
+                                android:background="@color/warm_orange"
+                                android:layout_marginTop="4dp"
+                                android:layout_marginBottom="4dp" />
+
+                            <!-- Second Circle -->
+                            <View
+                                android:layout_width="16dp"
+                                android:layout_height="16dp"
+                                android:background="@drawable/orange_circle_dot" />
+
+                            <!-- Connecting Line -->
+                            <View
+                                android:layout_width="2dp"
+                                android:layout_height="40dp"
+                                android:background="@color/warm_orange"
+                                android:layout_marginTop="4dp"
+                                android:layout_marginBottom="4dp" />
+
+                            <!-- Third Circle -->
             <View
+                                android:layout_width="16dp"
+                                android:layout_height="16dp"
+                                android:background="@drawable/orange_circle_dot" />
+                        </LinearLayout>
+
+                        <!-- Right: Findings Text -->
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <!-- Finding 1 -->
+                            <TextView
+                                android:id="@+id/finding1"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="Frake to co pect ancy aroco K susterma complomerity and diseases."
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp"
+                                android:lineSpacingExtra="4dp"
+                                android:layout_marginBottom="16dp" />
+
+                            <!-- Finding 2 -->
+                            <TextView
+                                android:id="@+id/finding2"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="Rest atunaticall Foolfano Tomato fps."
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp"
+                                android:lineSpacingExtra="4dp"
+                                android:layout_marginBottom="16dp" />
+
+                            <!-- Finding 3 -->
+                            <TextView
+                                android:id="@+id/finding3"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="Epigen imageete the roots to comctist angonithe andompers your prests."
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp"
+                                android:lineSpacingExtra="4dp" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Additional Details Section (Collapsible) -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="24dp"
+                        app:cardBackgroundColor="@color/soft_cream"
+                        app:cardCornerRadius="12dp"
+                        app:cardElevation="2dp">
+
+                        <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/divider"
-                android:layout_marginVertical="@dimen/spacing_small" />
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="16dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Cause"
-                android:textSize="20sp"
+                                android:text="Detection Details"
+                                android:textColor="@color/text_primary"
+                                android:textSize="18sp"
                 android:textStyle="bold"
-                android:paddingBottom="4dp" />
+                                android:layout_marginBottom="12dp" />
 
             <TextView
-                android:id="@+id/detectionCause"
-                android:layout_width="wrap_content"
+                                android:id="@+id/detectionDescription"
+                                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Cause goes here."
-                android:textSize="16sp"
-                android:paddingBottom="16dp" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/divider"
-                android:layout_marginVertical="@dimen/spacing_small" />
+                                android:text="Details about the detected result."
+                                android:textColor="@color/text_secondary"
+                                android:textSize="14sp"
+                                android:lineSpacingExtra="4dp"
+                                android:layout_marginBottom="12dp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Cure"
-                android:textSize="20sp"
+                                android:text="Symptoms"
+                                android:textColor="@color/text_primary"
+                                android:textSize="16sp"
                 android:textStyle="bold"
-                android:paddingBottom="4dp" />
+                                android:layout_marginBottom="8dp" />
 
             <TextView
-                android:id="@+id/detectionCure"
-                android:layout_width="wrap_content"
+                                android:id="@+id/detectionSymptoms"
+                                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Cure goes here."
-                android:textSize="16sp"
-                android:paddingBottom="16dp" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/divider"
-                android:layout_marginVertical="@dimen/spacing_small" />
+                                android:text="Symptoms go here."
+                                android:textColor="@color/text_secondary"
+                                android:textSize="14sp"
+                                android:lineSpacingExtra="4dp"
+                                android:layout_marginBottom="16dp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Prevention"
-                android:textSize="20sp"
+                                android:text="Treatment"
+                                android:textColor="@color/text_primary"
+                                android:textSize="16sp"
                 android:textStyle="bold"
-                android:paddingBottom="4dp" />
-
-            <TextView
-                android:id="@+id/detectionPrevention"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Prevention measures go here."
-                android:textSize="16sp"
-                android:paddingBottom="16dp" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/divider"
-                android:layout_marginVertical="@dimen/spacing_small" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Pest Information"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:paddingBottom="4dp" />
-
-            <TextView
-                android:id="@+id/pestTitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Pest Name"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:textColor="#000000"
-                android:paddingBottom="8dp" />
-
-            <ImageView
-                android:id="@+id/pestImage"
-                android:layout_width="match_parent"
-                android:layout_height="200dp"
-                android:scaleType="centerCrop"
-                android:src="@drawable/ic_launcher_foreground"
-                android:contentDescription="Pest image"
                 android:layout_marginBottom="8dp" />
 
             <TextView
-                android:id="@+id/pestDescription"
-                android:layout_width="wrap_content"
+                                android:id="@+id/detectionCure"
+                                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Brief description about the pest."
-                android:textSize="16sp"
-                android:paddingBottom="16dp" />
+                                android:text="Treatment information goes here."
+                                android:textColor="@color/text_secondary"
+                                android:textSize="14sp"
+                                android:lineSpacingExtra="4dp" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
 
-            <View
+                    <!-- Accuracy Section -->
+                    <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/divider"
-                android:layout_marginVertical="@dimen/spacing_small" />
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        app:cardBackgroundColor="@color/white"
+                        app:cardCornerRadius="12dp"
+                        app:cardElevation="2dp"
+                        app:strokeWidth="1dp"
+                        app:strokeColor="@color/divider">
 
             <TextView
                 android:id="@+id/detectionAccuracy"
-                android:layout_width="wrap_content"
+                            android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Detection Accuracy: "
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:textColor="#4CAF50"
-                android:paddingTop="12dp"
-                android:paddingBottom="20dp" />
-
+                            android:textSize="14sp"
+                            android:textColor="@color/text_secondary"
+                            android:padding="16dp"
+                            android:lineSpacingExtra="4dp" />
+                    </com.google.android.material.card.MaterialCardView>
+                </LinearLayout>
         </LinearLayout>
     </ScrollView>
+    </LinearLayout>
 
+    <!-- Navigation Drawer -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/nav_view"
-        android:layout_width="wrap_content"
+        android:layout_width="280dp"
         android:layout_height="match_parent"
         android:layout_gravity="start"
-        app:menu="@menu/drawer_menu" />
+        app:menu="@menu/drawer_menu"
+        app:headerLayout="@layout/nav_drawer_sidebar"
+        app:itemIconTint="@color/white"
+        app:itemTextColor="@color/white"
+        android:background="@color/sidebar_dark_green" />
 
 </androidx.drawerlayout.widget.DrawerLayout>

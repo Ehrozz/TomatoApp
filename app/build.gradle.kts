@@ -66,4 +66,12 @@ dependencies {
     // Location services for fetching device location (weather)
     implementation("com.google.android.gms:play-services-location:21.3.0")
 
+    // Room (for local WorkProgram storage)
+    implementation("androidx.room:room-runtime:2.6.1")
+    annotationProcessor("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+
+    // MPAndroidChart for analytics charts
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+
 }

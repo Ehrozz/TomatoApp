@@ -33,4 +33,18 @@
     <string name="navigation_drawer_close">drawer_close</string>
     <string name="capture">Capture</string>
     <string name="default_web_client_id">160472928974-7h66d1ivo7299ofe76a82g74ksp16q4d.apps.googleusercontent.com</string>
+    <string name="monitor_reference_image">Reference growth stage</string>
+    <string name="monitor_phase_label">Current phase</string>
+    <string name="monitor_reference_hint">Visual guide for this phase and cultivar.</string>
+    <string name="monitor_notes">Notes (what you observe)</string>
+    <string name="monitor_save_entry">Save monitoring entry</string>
+    <string name="monitor_saved_success">Monitoring entry saved</string>
+    <string name="monitor_missing_description">Please add a note.</string>
+    <string name="monitor_button_label">Monitor Plant</string>
+    <string name="monitor_title">Plant Monitoring</string>
+    <string name="detection_select_cultivar_label">Cultivar</string>
+    <string name="detection_select_phase_label">Phase</string>
+    <string name="detection_cultivar_unspecified">Unspecified cultivar</string>
+    <string name="detection_phase_placeholder">Phase %1$d</string>
+    <string name="detection_context_format">%1$s • Phase %2$d</string>
 </resources>

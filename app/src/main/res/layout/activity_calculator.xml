@@ -5,6 +5,7 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@android:color/white"
     android:fillViewport="true"
     tools:context=".Calculator">
 
@@ -14,9 +15,151 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <!-- Header removed per requirement -->
+        <!-- Summary Card: Projected Net Income -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="6dp"
+            app:cardUseCompatPadding="true"
+            app:cardBackgroundColor="@android:color/holo_red_light">
 
-        <!-- Income Calculator Section -->
+            <LinearLayout
+                android:orientation="vertical"
+                android:padding="20dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <!-- Small header: cultivar + date + pill -->
+                <LinearLayout
+                    android:orientation="horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <LinearLayout
+                        android:orientation="vertical"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1">
+
+                        <TextView
+                            android:id="@+id/tvCultivarName"
+                            android:text="Cultivar: "
+                            android:textStyle="bold"
+                            android:textSize="14sp"
+                            android:textColor="@android:color/white"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" />
+
+                        <TextView
+                            android:id="@+id/tvDateSaved"
+                            android:text="Date Saved: "
+                            android:textSize="12sp"
+                            android:textColor="@android:color/white"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/btnSummaryDetails"
+                        android:text="Details"
+                        android:textAllCaps="false"
+                        android:textSize="12sp"
+                        android:textColor="@android:color/holo_red_light"
+                        android:gravity="center"
+                        android:background="@android:color/white"
+                        android:paddingLeft="16dp"
+                        android:paddingRight="16dp"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp"
+                        android:layout_gravity="center_vertical"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="4dp"
+                        android:includeFontPadding="false"
+                        android:drawablePadding="4dp" />
+                </LinearLayout>
+
+                <!-- Big projected net income -->
+                <TextView
+                    android:id="@+id/tvNetIncomeCard"
+                    android:text="₱0.00"
+                    android:textSize="32sp"
+                    android:textStyle="bold"
+                    android:textColor="@android:color/white"
+                    android:gravity="center_horizontal"
+                    android:layout_marginTop="16dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+
+                <!-- Subtitle -->
+                <TextView
+                    android:id="@+id/tvSummarySubtitle"
+                    android:text="Projected net income"
+                    android:textSize="12sp"
+                    android:textColor="@android:color/white"
+                    android:layout_marginTop="4dp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+
+                <TextView
+                    android:id="@+id/tvCompletionRate"
+                    android:text="Completion rate: —"
+                    android:textSize="12sp"
+                    android:textColor="@android:color/white"
+                    android:layout_marginTop="8dp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+
+                <TextView
+                    android:id="@+id/tvAdjustedNetIncome"
+                    android:text="₱—"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="@android:color/white"
+                    android:layout_marginTop="4dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+
+                <TextView
+                    android:id="@+id/tvAdjustedSubtitle"
+                    android:text="Adjusted net income (based on completion)"
+                    android:textSize="12sp"
+                    android:textColor="@android:color/white"
+                    android:layout_marginTop="2dp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+
+                <TextView
+                    android:id="@+id/tvCompletionWarning"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:padding="10dp"
+                    android:text="Completion impact warning"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp"
+                    android:background="@drawable/warning_banner_background"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Breakdown title -->
+        <TextView
+            android:id="@+id/tvBreakdownTitle"
+            android:text="Breakdown"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#333333"
+            android:layout_marginBottom="8dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <!-- Projection Inputs Section -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -30,23 +173,20 @@
                 android:padding="16dp"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
-
-                <!-- Cultivar Info -->
                 <TextView
-                    android:id="@+id/tvCultivarName"
-                    android:text="Cultivar: "
+                    android:text="Projection Inputs"
                     android:textStyle="bold"
-                    android:textSize="16sp"
+                    android:textSize="18sp"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content" />
 
                 <TextView
-                    android:id="@+id/tvDateSaved"
-                    android:text="Date Saved: "
-                    android:textSize="16sp"
+                    android:text="Yield drivers"
+                    android:textSize="12sp"
+                    android:textColor="#777777"
+                    android:layout_marginBottom="8dp"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="10dp" />
+                    android:layout_height="wrap_content" />
 
                 <!-- Inputs -->
                 <EditText
@@ -59,10 +199,8 @@
                 <TextView
                     android:id="@+id/tvNP"
                     android:text="Number of Plants per Hectare (NP): "
-                    android:textSize="16sp"
-                    android:background="@android:color/darker_gray"
-                    android:textColor="@android:color/white"
-                    android:padding="10dp"
+                    android:textSize="14sp"
+                    android:textColor="#666666"
                     android:layout_marginTop="10dp"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content" />
@@ -95,7 +233,8 @@
                 <TextView
                     android:id="@+id/tvTHGrams"
                     android:text="Total Harvest (grams): "
-                    android:textSize="16sp"
+                    android:textSize="14sp"
+                    android:textColor="#666666"
                     android:layout_marginTop="20dp"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content" />
@@ -103,29 +242,16 @@
                 <TextView
                     android:id="@+id/tvTHKg"
                     android:text="Total Harvest (kg): "
-                    android:textSize="16sp"
+                    android:textSize="14sp"
+                    android:textColor="#666666"
                     android:layout_marginTop="5dp"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
-
-                <!-- Gross Income Result -->
-                <TextView
-                    android:id="@+id/tvGrossIncome"
-                    android:text="Gross Income (₱): "
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:layout_marginTop="20dp"
-                    android:padding="15dp"
-                    android:background="@android:color/holo_green_dark"
-                    android:textColor="@android:color/white"
-                    android:gravity="center"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content" />
 
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- Fertilizer Calculator Section -->
+        <!-- Fertilizer Section (collapsible) -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -140,74 +266,231 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
-                <TextView
-                    android:text="Fertilizer Requirements"
-                    android:textSize="20sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="10dp"
+                <!-- Header row -->
+                <LinearLayout
+                    android:id="@+id/fertilizerHeader"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+                    android:layout_height="wrap_content">
 
-                <TextView
-                    android:id="@+id/tvCompleteKg"
-                    android:text="Complete (14-14-14) kg/ha: —"
-                    android:textSize="16sp"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+                    <LinearLayout
+                        android:orientation="vertical"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1">
 
-                <TextView
-                    android:id="@+id/tvCompleteCost"
-                    android:text="Cost: —"
-                    android:textSize="14sp"
-                    android:textColor="#666666"
-                    android:layout_marginBottom="10dp"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+                        <TextView
+                            android:text="Fertilizer"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
 
-                <TextView
-                    android:id="@+id/tvUreaKg"
-                    android:text="Urea (46-0-0) kg/ha: —"
-                    android:textSize="16sp"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+                        <TextView
+                            android:text="Auto-computed per hectare"
+                            android:textSize="12sp"
+                            android:textColor="#777777"
+                            android:layout_marginTop="2dp"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+                    </LinearLayout>
 
-                <TextView
-                    android:id="@+id/tvUreaCost"
-                    android:text="Cost: —"
-                    android:textSize="14sp"
-                    android:textColor="#666666"
-                    android:layout_marginBottom="10dp"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+                    <ImageView
+                        android:id="@+id/ivFertilizerToggle"
+                        android:src="@android:drawable/arrow_down_float"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp" />
+                </LinearLayout>
 
-                <TextView
-                    android:id="@+id/tvMOPKg"
-                    android:text="MOP (0-0-60) kg/ha: —"
-                    android:textSize="16sp"
+                <!-- Collapsible content -->
+                <LinearLayout
+                    android:id="@+id/fertilizerContent"
+                    android:orientation="vertical"
+                    android:layout_marginTop="8dp"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+                    android:layout_height="wrap_content">
 
-                <TextView
-                    android:id="@+id/tvMOPCost"
-                    android:text="Cost: —"
-                    android:textSize="14sp"
-                    android:textColor="#666666"
-                    android:layout_marginBottom="10dp"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+                    <TextView
+                        android:id="@+id/tvCompleteKg"
+                        android:text="Complete (14-14-14) kg/ha: —"
+                        android:textSize="16sp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
 
-                <TextView
-                    android:id="@+id/tvTotalFertilizerCost"
-                    android:text="Total Fertilizer Cost (₱): —"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:layout_marginTop="10dp"
-                    android:padding="15dp"
-                    android:background="@android:color/holo_orange_dark"
-                    android:textColor="@android:color/white"
-                    android:gravity="center"
+                    <TextView
+                        android:id="@+id/tvCompleteCost"
+                        android:text="Cost: —"
+                        android:textSize="14sp"
+                        android:textColor="#666666"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <CheckBox
+                        android:id="@+id/cbComplete"
+                        android:text="Include in fertilizer cost"
+                        android:textSize="14sp"
+                        android:checked="true"
+                        android:layout_marginBottom="10dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <TextView
+                        android:id="@+id/tvUreaKg"
+                        android:text="Urea (46-0-0) kg/ha: —"
+                        android:textSize="16sp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <TextView
+                        android:id="@+id/tvUreaCost"
+                        android:text="Cost: —"
+                        android:textSize="14sp"
+                        android:textColor="#666666"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <CheckBox
+                        android:id="@+id/cbUrea"
+                        android:text="Include in fertilizer cost"
+                        android:textSize="14sp"
+                        android:checked="true"
+                        android:layout_marginBottom="10dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <TextView
+                        android:id="@+id/tvMOPKg"
+                        android:text="MOP (0-0-60) kg/ha: —"
+                        android:textSize="16sp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <TextView
+                        android:id="@+id/tvMOPCost"
+                        android:text="Cost: —"
+                        android:textSize="14sp"
+                        android:textColor="#666666"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <CheckBox
+                        android:id="@+id/cbMOP"
+                        android:text="Include in fertilizer cost"
+                        android:textSize="14sp"
+                        android:checked="true"
+                        android:layout_marginBottom="10dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <TextView
+                        android:id="@+id/tvTotalFertilizerCost"
+                        android:text="Total Fertilizer Cost (₱): —"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:layout_marginTop="12dp"
+                        android:textColor="@android:color/holo_orange_dark"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Pesticide Section (collapsible, feeds expenses) -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp"
+            app:cardBackgroundColor="#FFFFFF">
+
+            <LinearLayout
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <!-- Header row -->
+                <LinearLayout
+                    android:id="@+id/pesticideHeader"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+                    android:layout_height="wrap_content">
+
+                    <LinearLayout
+                        android:orientation="vertical"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1">
+
+                        <TextView
+                            android:text="Pesticide"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+
+                        <TextView
+                            android:text="Temporary breakdown (placeholder)"
+                            android:textSize="12sp"
+                            android:textColor="#777777"
+                            android:layout_marginTop="2dp"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:id="@+id/ivPesticideToggle"
+                        android:src="@android:drawable/arrow_down_float"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp" />
+                </LinearLayout>
+
+                <!-- Collapsible pesticide breakdown -->
+                <LinearLayout
+                    android:id="@+id/pesticideContent"
+                    android:orientation="vertical"
+                    android:layout_marginTop="8dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <TextView
+                        android:id="@+id/tvPesticideTotal"
+                        android:text="Suggested pesticide cost: —"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <TextView
+                        android:id="@+id/tvPesticidePreventive"
+                        android:text="Preventive sprays: —"
+                        android:textSize="14sp"
+                        android:layout_marginTop="8dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <TextView
+                        android:id="@+id/tvPesticideCurative"
+                        android:text="Curative sprays: —"
+                        android:textSize="14sp"
+                        android:layout_marginTop="4dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <TextView
+                        android:id="@+id/tvPesticideOther"
+                        android:text="Other pesticide-related costs: —"
+                        android:textSize="14sp"
+                        android:layout_marginTop="4dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                </LinearLayout>
 
             </LinearLayout>
         </androidx.cardview.widget.CardView>
@@ -231,19 +514,26 @@
                     android:text="Expenses"
                     android:textSize="20sp"
                     android:textStyle="bold"
-                    android:layout_marginBottom="10dp"
+                    android:layout_marginBottom="4dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+
+                <TextView
+                    android:text="Cost breakdown"
+                    android:textSize="12sp"
+                    android:textColor="#777777"
+                    android:layout_marginBottom="8dp"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content" />
 
                 <EditText
                     android:id="@+id/etFertilizer"
-                    android:hint="Fertilizer (₱) - Auto-filled"
+                    android:hint="Fertilizer (₱) - Auto-filled based on selection"
                     android:inputType="numberDecimal"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="@android:color/darker_gray"
-                    android:textColor="@android:color/white"
-                    android:padding="10dp" />
+                    android:focusable="false"
+                    android:clickable="false" />
 
                 <EditText
                     android:id="@+id/etManpower"
@@ -282,40 +572,17 @@
                     android:text="Total Expenses (₱): —"
                     android:textSize="18sp"
                     android:textStyle="bold"
-                    android:layout_marginTop="20dp"
-                    android:padding="15dp"
-                    android:background="@android:color/holo_red_dark"
-                    android:textColor="@android:color/white"
-                    android:gravity="center"
+                    android:layout_marginTop="16dp"
+                    android:textColor="#444444"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content" />
 
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-        <!-- Net Income Result -->
-        <androidx.cardview.widget.CardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp"
-            app:cardBackgroundColor="#FFFFFF">
-
-            <LinearLayout
-                android:orientation="vertical"
-                android:padding="16dp"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-
                 <TextView
-                    android:id="@+id/tvNetIncome"
-                    android:text="Net Income (₱): —"
-                    android:textSize="20sp"
-                    android:textStyle="bold"
-                    android:padding="15dp"
-                    android:background="@android:color/holo_green_dark"
-                    android:textColor="@android:color/white"
-                    android:gravity="center"
+                    android:id="@+id/tvAdjustedExpenses"
+                    android:text="Adjusted Expenses (₱): —"
+                    android:textSize="14sp"
+                    android:textColor="#666666"
+                    android:layout_marginTop="4dp"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content" />
 

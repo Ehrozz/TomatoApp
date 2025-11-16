@@ -5,59 +5,217 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@android:color/black"
     tools:context=".CameraInterface">
 
+    <!-- Camera Preview -->
     <androidx.camera.view.PreviewView
         android:id="@+id/previewView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_gravity="center"
         android:scaleType="fitCenter"
         tools:ignore="MissingConstraints"
         tools:background="@android:color/black" />
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/captureBtn"
-        android:layout_width="wrap_content"
+    <!-- Focus Point Indicator (White circle with dot) -->
+    <View
+        android:id="@+id/focusIndicator"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_centerInParent="true"
+        android:background="@drawable/focus_indicator"
+        android:visibility="visible" />
+
+    <!-- Top Header Bar (Translucent) -->
+    <LinearLayout
+        android:id="@+id/headerBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="48dp"
+        android:paddingBottom="16dp"
+        android:background="@drawable/header_gradient_overlay"
+        android:fitsSystemWindows="true">
+
+        <!-- Back Arrow -->
+        <ImageButton
+            android:id="@+id/backButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@android:drawable/ic_menu_revert"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Back"
+            app:tint="@color/white"
+            android:scaleType="centerInside"
+            android:padding="8dp" />
+
+        <!-- Title -->
+        <TextView
+            android:id="@+id/headerTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Scan"
+            android:textColor="@color/white"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:maxLines="1"
+            android:ellipsize="end" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/detectionContextPanel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/headerBar"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="8dp"
+        android:orientation="vertical"
+        android:background="@drawable/legend_background"
+        android:padding="12dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/detection_select_cultivar_label"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold"
+            android:textSize="14sp" />
+
+        <Spinner
+            android:id="@+id/spinnerCultivar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/legend_background" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="@string/detection_select_phase_label"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold"
+            android:textSize="14sp" />
+
+        <Spinner
+            android:id="@+id/spinnerPhase"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/legend_background" />
+    </LinearLayout>
+
+    <!-- Bottom Navigation Bar (Semi-transparent dark) -->
+    <LinearLayout
+        android:id="@+id/bottomNavBar"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true"
-        android:layout_marginBottom="@dimen/spacing_xlarge"
-        android:src="@android:drawable/ic_menu_camera"
-        android:contentDescription="@string/capture"
-        app:fabSize="normal"
-        app:elevation="@dimen/elevation_fab"
-        app:tint="@color/white"
-        tools:ignore="RelativeOverlap" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="20dp"
+        android:paddingBottom="32dp"
+        android:background="@drawable/bottom_nav_gradient"
+        android:fitsSystemWindows="true">
 
+        <!-- Model Selector (Left - Orange circular icon) -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/modelSelectorBtn"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_marginEnd="16dp"
+            app:cardBackgroundColor="@color/warm_orange"
+            app:cardCornerRadius="28dp"
+            app:cardElevation="4dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:src="@android:drawable/ic_menu_view"
+                android:scaleType="centerInside"
+                android:padding="14dp"
+                app:tint="@color/white" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Scan Button (Center) -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <!-- Large Orange Shutter Button -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/captureBtn"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                app:cardBackgroundColor="@color/warm_orange"
+                app:cardCornerRadius="40dp"
+                app:cardElevation="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?android:attr/selectableItemBackground">
+
+                <!-- Inner darker orange circle -->
+                <View
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/capture_button_inner" />
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- "Scan" Text Below Button -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Scan"
+                android:textColor="@color/white"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Menu Button (Right - Hamburger) -->
+        <ImageButton
+            android:id="@+id/menuButton"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_marginStart="16dp"
+            android:src="@android:drawable/ic_menu_more"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Menu"
+            app:tint="@color/white"
+            android:scaleType="centerInside"
+            android:padding="14dp" />
+    </LinearLayout>
+
+    <!-- Gallery Button (Hidden, can be accessed via menu) -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/openGalleryButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:src="@android:drawable/ic_menu_gallery"
-        android:contentDescription="@string/information"
         android:layout_alignParentBottom="true"
         android:layout_alignParentEnd="true"
-        android:layout_margin="@dimen/spacing_medium"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="120dp"
+        android:src="@android:drawable/ic_menu_gallery"
+        android:contentDescription="@string/information"
+        android:visibility="gone"
         app:fabSize="mini"
-        app:elevation="@dimen/elevation_fab"
+        app:elevation="4dp"
         app:tint="@color/white"
         app:backgroundTint="@color/primary" />
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/modelSelectorBtn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Model: Fruits"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentEnd="true"
-        android:layout_margin="@dimen/spacing_medium"
-        android:paddingStart="@dimen/spacing_medium"
-        android:paddingEnd="@dimen/spacing_medium"
-        android:paddingTop="@dimen/spacing_small"
-        android:paddingBottom="@dimen/spacing_small"
-        android:backgroundTint="@color/primary"
-        android:textColor="@color/white"
-        style="@style/Widget.Material3.Button.OutlinedButton" />
 
 </RelativeLayout>

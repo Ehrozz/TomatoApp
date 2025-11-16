@@ -1,0 +1,44 @@
+{
+  "rules": {
+    "users": {
+      "$userId": {
+        ".read": "auth != null && auth.uid === $userId",
+        ".write": "auth != null && auth.uid === $userId",
+        "workPrograms": {
+          "$programId": {
+            ".validate": "newData.hasChildren(['cultivarName','startingDate','areaSize']) && newData.child('cultivarName').isString() && newData.child('startingDate').isString() && newData.child('areaSize').isNumber() && (!newData.child('projectedIncome').exists() || newData.child('projectedIncome').isNumber()) && (!newData.child('projectedExpenses').exists() || newData.child('projectedExpenses').isNumber()) && (!newData.child('phasesJson').exists() || newData.child('phasesJson').isString()) && (!newData.child('detectionHistoriesJson').exists() || newData.child('detectionHistoriesJson').isString()) && (!newData.child('completionRate').exists() || newData.child('completionRate').isNumber())"
+          }
+        },
+        "routineLogs": {
+          "$programId": {
+            "tasks": {
+              "$day": {
+                ".validate": "newData.isString() && (newData.val() === 'completed' || newData.val() === 'missed' || newData.val() === 'pending' || newData.val() === 'skipped')"
+              }
+            }
+          }
+        },
+        "calculations": {
+          "$calculationId": {
+            ".validate": "newData.hasChildren(['grossIncome','totalExpenses','netIncome','hectare','dateCreated']) && newData.child('grossIncome').isNumber() && newData.child('totalExpenses').isNumber() && newData.child('netIncome').isNumber() && newData.child('hectare').isNumber() && newData.child('dateCreated').isString()"
+          }
+        },
+        "plantMonitoring": {
+          "$programId": {
+            "$entryId": {
+              ".validate": "newData.hasChildren(['phase','timestamp','shortDescription']) && newData.child('phase').isNumber() && newData.child('timestamp').isNumber() && newData.child('shortDescription').isString() && (!newData.child('issues').exists() || newData.child('issues').isString()) && (!newData.child('warnings').exists() || newData.child('warnings').isString()) && (!newData.child('notes').exists() || newData.child('notes').isString()) && (!newData.child('detectionId').exists() || newData.child('detectionId').isString())"
+            }
+          }
+        },
+        "detectionLogs": {
+          "$programId": {
+            "$detectionId": {
+              ".validate": "newData.hasChildren(['timestamp','label','confidence']) && newData.child('timestamp').isNumber() && newData.child('label').isString() && newData.child('confidence').isNumber()"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+

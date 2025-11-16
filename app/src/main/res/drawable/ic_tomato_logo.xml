@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    
+    <!-- Perfect Circle Tomato Body (Red) -->
+    <path
+        android:fillColor="#E53935"
+        android:pathData="M60,20 A40,40 0 1,1 60,100 A40,40 0 1,1 60,20 Z" />
+    
+    <!-- Darker Red Shading (Bottom-Right) -->
+    <path
+        android:fillColor="#C62828"
+        android:pathData="M60,60 L60,100 A40,40 0 0,1 100,60 Z" />
+    
+    <!-- White Highlight (Top-Left) - Ellipse converted to path -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.9"
+        android:pathData="M38,50 A12,8 0 1,1 62,50 A12,8 0 1,1 38,50 Z" />
+    
+    <!-- Stem - Three Pointed Segments (Dark Green) -->
+    <path
+        android:fillColor="#2E7D32"
+        android:pathData="M55,20 L60,5 L65,20 Z" />
+    <path
+        android:fillColor="#2E7D32"
+        android:pathData="M57,15 L60,8 L63,15 Z" />
+    <path
+        android:fillColor="#2E7D32"
+        android:pathData="M58,12 L60,10 L62,12 Z" />
+    
+    <!-- Leaf (Dark Green) - Curving from right side of stem -->
+    <path
+        android:fillColor="#2E7D32"
+        android:pathData="M65,18 Q70,15 72,20 Q70,25 65,22 Z" />
+</vector>

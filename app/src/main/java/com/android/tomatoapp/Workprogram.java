@@ -5,10 +5,13 @@ import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -50,8 +53,18 @@ public class Workprogram extends AppCompatActivity {
     private EditText landAreaInput;
     private DatePicker startDatePicker;
     private Button btnSubmitForm;
-    private TextView wkTitle;
     private MaterialCalendarView calendarView;
+    
+    // New UI elements
+    private com.google.android.material.card.MaterialCardView headerCard;
+    private ImageView cultivarImage;
+    private TextView cultivarNameText;
+    private TextView startDateText;
+    private LinearLayout calendarHeader;
+    private ImageView headerCultivarImage;
+    private TextView headerCultivarName;
+    private TextView headerStartDate;
+    private TextView taskWarningBanner;
 
     private String selectedCultivar = "";
     private String selectedDate = "";
@@ -67,6 +80,7 @@ public class Workprogram extends AppCompatActivity {
 
     private HashSet<CalendarDay> completedDates = new HashSet<>();
     private HashSet<CalendarDay> missedDates = new HashSet<>();
+    private HashSet<CalendarDay> skippedDates = new HashSet<>();
     private HashSet<CalendarDay> accessibleDates = new HashSet<>(); // Dates that can be clicked
 
     private DrawerLayout drawerLayout;
@@ -126,9 +140,9 @@ public class Workprogram extends AppCompatActivity {
             getSupportActionBar().setTitle("Work Program");
         }
         navigationView.setNavigationItemSelectedListener(item -> {
-            if (item.getItemId() == R.id.nav_home) finish();
+            boolean handled = handleNavigationItem(item.getItemId());
             drawerLayout.closeDrawers();
-            return true;
+            return handled;
         });
 
         // Views
@@ -137,8 +151,18 @@ public class Workprogram extends AppCompatActivity {
         landAreaInput = findViewById(R.id.landAreaInput);
         startDatePicker = findViewById(R.id.startDatePicker);
         btnSubmitForm = findViewById(R.id.btnSelectCultivar);
-        wkTitle = findViewById(R.id.wkTitle);
         calendarView = findViewById(R.id.CalendarView);
+        
+        // New UI elements
+        headerCard = findViewById(R.id.headerCard);
+        cultivarImage = findViewById(R.id.cultivarImage);
+        cultivarNameText = findViewById(R.id.cultivarNameText);
+        startDateText = findViewById(R.id.startDateText);
+        calendarHeader = findViewById(R.id.calendarHeader);
+        headerCultivarImage = findViewById(R.id.headerCultivarImage);
+        headerCultivarName = findViewById(R.id.headerCultivarName);
+        headerStartDate = findViewById(R.id.headerStartDate);
+        taskWarningBanner = findViewById(R.id.taskWarningBanner);
 
         // Check if user is logged in
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -160,12 +184,17 @@ public class Workprogram extends AppCompatActivity {
         String passedProgramId = intent.getStringExtra("programId");
 
         if (cultivar != null && startDate != null && passedProgramId != null) {
-            // Existing program
+            // Existing program - show header card with cultivar info
             cultivarCard.setVisibility(CardView.GONE);
-            wkTitle.setText("Work Program\nCultivar: " + cultivar + "\nDate Start : " + startDate);
+            headerCard.setVisibility(View.VISIBLE);
+            calendarHeader.setVisibility(View.GONE);
+            
             selectedCultivar = cultivar;
             programStartDate = startDate;
             programId = passedProgramId;
+            
+            // Update header card with cultivar info
+            updateCultivarInfo(cultivar, startDate);
 
             logsRef = FirebaseDatabase.getInstance()
                     .getReference("users")
@@ -181,7 +210,8 @@ public class Workprogram extends AppCompatActivity {
         } else {
             // New program form
             cultivarCard.setVisibility(CardView.VISIBLE);
-            wkTitle.setText("Add New Work Program");
+            headerCard.setVisibility(View.GONE);
+            calendarHeader.setVisibility(View.GONE);
 
             String[] cultivarNames = new String[cultivarsData.length];
             for (int i = 0; i < cultivarsData.length; i++) {
@@ -257,11 +287,13 @@ public class Workprogram extends AppCompatActivity {
                     addPhaseDecorators();
                     setCalendarClickListener();
 
+                    // Show header card with cultivar info
+                    headerCard.setVisibility(View.VISIBLE);
+                    calendarHeader.setVisibility(View.GONE);
+                    updateCultivarInfo(selectedCultivar, selectedDate);
+
                 }).addOnFailureListener(e -> Toast.makeText(this, "Failed to save: " + e.getMessage(), Toast.LENGTH_LONG).show());
 
-                wkTitle.setText("Work Program\nCultivar: " + selectedCultivar +
-                        "\nStart Date: " + selectedDate +
-                        "\nLand Area: " + landArea);
                 cultivarCard.setVisibility(CardView.GONE);
             });
         }
@@ -379,6 +411,112 @@ public class Workprogram extends AppCompatActivity {
         return 0;
     }
 
+    private void updateTaskWarningBanner() {
+        if (taskWarningBanner == null) return;
+        int missedCount = missedDates.size();
+        int skippedCount = skippedDates.size();
+        if (missedCount == 0 && skippedCount == 0) {
+            taskWarningBanner.setVisibility(View.GONE);
+            return;
+        }
+
+        StringBuilder message = new StringBuilder("Heads up: ");
+        if (missedCount > 0) {
+            message.append(missedCount).append(missedCount == 1 ? " day missed" : " days missed");
+        }
+        if (skippedCount > 0) {
+            if (missedCount > 0) {
+                message.append(" · ");
+            }
+            message.append(skippedCount).append(skippedCount == 1 ? " day skipped" : " days skipped");
+        }
+
+        String hint = buildPhaseCatchUpHint();
+        if (!hint.isEmpty()) {
+            message.append("\n").append(hint);
+        } else {
+            message.append("\nLog today's activity or plan a quick catch-up.");
+        }
+
+        taskWarningBanner.setText(message.toString());
+        taskWarningBanner.setVisibility(View.VISIBLE);
+    }
+
+    private String buildPhaseCatchUpHint() {
+        CalendarDay target = findEarliestDate(missedDates);
+        if (target == null) {
+            target = findEarliestDate(skippedDates);
+        }
+        if (target == null || programStartDate == null || programStartDate.isEmpty()) {
+            return "";
+        }
+
+        Date targetDate = target.getDate();
+        int dayNumber = calculateDayNumber(programStartDate, targetDate);
+        if (dayNumber <= 0) {
+            return "";
+        }
+
+        int maturityDays = getMaturityDays(selectedCultivar);
+        if (maturityDays <= 0) {
+            maturityDays = 90;
+        }
+        int phase = getPhaseFromDay(maturityDays, dayNumber);
+        String phaseLabel = getPhaseLabel(phase);
+        if (phaseLabel.isEmpty()) {
+            return "";
+        }
+
+        return "Catch up on " + phaseLabel + " tasks to keep projections accurate.";
+    }
+
+    private CalendarDay findEarliestDate(HashSet<CalendarDay> dates) {
+        CalendarDay earliest = null;
+        for (CalendarDay day : dates) {
+            if (earliest == null || day.getDate().before(earliest.getDate())) {
+                earliest = day;
+            }
+        }
+        return earliest;
+    }
+
+    private int calculateDayNumber(String startDate, Date current) {
+        try {
+            Date start = sdf.parse(startDate);
+            if (start == null || current == null) return -1;
+            long diff = current.getTime() - start.getTime();
+            return (int) (diff / (1000 * 60 * 60 * 24)) + 1;
+        } catch (ParseException e) {
+            return -1;
+        }
+    }
+
+    private int getPhaseFromDay(int maturityDays, int dayNumber) {
+        if (dayNumber <= 0) return 1;
+        int phaseDuration = maturityDays / 5;
+        if (phaseDuration <= 0) {
+            phaseDuration = 1;
+        }
+        return Math.min(((dayNumber - 1) / phaseDuration) + 1, 5);
+    }
+
+    private String getPhaseLabel(int phase) {
+        switch (phase) {
+            case 1:
+                return "Phase 1 (Nursery & Land Prep)";
+            case 2:
+                return "Phase 2 (Transplant & Establishment)";
+            case 3:
+                return "Phase 3 (Vegetative Growth)";
+            case 4:
+                return "Phase 4 (Flowering & Fruit Set)";
+            case 5:
+                return "Phase 5 (Harvest)";
+            default:
+                return "";
+        }
+    }
+
 
     private void setCalendarClickListener() {
         calendarView.setOnDateChangedListener((widget, date, selected) -> {
@@ -455,6 +593,7 @@ public class Workprogram extends AppCompatActivity {
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 completedDates.clear();
                 missedDates.clear();
+                skippedDates.clear();
                 accessibleDates.clear();
                 Date today = new Date();
 
@@ -523,6 +662,16 @@ public class Workprogram extends AppCompatActivity {
                                 if (nextDay != null) {
                                     accessibleDates.add(nextDay);
                                 }
+                            } else if ("skipped".equals(status)) {
+                                skippedDates.add(cd);
+                                Calendar nextCal = Calendar.getInstance();
+                                nextCal.setTime(checkCal.getTime());
+                                nextCal.add(Calendar.DAY_OF_YEAR, 1);
+                                String nextDateKey = sdf.format(nextCal.getTime());
+                                CalendarDay nextDay = parseCalendarDay(nextDateKey);
+                                if (nextDay != null) {
+                                    accessibleDates.add(nextDay);
+                                }
                             } else if ("pending".equals(status)) {
                                 Date taskDate = sdf.parse(dateKey);
                                 if (taskDate != null && taskDate.before(today)) {
@@ -552,7 +701,7 @@ public class Workprogram extends AppCompatActivity {
                                 // Previous date is pending - current date is NOT accessible
                                 isAccessible = false;
                                 break;
-                            } else if ("completed".equals(prevStatus) || "missed".equals(prevStatus)) {
+                            } else if ("completed".equals(prevStatus) || "missed".equals(prevStatus) || "skipped".equals(prevStatus)) {
                                 // Previous date is completed or missed - this is good, continue checking
                                 // No action needed, continue to next previous date
                             } else if (prevStatus == null) {
@@ -603,6 +752,16 @@ public class Workprogram extends AppCompatActivity {
                                 if (nextDay != null) {
                                     accessibleDates.add(nextDay);
                                 }
+                            } else if ("skipped".equals(status)) {
+                                skippedDates.add(cd);
+                                Calendar nextCal = Calendar.getInstance();
+                                nextCal.setTime(checkCal.getTime());
+                                nextCal.add(Calendar.DAY_OF_YEAR, 1);
+                                String nextDateKey = sdf.format(nextCal.getTime());
+                                CalendarDay nextDay = parseCalendarDay(nextDateKey);
+                                if (nextDay != null) {
+                                    accessibleDates.add(nextDay);
+                                }
                             } else if ("pending".equals(status)) {
                                 Date taskDate = sdf.parse(dateKey);
                                 if (taskDate != null && taskDate.before(today)) {
@@ -627,8 +786,8 @@ public class Workprogram extends AppCompatActivity {
                         String dateKey = sdf.format(postCal.getTime());
                         String status = taskStatuses.get(dateKey);
                         
-                        // If this date is completed or missed, make the next day accessible
-                        if ("completed".equals(status) || "missed".equals(status)) {
+                        // If this date is completed, missed, or skipped, make the next day accessible
+                        if ("completed".equals(status) || "missed".equals(status) || "skipped".equals(status)) {
                             Calendar nextCal = Calendar.getInstance();
                             nextCal.setTime(postCal.getTime());
                             nextCal.add(Calendar.DAY_OF_YEAR, 1);
@@ -646,6 +805,8 @@ public class Workprogram extends AppCompatActivity {
                     e.printStackTrace();
                 }
 
+                updateTaskWarningBanner();
+
                 // Clear all decorators first
                 calendarView.removeDecorators();
 
@@ -658,6 +819,7 @@ public class Workprogram extends AppCompatActivity {
                 // ✅ Add dots under numbers
                 calendarView.addDecorator(new CompletedDecorator(new HashSet<>(completedDates), Workprogram.this));
                 calendarView.addDecorator(new MissedDecorator(new HashSet<>(missedDates), Workprogram.this));
+                calendarView.addDecorator(new SkippedDecorator(new HashSet<>(skippedDates), Workprogram.this));
             }
 
             @Override
@@ -694,6 +856,66 @@ public class Workprogram extends AppCompatActivity {
     @Override public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (toggle.onOptionsItemSelected(item)) return true;
         return super.onOptionsItemSelected(item);
+    }
+
+    private boolean handleNavigationItem(int id) {
+        if (id == R.id.nav_home) {
+            startActivity(new Intent(this, MainActivity.class));
+            return true;
+        } else if (id == R.id.nav_profile) {
+            Toast.makeText(this, "Profile coming soon", Toast.LENGTH_SHORT).show();
+            return true;
+        } else if (id == R.id.nav_history) {
+            startActivity(new Intent(this, DetectionHistoryActivity.class));
+            return true;
+        } else if (id == R.id.nav_balance) {
+            startActivity(new Intent(this, CostSelection.class));
+            return true;
+        } else if (id == R.id.nav_analytics) {
+            startActivity(new Intent(this, AnalyticsActivity.class));
+            return true;
+        } else if (id == R.id.nav_settings) {
+            Toast.makeText(this, "Settings coming soon", Toast.LENGTH_SHORT).show();
+            return true;
+        } else if (id == R.id.nav_logout) {
+            FirebaseAuth.getInstance().signOut();
+            Intent intent = new Intent(this, Login.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            finish();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Updates the cultivar information in the header card
+     */
+    private void updateCultivarInfo(String cultivar, String startDate) {
+        if (cultivarNameText != null) {
+            cultivarNameText.setText(cultivar);
+        }
+        if (startDateText != null) {
+            startDateText.setText("Start Date: " + startDate);
+        }
+        if (cultivarImage != null) {
+            // Set cultivar-specific image (for now using default, can be extended)
+            cultivarImage.setImageResource(getCultivarImageResource(cultivar));
+        }
+    }
+
+    /**
+     * Gets the image resource for a specific cultivar
+     * Currently returns default logo, but can be extended to map specific cultivars to images
+     */
+    private int getCultivarImageResource(String cultivar) {
+        // For now, use default logo for all cultivars
+        // This can be extended to map specific cultivars to specific images
+        // Example:
+        // if (cultivar.contains("Victory")) return R.mipmap.victory_tomato;
+        // if (cultivar.contains("HOPE")) return R.mipmap.hope_tomato;
+        // etc.
+        return R.mipmap.ic_logo;
     }
 
     public static class WorkProgramModel {

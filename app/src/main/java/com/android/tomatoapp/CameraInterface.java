@@ -11,8 +11,12 @@ import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -39,8 +43,10 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.concurrent.ExecutionException;
@@ -55,6 +61,18 @@ public class CameraInterface extends AppCompatActivity {
     private ArrayList<String> labels;
     private View modelSelectorBtn; // Can be Button or Chip
     private ModelType loadedModelType = null; // Track which model is currently loaded
+    private Spinner cultivarSpinner;
+    private Spinner phaseSpinner;
+    private ArrayAdapter<String> cultivarAdapter;
+    private ArrayAdapter<String> phaseAdapter;
+    private final ArrayList<String> cultivarOptions = new ArrayList<>();
+    private final ArrayList<String> phaseOptions = new ArrayList<>();
+    private final ArrayList<WorkProgramEntity> programOptions = new ArrayList<>();
+    private String selectedCultivarLabel;
+    private int selectedPhase = 1;
+    private WorkProgramRepository workProgramRepository;
+    private static final SimpleDateFormat START_DATE_FORMAT =
+            new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
     
     // Model types
     private enum ModelType {
@@ -63,46 +81,159 @@ public class CameraInterface extends AppCompatActivity {
     }
     private ModelType currentModelType = ModelType.FRUITS;
 
+    private void setupPhaseSpinner() {
+        phaseOptions.clear();
+        for (int i = 1; i <= 5; i++) {
+            phaseOptions.add(getString(R.string.detection_phase_placeholder, i));
+        }
+        phaseAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, phaseOptions);
+        phaseAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        phaseSpinner.setAdapter(phaseAdapter);
+        phaseSpinner.setSelection(Math.max(0, selectedPhase - 1));
+        phaseSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                selectedPhase = position + 1;
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) { }
+        });
+    }
+
+    private void setupCultivarSpinner() {
+        cultivarOptions.clear();
+        cultivarOptions.add(getString(R.string.detection_cultivar_unspecified));
+        cultivarAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, cultivarOptions);
+        cultivarAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        cultivarSpinner.setAdapter(cultivarAdapter);
+        cultivarSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (position == 0) {
+                    selectedCultivarLabel = getString(R.string.detection_cultivar_unspecified);
+                    return;
+                }
+                int index = position - 1;
+                if (index >= 0 && index < programOptions.size()) {
+                    WorkProgramEntity entity = programOptions.get(index);
+                    selectedCultivarLabel = entity.cultivarName != null
+                            ? entity.cultivarName
+                            : getString(R.string.detection_cultivar_unspecified);
+                    int suggestion = suggestPhase(entity);
+                    if (suggestion >= 1 && suggestion <= 5) {
+                        selectedPhase = suggestion;
+                        phaseSpinner.setSelection(suggestion - 1);
+                    }
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) { }
+        });
+    }
+
+    private void loadCultivarOptions() {
+        if (workProgramRepository == null) return;
+        workProgramRepository.loadAllForCurrentUser(items -> runOnUiThread(() -> {
+            programOptions.clear();
+            if (items != null) {
+                programOptions.addAll(items);
+            }
+            cultivarOptions.clear();
+            cultivarOptions.add(getString(R.string.detection_cultivar_unspecified));
+            for (WorkProgramEntity entity : programOptions) {
+                cultivarOptions.add(buildCultivarLabel(entity));
+            }
+            cultivarAdapter.notifyDataSetChanged();
+        }));
+    }
+
+    private String buildCultivarLabel(WorkProgramEntity entity) {
+        String cultivar = entity.cultivarName != null ? entity.cultivarName : getString(R.string.detection_cultivar_unspecified);
+        String start = entity.startingDate != null ? entity.startingDate : "N/A";
+        return cultivar + " (" + start + ")";
+    }
+
+    private int suggestPhase(WorkProgramEntity entity) {
+        int maturityDays = WorkProgramDataHelper.getMaturityDays(entity.cultivarName);
+        if (maturityDays <= 0) maturityDays = 90;
+        int dayNumber = calculateDayNumber(entity.startingDate);
+        return TaskSchedule.getPhaseNumber(maturityDays, dayNumber);
+    }
+
+    private int calculateDayNumber(String startDate) {
+        if (startDate == null) return 1;
+        try {
+            Date start = START_DATE_FORMAT.parse(startDate);
+            if (start == null) return 1;
+            long diff = System.currentTimeMillis() - start.getTime();
+            return Math.max(1, (int) (diff / (1000 * 60 * 60 * 24)) + 1);
+        } catch (ParseException e) {
+            return 1;
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_camera_interface);
 
+        // Hide action bar for full-screen camera experience
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle(R.string.scan_section);
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().hide();
         }
 
         previewView = findViewById(R.id.previewView);
-        com.google.android.material.floatingactionbutton.FloatingActionButton captureBtn = findViewById(R.id.captureBtn);
-        com.google.android.material.floatingactionbutton.FloatingActionButton openGalleryBtn = findViewById(R.id.openGalleryButton);
-        Button modelSelectorButton = findViewById(R.id.modelSelectorBtn);
-        modelSelectorBtn = modelSelectorButton; // Keep for backward compatibility
-
+        cultivarSpinner = findViewById(R.id.spinnerCultivar);
+        phaseSpinner = findViewById(R.id.spinnerPhase);
+        selectedCultivarLabel = getString(R.string.detection_cultivar_unspecified);
+        workProgramRepository = new WorkProgramRepository(this);
+        setupPhaseSpinner();
+        setupCultivarSpinner();
+        loadCultivarOptions();
+        
+        // Capture button (now MaterialCardView)
+        View captureBtn = findViewById(R.id.captureBtn);
         captureBtn.setOnClickListener(v -> capturePhoto());
+        
+        // Gallery button (hidden by default, can be accessed via menu)
+        com.google.android.material.floatingactionbutton.FloatingActionButton openGalleryBtn = findViewById(R.id.openGalleryButton);
         openGalleryBtn.setOnClickListener(v -> openGallery());
+        
+        // Model selector button (now MaterialCardView)
+        modelSelectorBtn = findViewById(R.id.modelSelectorBtn);
         
         // Model selector button - toggle between Fruits and Leaves models
         modelSelectorBtn.setOnClickListener(v -> {
             if (currentModelType == ModelType.FRUITS) {
                 currentModelType = ModelType.LEAVES;
-                if (modelSelectorBtn instanceof Button) {
-                    ((Button) modelSelectorBtn).setText("Model: Leaves");
-                    ((Button) modelSelectorBtn).setBackgroundTintList(ContextCompat.getColorStateList(this, android.R.color.holo_green_dark));
-                }
+                // Update icon or visual indicator if needed
+                Toast.makeText(this, "Switched to Leaves model", Toast.LENGTH_SHORT).show();
             } else {
                 currentModelType = ModelType.FRUITS;
-                if (modelSelectorBtn instanceof Button) {
-                    ((Button) modelSelectorBtn).setText("Model: Fruits");
-                    ((Button) modelSelectorBtn).setBackgroundTintList(ContextCompat.getColorStateList(this, android.R.color.holo_blue_dark));
-                }
+                Toast.makeText(this, "Switched to Fruits model", Toast.LENGTH_SHORT).show();
             }
             // Reload model and labels when switching
             tflite = null;
             loadedModelType = null;
             loadLabels();
-            Toast.makeText(this, "Switched to " + (currentModelType == ModelType.FRUITS ? "Fruits" : "Leaves") + " model", Toast.LENGTH_SHORT).show();
         });
+        
+        // Back button
+        ImageButton backButton = findViewById(R.id.backButton);
+        backButton.setOnClickListener(v -> finish());
+        
+        // Menu button
+        ImageButton menuButton = findViewById(R.id.menuButton);
+        menuButton.setOnClickListener(v -> {
+            // Show menu options (gallery, settings, etc.)
+            openGalleryBtn.setVisibility(openGalleryBtn.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
+        });
+        
+        // Header title
+        TextView headerTitle = findViewById(R.id.headerTitle);
+        headerTitle.setText(R.string.scan_section);
 
         // Load labels from assets
         loadLabels();
@@ -207,7 +338,9 @@ public class CameraInterface extends AppCompatActivity {
                                 detectionResults.getOrDefault("prevention", ""),   // add prevention if available
                                 detectionResults.get("pestTitle"),
                                 detectionResults.get("pestDescription"),
-                                detectionResults.getOrDefault("pestImageUri", "")  // add pest image if available
+                                detectionResults.getOrDefault("pestImageUri", ""),  // add pest image if available
+                                selectedCultivarLabel,
+                                selectedPhase
                         );
 
                         // Pass results to DetectionResults activity
@@ -216,6 +349,8 @@ public class CameraInterface extends AppCompatActivity {
                         for (String key : detectionResults.keySet()) {
                             intent.putExtra(key, detectionResults.get(key));
                         }
+                        intent.putExtra("detectionCultivar", selectedCultivarLabel);
+                        intent.putExtra("detectionPhase", selectedPhase);
                         startActivity(intent);
                     }
 
@@ -256,7 +391,9 @@ public class CameraInterface extends AppCompatActivity {
                     detectionResults.getOrDefault("prevention", ""),
                     detectionResults.get("pestTitle"),
                     detectionResults.get("pestDescription"),
-                    detectionResults.getOrDefault("pestImageUri", "")
+                    detectionResults.getOrDefault("pestImageUri", ""),
+                    selectedCultivarLabel,
+                    selectedPhase
             );
 
             Intent intent = new Intent(CameraInterface.this, DetectionResults.class);
@@ -264,6 +401,8 @@ public class CameraInterface extends AppCompatActivity {
             for (String key : detectionResults.keySet()) {
                 intent.putExtra(key, detectionResults.get(key));
             }
+            intent.putExtra("detectionCultivar", selectedCultivarLabel);
+            intent.putExtra("detectionPhase", selectedPhase);
             startActivity(intent);
 
         }

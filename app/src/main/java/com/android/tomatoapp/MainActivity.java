@@ -31,6 +31,11 @@ import androidx.core.view.GravityCompat;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.ValueEventListener;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
@@ -39,6 +44,7 @@ import android.location.Geocoder;
 import android.location.Address;
 import java.util.Locale;
 import java.util.List;
+import java.util.Calendar;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.io.BufferedReader;
@@ -53,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
     TextView textView;
     CardView workprogramselectionCard;
     CardView IPMCard;
-    CardView CostCard;
+    CardView projectedIncomeCard;
     DrawerLayout drawerLayout;
     NavigationView navigationView;
     ActionBarDrawerToggle toggle;
@@ -65,7 +71,17 @@ public class MainActivity extends AppCompatActivity {
     private ImageView weatherIcon;
     private CardView weatherCard;
 
+    // Financial Overview UI
+    private DonutChartView donutChart;
+    private TextView legend1Value, legend2Value, legend3Value;
+    
+    // Calendar Calculation UI
+    private TextView calendarDailyValue;
+    private TextView calendarTotalValue;
+
     private FusedLocationProviderClient fusedLocationClient;
+    private DatabaseReference financialRef;
+    private DatabaseReference calendarRef;
     private static final int REQ_LOCATION = 2001;
     private static final String WEATHER_PREF = "WeatherPref";
     private static final String KEY_LAT = "lat";
@@ -83,7 +99,7 @@ public class MainActivity extends AppCompatActivity {
         user = mAuth.getCurrentUser();
         workprogramselectionCard = findViewById(R.id.wpsCard);
         IPMCard = findViewById(R.id.ipmCard);
-        CostCard = findViewById(R.id.costCard);
+        projectedIncomeCard = findViewById(R.id.projectedIncomeCard);
 
         drawerLayout = findViewById(R.id.drawer_layout);
         navigationView = findViewById(R.id.navigation_view);
@@ -95,8 +111,24 @@ public class MainActivity extends AppCompatActivity {
         weatherIcon = findViewById(R.id.weatherIcon);
         weatherCard = findViewById(R.id.weatherCard);
 
+        // Financial Overview views
+        donutChart = findViewById(R.id.donutChart);
+        legend1Value = findViewById(R.id.legend1Value);
+        legend2Value = findViewById(R.id.legend2Value);
+        legend3Value = findViewById(R.id.legend3Value);
+
+        // Calendar Calculation views
+        calendarDailyValue = findViewById(R.id.calendarDailyValue);
+        calendarTotalValue = findViewById(R.id.calendarTotalValue);
+
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         requestWeather();
+        
+        // Initialize financial overview and calendar
+        if (user != null) {
+            initializeFinancialOverview();
+            initializeCalendar();
+        }
 
         if (weatherCard != null) {
             weatherCard.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, ForecastActivity.class)));
@@ -113,7 +145,7 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        CostCard.setOnClickListener(v -> {
+        projectedIncomeCard.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, CostSelection.class);
             startActivity(intent);
         });
@@ -168,7 +200,24 @@ public class MainActivity extends AppCompatActivity {
         navigationView.setNavigationItemSelectedListener(item -> {
             int id = item.getItemId();
             if (id == R.id.nav_home) {
-                // Handle Home
+                // Already on home, just close drawer
+            } else if (id == R.id.nav_profile) {
+                // Handle Profile - can add profile activity later
+                Toast.makeText(this, "Profile coming soon", Toast.LENGTH_SHORT).show();
+            } else if (id == R.id.nav_history) {
+                Intent intent = new Intent(MainActivity.this, DetectionHistoryActivity.class);
+                startActivity(intent);
+            } else if (id == R.id.nav_balance) {
+                // Navigate to Financial/Projected Income
+                Intent intent = new Intent(MainActivity.this, CostSelection.class);
+                startActivity(intent);
+            } else if (id == R.id.nav_analytics) {
+                // Navigate to Cultivar Analytics
+                Intent intent = new Intent(MainActivity.this, AnalyticsActivity.class);
+                startActivity(intent);
+            } else if (id == R.id.nav_settings) {
+                // Handle Settings - can add settings activity later
+                Toast.makeText(this, "Settings coming soon", Toast.LENGTH_SHORT).show();
             } else if (id == R.id.nav_logout) {
                 FirebaseAuth.getInstance().signOut();
                 startActivity(new Intent(getApplicationContext(), Login.class));
@@ -583,5 +632,168 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    /**
+     * Initialize Financial Overview with donut chart
+     * Fetches data from Firebase and calculates income, expenses, and net income
+     */
+    private void initializeFinancialOverview() {
+        if (user == null) return;
+        
+        String userId = user.getUid();
+        financialRef = FirebaseDatabase.getInstance()
+                .getReference("users")
+                .child(userId)
+                .child("calculations");
+
+        financialRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                double totalIncome = 0;
+                double totalExpenses = 0;
+
+                // Calculate totals from all calculations
+                for (DataSnapshot calcSnapshot : snapshot.getChildren()) {
+                    Double grossIncome = calcSnapshot.child("grossIncome").getValue(Double.class);
+                    Double expenses = calcSnapshot.child("totalExpenses").getValue(Double.class);
+                    
+                    if (grossIncome != null) totalIncome += grossIncome;
+                    if (expenses != null) totalExpenses += expenses;
+                }
+
+                double netIncome = totalIncome - totalExpenses;
+
+                // Update donut chart (showing Income vs Expenses)
+                if (donutChart != null) {
+                    float incomeValue = (float) Math.max(0, totalIncome);
+                    float expensesValue = (float) Math.max(0, totalExpenses);
+                    
+                    // Ensure at least one value is greater than 0 for the chart to display
+                    if (incomeValue > 0 || expensesValue > 0) {
+                        float[] values = {incomeValue, expensesValue};
+                        int[] colors = {
+                                ContextCompat.getColor(MainActivity.this, R.color.sidebar_dark_green),
+                                ContextCompat.getColor(MainActivity.this, R.color.chart_orange)
+                        };
+                        donutChart.setData(values, colors);
+                    } else {
+                        // Show empty chart with default values
+                        float[] values = {0f, 0f};
+                        int[] colors = {
+                                ContextCompat.getColor(MainActivity.this, R.color.sidebar_dark_green),
+                                ContextCompat.getColor(MainActivity.this, R.color.chart_orange)
+                        };
+                        donutChart.setData(values, colors);
+                    }
+                }
+
+                // Update legend values
+                if (legend1Value != null) {
+                    legend1Value.setText(String.format("₱%,.2f", totalIncome));
+                }
+                if (legend2Value != null) {
+                    legend2Value.setText(String.format("₱%,.2f", totalExpenses));
+                }
+                if (legend3Value != null) {
+                    legend3Value.setText(String.format("₱%,.2f", netIncome));
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                // Set default values on error
+                if (donutChart != null) {
+                    float[] values = {0, 0};
+                    int[] colors = {
+                            ContextCompat.getColor(MainActivity.this, R.color.sidebar_dark_green),
+                            ContextCompat.getColor(MainActivity.this, R.color.chart_orange)
+                    };
+                    donutChart.setData(values, colors);
+                }
+                if (legend1Value != null) legend1Value.setText("₱0");
+                if (legend2Value != null) legend2Value.setText("₱0");
+                if (legend3Value != null) legend3Value.setText("₱0");
+            }
+        });
+    }
+
+    /**
+     * Initialize Calendar with task calculations
+     * Fetches work programs and calculates daily/total tasks
+     */
+    private void initializeCalendar() {
+        if (user == null) return;
+
+        String userId = user.getUid();
+        calendarRef = FirebaseDatabase.getInstance()
+                .getReference("users")
+                .child(userId)
+                .child("routineLogs");
+
+        calendarRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                int totalCompletedTasks = 0;
+                java.util.Set<String> uniqueDaysUsed = new java.util.HashSet<>();
+
+                // Get today's date for filtering
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+                String today = sdf.format(new java.util.Date());
+
+                // Process all work programs
+                for (DataSnapshot programSnapshot : snapshot.getChildren()) {
+                    DataSnapshot tasksSnapshot = programSnapshot.child("tasks");
+                    if (tasksSnapshot.exists()) {
+                        for (DataSnapshot taskSnapshot : tasksSnapshot.getChildren()) {
+                            String dateStr = taskSnapshot.getKey();
+                            String status = taskSnapshot.getValue(String.class);
+                            
+                            if (dateStr != null) {
+                                // Count unique days used (days that have tasks, regardless of status)
+                                uniqueDaysUsed.add(dateStr);
+                                
+                                // Count completed tasks for total
+                                if ("completed".equals(status)) {
+                                    totalCompletedTasks++;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                int daysUsed = uniqueDaysUsed.size();
+
+                // Update calendar calculation values
+                if (calendarDailyValue != null) {
+                    if (daysUsed == 1) {
+                        calendarDailyValue.setText(String.format("%d day", daysUsed));
+                    } else {
+                        calendarDailyValue.setText(String.format("%d days", daysUsed));
+                    }
+                }
+                if (calendarTotalValue != null) {
+                    if (totalCompletedTasks == 1) {
+                        calendarTotalValue.setText(String.format("%d task", totalCompletedTasks));
+                    } else {
+                        calendarTotalValue.setText(String.format("%d tasks", totalCompletedTasks));
+                    }
+                }
+
+
+                // Note: Calendar decorators would need to be added here
+                // For now, we're just tracking the dates
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                if (calendarDailyValue != null) {
+                    calendarDailyValue.setText("0 days");
+                }
+                if (calendarTotalValue != null) {
+                    calendarTotalValue.setText("0 tasks");
+                }
+            }
+        });
     }
 }

@@ -2,21 +2,30 @@ package com.android.tomatoapp;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.InputType;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
+import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 
 import androidx.cardview.widget.CardView;
 import androidx.core.content.ContextCompat;
@@ -40,9 +49,13 @@ public class CostSelection extends AppCompatActivity {
     private FloatingActionButton btnAdd;
     private CultivarAdapter adapter;
     private List<Cultivar> cultivarList = new ArrayList<>();
+    private TextView programCountText;
+    private View emptyState;
+    private ImageView headerMenuButton;
 
     private DatabaseReference dbRef;
     private String userId;
+    private String currentSortOrder = "date_desc"; // Default: newest first
 
     DrawerLayout drawerLayout;
     NavigationView navigationView;
@@ -59,6 +72,9 @@ public class CostSelection extends AppCompatActivity {
         recyclerView.setAdapter(adapter);
 
         btnAdd = findViewById(R.id.addButton);
+        programCountText = findViewById(R.id.programCountText);
+        emptyState = findViewById(R.id.emptyState);
+        headerMenuButton = findViewById(R.id.headerMenuButton);
 
         // Check if user is logged in
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -83,9 +99,33 @@ public class CostSelection extends AppCompatActivity {
                     String startDate = child.child("startDate").getValue(String.class);
 
                     if (programId != null && cultivar != null && startDate != null) {
-                        cultivarList.add(new Cultivar(programId, cultivar, startDate, R.drawable.ic_launcher_foreground));
+                        cultivarList.add(new Cultivar(programId, cultivar, startDate, R.mipmap.ic_logo));
                     }
                 }
+                
+                // Update program count
+                int count = cultivarList.size();
+                if (programCountText != null) {
+                    if (count == 1) {
+                        programCountText.setText("1 program");
+                    } else {
+                        programCountText.setText(String.format("%d programs", count));
+                    }
+                }
+                
+                // Show/hide empty state
+                if (emptyState != null && recyclerView != null) {
+                    if (count == 0) {
+                        emptyState.setVisibility(View.VISIBLE);
+                        recyclerView.setVisibility(View.GONE);
+                    } else {
+                        emptyState.setVisibility(View.GONE);
+                        recyclerView.setVisibility(View.VISIBLE);
+                    }
+                }
+                
+                // Apply current sort order
+                sortPrograms(currentSortOrder);
                 adapter.notifyDataSetChanged();
             }
 
@@ -93,10 +133,7 @@ public class CostSelection extends AppCompatActivity {
             public void onCancelled(@NonNull DatabaseError error) {}
         });
 
-        btnAdd.setOnClickListener(v -> {
-            // You can add functionality for adding new cost entries here
-            Toast.makeText(CostSelection.this, "Add new cost entry", Toast.LENGTH_SHORT).show();
-        });
+        btnAdd.setOnClickListener(v -> showAddCalculationDialog());
 
         drawerLayout = findViewById(R.id.drawer_layout);
         navigationView = findViewById(R.id.navigation_view);
@@ -122,6 +159,289 @@ public class CostSelection extends AppCompatActivity {
             drawerLayout.closeDrawers();
             return true;
         });
+
+        // Header menu button - Sort options
+        headerMenuButton.setOnClickListener(v -> showSortMenu());
+    }
+
+    private void showSortMenu() {
+        String[] sortOptions = {
+            "Newest First",
+            "Oldest First",
+            "Name (A-Z)",
+            "Name (Z-A)"
+        };
+
+        new AlertDialog.Builder(this)
+                .setTitle("Sort Work Programs")
+                .setItems(sortOptions, (dialog, which) -> {
+                    switch (which) {
+                        case 0: // Newest First
+                            sortPrograms("date_desc");
+                            break;
+                        case 1: // Oldest First
+                            sortPrograms("date_asc");
+                            break;
+                        case 2: // Name A-Z
+                            sortPrograms("name_asc");
+                            break;
+                        case 3: // Name Z-A
+                            sortPrograms("name_desc");
+                            break;
+                    }
+                })
+                .show();
+    }
+
+    private void showAddCalculationDialog() {
+        // Create dialog view
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_calculation, null);
+        
+        TextInputLayout hectareLayout = dialogView.findViewById(R.id.hectareInputLayout);
+        AutoCompleteTextView cultivarSpinner = dialogView.findViewById(R.id.cultivarSpinner);
+        TextInputEditText hectareEditText = dialogView.findViewById(R.id.hectareEditText);
+        
+        // Cultivar data (same as Workprogram.java)
+        final String[][] cultivarsData = {
+                {"Victory F1", "Semi-determinate", "90", "110"},
+                {"HOPE F1", "Semi-determinate", "90", "110"},
+                {"Maganda F1", "Semi-determinate", "80", "100"},
+                {"Malakas F1", "Semi-determinate", "95", "115"},
+                {"Rocky 1 F1", "Semi-determinate", "90", "110"},
+                {"Improved KS Apollo", "Semi-determinate", "85", "105"},
+                {"Improved Pope", "Semi-determinate", "85", "105"},
+                {"Super Pope", "Semi-determinate", "85", "105"},
+                {"Maguilas", "Determinate", "85", "105"},
+                {"Maunlad", "Determinate", "80", "100"},
+                {"Mapalad", "Determinate", "80", "100"},
+                {"Abiona F1", "Semi-determinate", "95", "115"},
+                {"Akna F1", "Semi-determinate", "105", "125"},
+                {"Amari F1", "Semi-determinate", "110", "130"},
+                {"Anita F1", "Semi-determinate", "110", "130"},
+                {"Colette F1", "Determinate", "105", "125"},
+                {"Danica F1", "Semi-determinate", "105", "125"},
+                {"Granger F1", "Semi-determinate", "105", "125"},
+                {"Janet F1", "Semi-determinate", "120", "140"},
+                {"Platinum F1", "Semi-determinate", "100", "120"},
+                {"Reina F1", "Semi-determinate", "105", "125"},
+                {"Renata F1", "Semi-determinate", "105", "125"},
+                {"Rubellite F1", "Semi-determinate", "90", "110"},
+                {"TOM-055 F1", "Semi-determinate", "60", "75"},
+                {"TOM-262 OP", "Determinate", "60", "75"},
+                {"Dalwangan Tm1", "Determinate", "90", "110"},
+                {"Dalwangan Tm2", "Determinate", "90", "110"},
+                {"NSIC 1999 Tm09", "Determinate", "100", "120"},
+                {"Mara", "Determinate", "78", "95"},
+                {"AniMax 1", "Determinate", "87", "105"},
+                {"AniMax 2", "Semi-determinate", "87", "105"},
+                {"Golden Globe", "Semi-determinate", "92", "112"},
+                {"Maxxime", "Indeterminate", "105", "125"}
+        };
+        
+        // Create array of cultivar names for spinner
+        String[] cultivarNames = new String[cultivarsData.length];
+        for (int i = 0; i < cultivarsData.length; i++) {
+            cultivarNames[i] = cultivarsData[i][0]; // cultivar name is column 0
+        }
+        
+        // Set up spinner adapter
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_dropdown_item_1line, cultivarNames);
+        cultivarSpinner.setAdapter(adapter);
+        
+        // Set input type for hectare
+        hectareEditText.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("New Calculation")
+                .setView(dialogView)
+                .setPositiveButton("Calculate", null)
+                .setNegativeButton("Cancel", null)
+                .create();
+        
+        // Override positive button to handle validation and prevent auto-close
+        dialog.setOnShowListener(d -> {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                String cultivarName = cultivarSpinner.getText() != null ? 
+                        cultivarSpinner.getText().toString().trim() : "";
+                String hectareStr = hectareEditText.getText() != null ? 
+                        hectareEditText.getText().toString().trim() : "";
+                
+                if (cultivarName.isEmpty()) {
+                    Toast.makeText(this, "Please select a cultivar", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                
+                if (hectareStr.isEmpty()) {
+                    Toast.makeText(this, "Please enter the number of hectares", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                
+                double hectare;
+                try {
+                    hectare = Double.parseDouble(hectareStr);
+                    if (hectare <= 0) {
+                        Toast.makeText(this, "Hectare must be greater than 0", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                } catch (NumberFormatException e) {
+                    Toast.makeText(this, "Please enter a valid number for hectares", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                
+                // All validation passed - close dialog and proceed
+                dialog.dismiss();
+                
+                // Get cultivar data
+                String growthHabit = CultivarNPData.getGrowthHabit(cultivarName);
+                int NP = CultivarNPData.getNP(cultivarName);
+                
+                // Generate current date
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault());
+                String currentDate = sdf.format(new java.util.Date());
+                
+                // Navigate to Calculator
+                Intent intent = new Intent(CostSelection.this, Calculator.class);
+                intent.putExtra("cultivar_name", cultivarName);
+                intent.putExtra("growth_habit", growthHabit);
+                intent.putExtra("NP_VALUE", (double) NP);
+                intent.putExtra("date_saved", currentDate);
+                intent.putExtra("hectare_prefilled", hectare);
+                startActivity(intent);
+            });
+        });
+        
+        dialog.show();
+    }
+
+    private void fetchSavedHectare(String cultivarName, String growthHabit, int NP, String dateSaved) {
+        // Fetch saved hectare from the work program
+        // First, find the work program ID for this cultivar
+        dbRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                double savedHectare = 0;
+                String programId = null;
+                
+                // Find the work program matching this cultivar and date
+                for (DataSnapshot child : snapshot.getChildren()) {
+                    String programCultivar = child.child("cultivar").getValue(String.class);
+                    String programDate = child.child("startDate").getValue(String.class);
+                    
+                    if (cultivarName.equals(programCultivar) && dateSaved.equals(programDate)) {
+                        programId = child.getKey();
+                        // Check if hectare is stored in the work program as "landArea"
+                        // Try different data types (Double, Long, String)
+                        Object hectareObj = child.child("landArea").getValue();
+                        if (hectareObj != null) {
+                            if (hectareObj instanceof Double) {
+                                savedHectare = (Double) hectareObj;
+                            } else if (hectareObj instanceof Long) {
+                                savedHectare = ((Long) hectareObj).doubleValue();
+                            } else if (hectareObj instanceof String) {
+                                try {
+                                    savedHectare = Double.parseDouble((String) hectareObj);
+                                } catch (NumberFormatException e) {
+                                    // Ignore
+                                }
+                            }
+                        }
+                        break;
+                    }
+                }
+                
+                // If hectare not found in work program, try to fetch from calculations
+                if (savedHectare <= 0 && programId != null) {
+                    fetchHectareFromCalculations(programId, cultivarName, growthHabit, NP, dateSaved);
+                    return;
+                }
+                
+                // Navigate to Calculator with all data including saved hectare
+                // Even if savedHectare is 0, we still pass programId so Calculator can fetch it
+                navigateToCalculator(cultivarName, growthHabit, NP, dateSaved, savedHectare, programId);
+            }
+            
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                // If fetch fails, proceed without saved hectare
+                navigateToCalculator(cultivarName, growthHabit, NP, dateSaved, 0, null);
+            }
+        });
+    }
+    
+    private void fetchHectareFromCalculations(String programId, String cultivarName, String growthHabit, int NP, String dateSaved) {
+        // Try to fetch hectare from the most recent calculation
+        DatabaseReference calculationsRef = FirebaseDatabase.getInstance()
+                .getReference("users")
+                .child(userId)
+                .child("calculations");
+        
+        calculationsRef.orderByChild("dateCreated")
+                .limitToLast(10) // Check last 10 calculations
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        double savedHectare = 0;
+                        
+                        // Find the most recent calculation with hectare > 0
+                        if (snapshot.exists()) {
+                            for (DataSnapshot child : snapshot.getChildren()) {
+                                CalculationModel calculation = child.getValue(CalculationModel.class);
+                                if (calculation != null && calculation.hectare > 0) {
+                                    savedHectare = calculation.hectare;
+                                    break; // Use the most recent one
+                                }
+                            }
+                        }
+                        
+                        navigateToCalculator(cultivarName, growthHabit, NP, dateSaved, savedHectare, programId);
+                    }
+                    
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        navigateToCalculator(cultivarName, growthHabit, NP, dateSaved, 0, programId);
+                    }
+                });
+    }
+    
+    private void navigateToCalculator(String cultivarName, String growthHabit, int NP, String dateSaved, 
+                                     double savedHectare, String programId) {
+        Intent intent = new Intent(CostSelection.this, Calculator.class);
+        intent.putExtra("cultivar_name", cultivarName);
+        intent.putExtra("growth_habit", growthHabit);
+        intent.putExtra("NP_VALUE", (double) NP);
+        intent.putExtra("date_saved", dateSaved);
+        // Always pass hectare if we have it (even if 0, Calculator will fetch from Firebase)
+        if (savedHectare > 0) {
+            intent.putExtra("hectare_prefilled", savedHectare);
+        }
+        // Always pass programId so Calculator can fetch hectare from Firebase if needed
+        if (programId != null) {
+            intent.putExtra("program_id", programId);
+        }
+        startActivity(intent);
+    }
+
+    private void sortPrograms(String sortOrder) {
+        currentSortOrder = sortOrder;
+        
+        switch (sortOrder) {
+            case "date_desc": // Newest first
+                cultivarList.sort((a, b) -> b.date.compareTo(a.date));
+                break;
+            case "date_asc": // Oldest first
+                cultivarList.sort((a, b) -> a.date.compareTo(b.date));
+                break;
+            case "name_asc": // A-Z
+                cultivarList.sort((a, b) -> a.name.compareToIgnoreCase(b.name));
+                break;
+            case "name_desc": // Z-A
+                cultivarList.sort((a, b) -> b.name.compareToIgnoreCase(a.name));
+                break;
+        }
+        
+        adapter.notifyDataSetChanged();
+        Toast.makeText(this, "Sorted", Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -170,32 +490,43 @@ public class CostSelection extends AppCompatActivity {
         public void onBindViewHolder(@NonNull CultivarViewHolder holder, int position) {
             Cultivar item = items.get(position);
             holder.name.setText(item.name);
-            holder.date.setText(item.date);
+            
+            // Format date as "Started: YYYY-MM-DD"
+            holder.date.setText(String.format("Started: %s", item.date));
             holder.image.setImageResource(item.imageRes);
 
-            // 🍅 Rotate through tomato-themed colors
+            // 🍅 Rotate through tomato-themed colors with better contrast
             int[] bgColors = {
                     R.color.tomato_red,
-                    R.color.ripe_orange,
                     R.color.fresh_green,
-                    R.color.golden_yellow,
-                    R.color.soft_cream
+                    R.color.warm_orange,
+                    R.color.sidebar_dark_green,
+                    R.color.ripe_orange
             };
 
             int colorIndex = position % bgColors.length;
             int bgColor = ContextCompat.getColor(holder.itemView.getContext(), bgColors[colorIndex]);
-
             holder.card.setCardBackgroundColor(bgColor);
 
-            // Adjust text color for readability
-            if (colorIndex == 0 || colorIndex == 1 || colorIndex == 2) {
-                // Dark backgrounds → white text
-                holder.name.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), android.R.color.white));
-                holder.date.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), android.R.color.white));
-            } else {
-                // Light backgrounds → dark text
-                holder.name.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), android.R.color.black));
-                holder.date.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), android.R.color.darker_gray));
+            // All backgrounds are vibrant, so use white text for better contrast
+            holder.name.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), android.R.color.white));
+            holder.date.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), android.R.color.white));
+            
+            // Update status indicator and text
+            if (holder.statusIndicator != null) {
+                // Green for active programs
+                holder.statusIndicator.setBackground(ContextCompat.getDrawable(
+                    holder.itemView.getContext(), R.drawable.circle_green));
+            }
+            if (holder.statusText != null) {
+                holder.statusText.setText("Active");
+                holder.statusText.setTextColor(ContextCompat.getColor(
+                    holder.itemView.getContext(), android.R.color.white));
+            }
+
+            // Hide delete button for cost selection (not needed here)
+            if (holder.deleteButton != null) {
+                holder.deleteButton.setVisibility(View.GONE);
             }
 
             // 🎯 Click → open Calculator with cultivar info
@@ -208,13 +539,8 @@ public class CostSelection extends AppCompatActivity {
                     String growthHabit = CultivarNPData.getGrowthHabit(cultivarName);
                     int NP = CultivarNPData.getNP(cultivarName);
 
-                    // 🔄 Pass data to Calculator.java
-                    Intent intent = new Intent(CostSelection.this, Calculator.class);
-                    intent.putExtra("cultivar_name", cultivarName);
-                    intent.putExtra("growth_habit", growthHabit);
-                    intent.putExtra("NP_VALUE", (double) NP);
-                    intent.putExtra("date_saved", dateSaved);
-                    startActivity(intent);
+                    // 🔍 Fetch saved hectare from Firebase calculations
+                    fetchSavedHectare(cultivarName, growthHabit, NP, dateSaved);
                 } else {
                     Toast.makeText(CostSelection.this, "Error loading cultivar details", Toast.LENGTH_SHORT).show();
                 }
@@ -227,9 +553,10 @@ public class CostSelection extends AppCompatActivity {
         }
 
         class CultivarViewHolder extends RecyclerView.ViewHolder {
-            TextView name, date;
-            ImageView image;
+            TextView name, date, statusText;
+            ImageView image, deleteButton;
             CardView card;
+            View statusIndicator;
 
             CultivarViewHolder(@NonNull View itemView) {
                 super(itemView);
@@ -237,6 +564,9 @@ public class CostSelection extends AppCompatActivity {
                 date = itemView.findViewById(R.id.cultivarDate);
                 image = itemView.findViewById(R.id.cultivarImage);
                 card = itemView.findViewById(R.id.cultivarCard);
+                statusText = itemView.findViewById(R.id.statusText);
+                statusIndicator = itemView.findViewById(R.id.statusIndicator);
+                deleteButton = itemView.findViewById(R.id.deleteButton);
             }
         }
     }

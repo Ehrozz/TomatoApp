@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="4dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="2dp"
+    android:backgroundTint="@color/white"
+    android:minWidth="1000dp">
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:gravity="center_vertical"
+        android:minWidth="1000dp">
+
+        <!-- Cultivar Column -->
+        <TextView
+            android:id="@+id/tableCultivar"
+            android:layout_width="120dp"
+            android:layout_height="wrap_content"
+            android:text="Cultivar"
+            android:textSize="12sp"
+            android:textColor="@color/text_primary"
+            android:maxLines="2"
+            android:ellipsize="end" />
+
+        <!-- Area Size Column -->
+        <TextView
+            android:id="@+id/tableArea"
+            android:layout_width="80dp"
+            android:layout_height="wrap_content"
+            android:text="Area"
+            android:textSize="12sp"
+            android:textColor="@color/text_primary"
+            android:gravity="end" />
+
+        <!-- Starting Date Column -->
+        <TextView
+            android:id="@+id/tableStartDate"
+            android:layout_width="100dp"
+            android:layout_height="wrap_content"
+            android:text="Date"
+            android:textSize="12sp"
+            android:textColor="@color/text_primary"
+            android:gravity="center" />
+
+        <!-- Phases Summary Column -->
+        <TextView
+            android:id="@+id/tablePhases"
+            android:layout_width="80dp"
+            android:layout_height="wrap_content"
+            android:text="Phases"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
+            android:gravity="center"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <!-- Detection History Summary Column -->
+        <TextView
+            android:id="@+id/tableDetections"
+            android:layout_width="100dp"
+            android:layout_height="wrap_content"
+            android:text="Detections"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
+            android:gravity="center"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <!-- Projected Income Column -->
+        <TextView
+            android:id="@+id/tableIncome"
+            android:layout_width="120dp"
+            android:layout_height="wrap_content"
+            android:text="Income"
+            android:textSize="12sp"
+            android:textColor="@color/sidebar_dark_green"
+            android:gravity="end"
+            android:textStyle="bold" />
+
+        <!-- Projected Expenses Column -->
+        <TextView
+            android:id="@+id/tableExpenses"
+            android:layout_width="120dp"
+            android:layout_height="wrap_content"
+            android:text="Expenses"
+            android:textSize="12sp"
+            android:textColor="@color/chart_orange"
+            android:gravity="end"
+            android:textStyle="bold" />
+
+        <!-- Projected Profit Column -->
+        <TextView
+            android:id="@+id/tableProfit"
+            android:layout_width="120dp"
+            android:layout_height="wrap_content"
+            android:text="Profit"
+            android:textSize="12sp"
+            android:textColor="@color/text_primary"
+            android:gravity="end"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>
+
