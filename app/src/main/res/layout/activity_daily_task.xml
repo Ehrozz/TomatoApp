@@ -15,11 +15,6 @@
         android:orientation="vertical"
         android:fitsSystemWindows="true">
 
-        <!-- Spacer for Action Bar -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize" />
-
         <ScrollView
             android:layout_width="match_parent"
             android:layout_height="0dp"
@@ -95,6 +90,8 @@
                             android:src="@mipmap/ic_logo"
                             android:contentDescription="Cultivar Image"
                             android:scaleType="centerCrop"
+                            android:background="@drawable/circular_image_border"
+                            android:clipToOutline="true"
                             android:layout_marginStart="16dp" />
                     </RelativeLayout>
                 </com.google.android.material.card.MaterialCardView>
@@ -135,31 +132,93 @@
                     android:layout_height="wrap_content"
                     android:nestedScrollingEnabled="false" />
 
-                <!-- Complete Button -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnComplete"
+                <!-- Captured Images Section -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/monitoringImagesCard"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="24dp"
-                    android:text="Mark All Tasks Complete"
-                    android:textColor="@color/white"
-                    android:backgroundTint="@color/fresh_green"
-                    android:textSize="16sp"
-                    android:padding="16dp"
-                    app:cornerRadius="12dp" />
+                    android:layout_marginBottom="16dp"
+                    android:visibility="gone"
+                    app:cardBackgroundColor="@color/white"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="4dp">
 
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Monitoring Images"
+                            android:textColor="@color/text_primary"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="12dp" />
+
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/monitoringImagesRecyclerView"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:nestedScrollingEnabled="false" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Action Buttons Row (Skip and Complete side by side) -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="24dp"
+                    android:gravity="center_vertical">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSkipTasks"
+                        android:layout_width="0dp"
+                        android:layout_height="56dp"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="8dp"
+                        android:text="Skip Today's Tasks"
+                        android:textColor="@color/sidebar_dark_green"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:textSize="14sp"
+                        android:minHeight="56dp"
+                        android:maxLines="2"
+                        android:ellipsize="end"
+                        app:cornerRadius="12dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnComplete"
+                        android:layout_width="0dp"
+                        android:layout_height="56dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:text="Mark All Tasks Complete"
+                        android:textColor="@color/white"
+                        android:backgroundTint="@color/fresh_green"
+                        android:textSize="14sp"
+                        android:minHeight="56dp"
+                        android:maxLines="2"
+                        android:ellipsize="end"
+                        app:cornerRadius="12dp" />
+                </LinearLayout>
+
+                <!-- Daily Expenses Button -->
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnSkipTasks"
+                    android:id="@+id/btnDailyExpenses"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="Skip Today's Tasks"
-                    android:textColor="@color/sidebar_dark_green"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:textSize="16sp"
+                    android:text="Daily Expenses"
+                    android:textAllCaps="false"
+                    android:icon="@android:drawable/ic_menu_sort_by_size"
                     android:padding="16dp"
                     app:cornerRadius="12dp" />
 
+                <!-- Monitor Plant Button -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnMonitorPlant"
                     android:layout_width="match_parent"

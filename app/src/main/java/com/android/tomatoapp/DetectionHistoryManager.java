@@ -3,11 +3,15 @@ package com.android.tomatoapp;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class DetectionHistoryManager {
     private static final String PREF_NAME = "detection_history";
@@ -51,15 +55,73 @@ public class DetectionHistoryManager {
 
             historyArray.put(entry);
             prefs.edit().putString(KEY_HISTORY, historyArray.toString()).apply();
+            
+            // Also save to local database
+            FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+            if (currentUser != null) {
+                LocalDataManager.getInstance(context).saveDetectionHistory(
+                        currentUser.getUid(),
+                        null, // programId - could be enhanced to link to work program
+                        imageUri,
+                        title,
+                        accuracy,
+                        description,
+                        symptoms,
+                        cause,
+                        cure,
+                        prevention,
+                        pestTitle,
+                        pestDescription,
+                        pestImageUri,
+                        entry.optLong("timestamp", System.currentTimeMillis()),
+                        cultivar,
+                        phase
+                );
+            }
         } catch (JSONException e) {
             e.printStackTrace();
         }
     }
 
     public static ArrayList<JSONObject> getHistory(Context context) {
+        ArrayList<JSONObject> historyList = new ArrayList<>();
+        
+        // Try to get from local database first (if user is logged in)
+        com.google.firebase.auth.FirebaseUser currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            try {
+                List<DetectionHistoryEntity> entities = LocalDataManager.getInstance(context).getDetectionHistoryFromLocal(currentUser.getUid());
+                for (DetectionHistoryEntity entity : entities) {
+                    JSONObject entry = new JSONObject();
+                    entry.put("imageUri", entity.imageUri);
+                    entry.put("disease", entity.disease);
+                    entry.put("accuracy", entity.accuracy);
+                    entry.put("description", entity.description);
+                    entry.put("symptoms", entity.symptoms);
+                    entry.put("cause", entity.cause);
+                    entry.put("cure", entity.cure);
+                    entry.put("prevention", entity.prevention);
+                    entry.put("pestTitle", entity.pestTitle);
+                    entry.put("pestDescription", entity.pestDescription);
+                    entry.put("pestImageUri", entity.pestImageUri);
+                    entry.put("timestamp", entity.timestamp);
+                    entry.put("cultivar", entity.cultivar);
+                    entry.put("phase", entity.phase);
+                    historyList.add(entry);
+                }
+                
+                // If we got data from local database, return it
+                if (!historyList.isEmpty()) {
+                    return historyList;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        
+        // Fallback to SharedPreferences (for backward compatibility)
         SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         String historyJson = prefs.getString(KEY_HISTORY, "[]");
-        ArrayList<JSONObject> historyList = new ArrayList<>();
 
         try {
             JSONArray historyArray = new JSONArray(historyJson);

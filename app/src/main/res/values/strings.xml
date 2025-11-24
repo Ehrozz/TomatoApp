@@ -38,8 +38,12 @@
     <string name="monitor_reference_hint">Visual guide for this phase and cultivar.</string>
     <string name="monitor_notes">Notes (what you observe)</string>
     <string name="monitor_save_entry">Save monitoring entry</string>
+    <string name="monitor_scan_button">Scan for diseases</string>
     <string name="monitor_saved_success">Monitoring entry saved</string>
     <string name="monitor_missing_description">Please add a note.</string>
+    <string name="monitor_detection_saved_to_program">Detection saved to this work program</string>
+    <string name="monitor_detection_auto_note">Automated disease scan captured for this phase.</string>
+    <string name="monitor_scan_requires_program">Save the work program before scanning.</string>
     <string name="monitor_button_label">Monitor Plant</string>
     <string name="monitor_title">Plant Monitoring</string>
     <string name="detection_select_cultivar_label">Cultivar</string>
@@ -47,4 +51,158 @@
     <string name="detection_cultivar_unspecified">Unspecified cultivar</string>
     <string name="detection_phase_placeholder">Phase %1$d</string>
     <string name="detection_context_format">%1$s • Phase %2$d</string>
+    <string name="profile_notifications_title">Notifications</string>
+    <string name="notification_switch_tasks">Daily task reminders</string>
+    <string name="notification_switch_monitoring">Monitoring &amp; disease alerts</string>
+    <string name="notification_switch_general">Weekly tips &amp; warnings</string>
+    <string name="notification_permission_message">Turn on notifications in system settings to stay updated.</string>
+    <string-array name="general_tip_messages">
+        <item>Remember to log skipped tasks so analytics stay accurate.</item>
+        <item>Humidity spikes invite pests. Inspect leaves today.</item>
+        <item>Capture monitoring notes weekly to strengthen baselines.</item>
+        <item>Fertilizer works best in the morning—plan it into your tasks.</item>
+        <item>Review detection history to spot recurring disease patterns.</item>
+    </string-array>
+    
+    <!-- Login/Register Error Messages -->
+    <string name="error_enter_identifier">Enter email, username, or phone number</string>
+    <string name="error_enter_password">Enter password</string>
+    <string name="error_account_not_found">Account not found for provided identifier</string>
+    <string name="error_login_failed">Login failed. Please check your credentials.</string>
+    <string name="error_authentication_failed">Authentication failed. Please try again.</string>
+    <string name="error_google_signin_failed">Google sign in failed. Please try again.</string>
+    <string name="error_network">Network error. Please check your connection.</string>
+    <string name="error_unknown">An unexpected error occurred. Please try again.</string>
+    <string name="success_login">Login Successful</string>
+    <string name="welcome_user">Welcome %1$s</string>
+    
+    <!-- Register Error Messages -->
+    <string name="error_field_required">This field is required</string>
+    <string name="error_fullname_too_short">Full name must be at least 2 characters</string>
+    <string name="error_username_too_short">Username must be at least 3 characters</string>
+    <string name="error_username_invalid">Username can only contain letters, numbers, and underscores</string>
+    <string name="error_username_taken">Username already taken</string>
+    <string name="error_email_invalid">Enter a valid email address</string>
+    <string name="error_email_taken">Email is already registered</string>
+    <string name="error_password_too_short">Password must be at least %1$d characters</string>
+    <string name="error_password_weak">Password must contain uppercase, lowercase, and numbers</string>
+    <string name="error_phone_required">Phone number is required</string>
+    <string name="error_phone_invalid">Invalid phone format. Use +63...</string>
+    <string name="error_phone_taken">Phone number is already registered</string>
+    <string name="error_otp_required">Enter OTP code</string>
+    <string name="error_otp_length">OTP must be %1$d digits</string>
+    <string name="error_otp_request_first">Please request OTP first</string>
+    <string name="error_phone_verify_first">Please verify phone number first</string>
+    <string name="error_verification_quota">Too many requests. Please try again later.</string>
+    <string name="error_verification_failed">Verification failed. Please try again.</string>
+    <string name="error_registration_failed">Registration failed. Please try again.</string>
+    <string name="error_save_user_data">Failed to save user data. Please try again.</string>
+    <string name="error_unknown_occurred">An unexpected error occurred</string>
+    <string name="success_account_created">Account Created Successfully</string>
+    <string name="success_phone_verified">Phone verified successfully</string>
+    <string name="success_otp_sent">OTP sent successfully</string>
+    <string name="info_ui_elements_missing">Error: Some UI elements are missing</string>
+    
+    <!-- OTP Messages -->
+    <string name="btn_send_otp">Send OTP</string>
+    <string name="btn_resend_otp">Resend OTP (%1$ds)</string>
+    <string name="test_otp_mode">Test OTP: %1$s</string>
+    <string name="phone_verified_test_mode">Phone verified (test mode)</string>
+    
+    <!-- Settings Screen -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_app_preferences">App Preferences</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_farming">Farming Preferences</string>
+    <string name="settings_data">Data Management</string>
+    <string name="settings_account">Account &amp; Security</string>
+    
+    <!-- App Preferences -->
+    <string name="settings_language">Language</string>
+    <string name="settings_language_summary">Choose your preferred language</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_summary">Light or Dark mode</string>
+    <string name="settings_weather_unit">Weather Temperature Unit</string>
+    <string name="settings_weather_unit_summary">Celsius or Fahrenheit</string>
+    <string name="language_english">English</string>
+    <string name="language_filipino">Filipino</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_system">System Default</string>
+    <string name="weather_unit_celsius">Celsius (°C)</string>
+    <string name="weather_unit_fahrenheit">Fahrenheit (°F)</string>
+    
+    <!-- Notifications -->
+    <string name="settings_notification_sound">Notification Sound</string>
+    <string name="settings_notification_sound_summary">Choose notification sound</string>
+    <string name="settings_notification_time">Notification Time</string>
+    <string name="settings_notification_time_summary">Set default reminder time</string>
+    <string name="settings_quiet_hours">Quiet Hours</string>
+    <string name="settings_quiet_hours_summary">Do not disturb during these hours</string>
+    <string name="settings_quiet_hours_enabled">Enable Quiet Hours</string>
+    <string name="settings_quiet_hours_start">Start Time</string>
+    <string name="settings_quiet_hours_end">End Time</string>
+    <string name="notification_sound_default">Default</string>
+    <string name="notification_sound_none">None</string>
+    
+    <!-- Farming Preferences -->
+    <string name="settings_default_cultivar">Default Cultivar</string>
+    <string name="settings_default_cultivar_summary">Preferred tomato cultivar</string>
+    <string name="settings_measurement_unit">Measurement Units</string>
+    <string name="settings_measurement_unit_summary">Metric or Imperial</string>
+    <string name="settings_date_format">Date Format</string>
+    <string name="settings_date_format_summary">How dates are displayed</string>
+    <string name="measurement_unit_metric">Metric</string>
+    <string name="measurement_unit_imperial">Imperial</string>
+    <string name="date_format_ddmmyyyy">DD/MM/YYYY</string>
+    <string name="date_format_mmddyyyy">MM/DD/YYYY</string>
+    <string name="date_format_yyyymmdd">YYYY-MM-DD</string>
+    <string name="cultivar_none">None Selected</string>
+    
+    <!-- Data Management -->
+    <string name="settings_clear_history">Clear Detection History</string>
+    <string name="settings_clear_history_summary">Remove all detection records</string>
+    <string name="settings_storage_info">Storage Information</string>
+    <string name="settings_storage_info_summary">View storage usage</string>
+    <string name="clear_history_title">Clear History</string>
+    <string name="clear_history_message">Are you sure you want to clear all detection history? This action cannot be undone.</string>
+    <string name="clear_history_success">History cleared successfully</string>
+    <string name="storage_total">Total Storage</string>
+    <string name="storage_history">Detection History</string>
+    <string name="storage_cache">Cache</string>
+    <string name="storage_free">Free Space</string>
+    <string name="btn_refresh_storage">Refresh</string>
+    
+    <!-- Account & Security -->
+    <string name="settings_change_password">Change Password</string>
+    <string name="settings_change_password_summary">Update your account password</string>
+    <string name="settings_delete_account">Delete Account</string>
+    <string name="settings_delete_account_summary">Permanently delete your account</string>
+    <string name="settings_terms_of_service">Terms of Service</string>
+    <string name="settings_terms_of_service_summary">View terms and conditions</string>
+    <string name="delete_account_title">Delete Account</string>
+    <string name="delete_account_warning">This will permanently delete your account and all associated data. This action cannot be undone.</string>
+    <string name="delete_account_confirm">Type DELETE to confirm</string>
+    <string name="delete_account_password_hint">Enter your password to confirm</string>
+    <string name="delete_account_success">Account deleted successfully</string>
+    <string name="delete_account_failed">Failed to delete account</string>
+    <string name="change_password_title">Change Password</string>
+    <string name="change_password_current">Current Password</string>
+    <string name="change_password_new">New Password</string>
+    <string name="change_password_confirm">Confirm New Password</string>
+    <string name="change_password_success">Password changed successfully</string>
+    <string name="change_password_failed">Failed to change password</string>
+    <string name="change_password_mismatch">New passwords do not match</string>
+    <string name="change_password_weak">Password must contain uppercase, lowercase, and numbers</string>
+    <string name="btn_save">Save</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_delete">Delete</string>
+    <string name="btn_confirm">Confirm</string>
+    
+    <!-- Terms and Conditions -->
+    <string name="terms_title">Terms and Conditions</string>
+    <string name="terms_agree_checkbox">I have read and agree to the Terms and Conditions</string>
+    <string name="terms_accept_button">Accept and Continue</string>
+    <string name="terms_must_accept">You must accept the Terms and Conditions to use this app</string>
+    <string name="terms_full_text">TERMS AND CONDITIONS OF USE\n\nLast Updated: 2024\n\n1. ACCEPTANCE OF TERMS\nBy downloading, installing, or using the TomatoApp (\"App\"), you agree to be bound by these Terms and Conditions. If you do not agree to these terms, please do not use the App.\n\n2. USE OF THE APP\nThe App is designed to assist with tomato farming management, including disease detection, pest management, agricultural planning, expense tracking, plant monitoring, and financial projections. You agree to use the App only for lawful purposes and in accordance with these Terms.\n\n3. ACCOUNT REGISTRATION\nYou are responsible for maintaining the confidentiality of your account credentials. You agree to provide accurate and complete information when creating an account.\n\n4. USER DATA AND PRIVACY\nWe collect and process your data (including work programs, expenses, images, and farming records) as described in our Privacy Policy. By using the App, you consent to the collection and use of your information. Images captured through the App are stored on your device and in your account.\n\n5. IMAGE AND DATA STORAGE\nImages captured for plant monitoring and disease detection are stored on your device and in your account. You are responsible for managing your stored images and data. The App may require camera and storage permissions to function properly.\n\n6. LIMITATION OF LIABILITY\nThe App is provided \"as is\" without warranties of any kind. The developers are not liable for any damages arising from the use or inability to use the App, including but not limited to crop losses, agricultural decisions, or financial projections. Expense tracking and financial calculations are estimates only.\n\n7. DISCLAIMER\nDisease detection, agricultural recommendations, expense projections, and financial calculations are provided for informational purposes only. Always consult with agricultural experts and financial advisors before making farming or business decisions. The App does not guarantee accuracy of predictions or projections.\n\n8. INTELLECTUAL PROPERTY\nAll content, features, and functionality of the App are owned by the developers and protected by copyright and other intellectual property laws. You may not reproduce, distribute, or create derivative works without permission.\n\n9. MODIFICATIONS TO TERMS\nWe reserve the right to modify these Terms at any time. Continued use of the App after changes constitutes acceptance of the modified Terms. Users will be notified of significant changes to the Terms.\n\n10. TERMINATION\nWe reserve the right to suspend or terminate your access to the App at any time for violation of these Terms. Upon termination, you may lose access to your data stored in the App.\n\n11. CONTACT INFORMATION\nFor questions about these Terms, please contact us through the App or via email.</string>
 </resources>

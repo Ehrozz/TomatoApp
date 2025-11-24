@@ -28,6 +28,14 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
+import android.widget.LinearLayout;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -35,12 +43,13 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-public class DailyTask extends AppCompatActivity {
+public class DailyTask extends BaseDrawerActivity {
 
     private TextView cultivarNameHeader, cultivarDescription, dateHeader, taskSectionTitle, taskCountText;
     private ImageView cultivarImageHeader;
     private MaterialButton btnComplete;
     private MaterialButton btnSkip;
+    private MaterialButton btnDailyExpenses;
     private MaterialButton btnMonitor;
     private RecyclerView taskRecyclerView;
     private TaskAdapter taskAdapter;
@@ -54,9 +63,6 @@ public class DailyTask extends AppCompatActivity {
     private int maturityDays;
     private DatabaseReference taskRef;
 
-    DrawerLayout drawerLayout;
-    NavigationView navigationView;
-    ActionBarDrawerToggle toggle;
 
     private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
 
@@ -74,6 +80,7 @@ public class DailyTask extends AppCompatActivity {
         taskCountText = findViewById(R.id.taskCountText);
         btnComplete = findViewById(R.id.btnComplete);
         btnSkip = findViewById(R.id.btnSkipTasks);
+        btnDailyExpenses = findViewById(R.id.btnDailyExpenses);
         btnMonitor = findViewById(R.id.btnMonitorPlant);
         taskRecyclerView = findViewById(R.id.taskRecyclerView);
 
@@ -100,9 +107,19 @@ public class DailyTask extends AppCompatActivity {
             cultivarNameHeader.setText(cultivar);
             cultivarDescription.setText("Off-season planting tasks for optimal growth");
             cultivarImageHeader.setImageResource(getCultivarImageResource(cultivar));
+            // Ensure circular clipping
+            cultivarImageHeader.setClipToOutline(true);
         }
         if (date != null) {
-            dateHeader.setText("Date: " + date);
+            // Format date according to user preference
+            try {
+                Date dateObj = sdf.parse(date);
+                SimpleDateFormat displayFormat = SettingsPreferences.getDateFormatInstance(this);
+                String formattedDate = displayFormat.format(dateObj);
+                dateHeader.setText("Date: " + formattedDate);
+            } catch (ParseException e) {
+                dateHeader.setText("Date: " + date);
+            }
         }
 
         // Calculate day number and get tasks
@@ -149,35 +166,72 @@ public class DailyTask extends AppCompatActivity {
         if (btnSkip != null) {
             btnSkip.setOnClickListener(v -> markTasksSkipped());
         }
+        if (btnDailyExpenses != null) {
+            btnDailyExpenses.setOnClickListener(v -> openDailyExpenses());
+            btnDailyExpenses.setEnabled(!isNewProgram);
+        }
         if (btnMonitor != null) {
             btnMonitor.setOnClickListener(v -> openMonitoring());
             btnMonitor.setEnabled(!isNewProgram);
         }
 
-        drawerLayout = findViewById(R.id.drawer_layout);
-        navigationView = findViewById(R.id.navigation_view);
-
-        toggle = new ActionBarDrawerToggle(this, drawerLayout, R.string.open, R.string.close);
-        drawerLayout.addDrawerListener(toggle);
-        toggle.syncState();
-
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            getSupportActionBar().setTitle("Daily Tasks");
+        // Load and display captured monitoring images
+        if (!isNewProgram && programId != null) {
+            loadMonitoringImages();
         }
 
-        navigationView.setNavigationItemSelectedListener(item -> {
-            int id = item.getItemId();
-            if (id == R.id.nav_home) {
-                startActivity(new Intent(this, MainActivity.class));
-            } else if (id == R.id.nav_logout) {
-                FirebaseAuth.getInstance().signOut();
-                startActivity(new Intent(this, Login.class));
-                finish();
-            }
-            drawerLayout.closeDrawers();
-            return true;
+        setupDrawer();
+
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle("Daily Tasks");
+        }
+    }
+    
+    private void loadMonitoringImages() {
+        if (programId == null || date == null) return;
+        
+        PlantMonitoringRepository repository = new PlantMonitoringRepository(this);
+        repository.loadForProgram(programId, entries -> {
+            // Run UI updates on main thread
+            runOnUiThread(() -> {
+                // Filter entries by date and find those with captured images
+                List<PlantMonitoringEntity> matchingEntries = new ArrayList<>();
+                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+                
+                for (PlantMonitoringEntity entry : entries) {
+                    try {
+                        Date entryDate = new Date(entry.timestamp);
+                        Date targetDate = dateFormat.parse(date);
+                        if (targetDate != null && 
+                            dateFormat.format(entryDate).equals(dateFormat.format(targetDate)) &&
+                            entry.photoPath != null && !entry.photoPath.isEmpty()) {
+                            matchingEntries.add(entry);
+                        }
+                    } catch (ParseException e) {
+                        // Skip entries with invalid dates
+                    }
+                }
+                
+                // Display images if any found
+                if (!matchingEntries.isEmpty()) {
+                    displayMonitoringImages(matchingEntries);
+                }
+            });
         });
+    }
+    
+    private void displayMonitoringImages(List<PlantMonitoringEntity> entries) {
+        MaterialCardView card = findViewById(R.id.monitoringImagesCard);
+        RecyclerView recyclerView = findViewById(R.id.monitoringImagesRecyclerView);
+        
+        if (card == null || recyclerView == null) return;
+        
+        card.setVisibility(View.VISIBLE);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+        
+        // Create adapter for images
+        MonitoringImageAdapter adapter = new MonitoringImageAdapter(entries);
+        recyclerView.setAdapter(adapter);
     }
 
     private void updateTaskCount() {
@@ -227,6 +281,24 @@ public class DailyTask extends AppCompatActivity {
         } else if (taskRef != null) {
             taskRef.child(date).setValue("completed")
                     .addOnSuccessListener(unused -> {
+                        // Save to local database
+                        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+                        if (currentUser != null && programId != null && !taskList.isEmpty()) {
+                            // Save first task as representative (all tasks share the same status)
+                            TaskModel firstTask = taskList.get(0);
+                            LocalDataManager.getInstance(DailyTask.this).saveTaskStatus(
+                                    currentUser.getUid(),
+                                    programId,
+                                    date,
+                                    firstTask.taskName,
+                                    firstTask.category,
+                                    firstTask.iconType,
+                                    firstTask.dayNumber,
+                                    firstTask.phase,
+                                    "completed"
+                            );
+                        }
+                        
                         Toast.makeText(this, "Marked as complete!", Toast.LENGTH_SHORT).show();
 
                         Intent resultIntent = new Intent();
@@ -253,12 +325,43 @@ public class DailyTask extends AppCompatActivity {
         }
         taskRef.child(date).setValue("skipped")
                 .addOnSuccessListener(unused -> {
+                    // Save to local database
+                    FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+                    if (currentUser != null && programId != null && !taskList.isEmpty()) {
+                        // Save first task as representative (all tasks share the same status)
+                        TaskModel firstTask = taskList.get(0);
+                        LocalDataManager.getInstance(DailyTask.this).saveTaskStatus(
+                                currentUser.getUid(),
+                                programId,
+                                date,
+                                firstTask.taskName,
+                                firstTask.category,
+                                firstTask.iconType,
+                                firstTask.dayNumber,
+                                firstTask.phase,
+                                "skipped"
+                        );
+                    }
+                    
                     Toast.makeText(this, "Tasks marked as skipped.", Toast.LENGTH_SHORT).show();
                     finish();
                 })
                 .addOnFailureListener(e ->
                         Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show()
                 );
+    }
+
+    private void openDailyExpenses() {
+        if (isNewProgram || programId == null) {
+            Toast.makeText(this, "Save the work program to log daily expenses.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Intent intent = new Intent(this, DailyExpensesActivity.class);
+        intent.putExtra("programId", programId);
+        intent.putExtra("cultivar", cultivar);
+        intent.putExtra("date", date);
+        intent.putExtra("programStartDate", startDate);
+        startActivity(intent);
     }
 
     private void openMonitoring() {
@@ -280,8 +383,8 @@ public class DailyTask extends AppCompatActivity {
     }
 
     private int getCultivarImageResource(String cultivar) {
-        // Use default logo for all cultivars (can be extended)
-        return R.mipmap.ic_logo;
+        // Use CultivarImageHelper to get the appropriate image for the cultivar
+        return CultivarImageHelper.getCultivarImageResource(cultivar);
     }
 
     private int calculateDayNumber(String startDate, String currentDate) {
@@ -390,12 +493,60 @@ public class DailyTask extends AppCompatActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         return true;
     }
-
-    @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        if (toggle.onOptionsItemSelected(item)) {
-            return true;
+    
+    // Adapter for displaying monitoring images
+    private class MonitoringImageAdapter extends RecyclerView.Adapter<MonitoringImageAdapter.ImageViewHolder> {
+        private List<PlantMonitoringEntity> entries;
+        
+        MonitoringImageAdapter(List<PlantMonitoringEntity> entries) {
+            this.entries = entries;
         }
-        return super.onOptionsItemSelected(item);
+        
+        @NonNull
+        @Override
+        public ImageViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View view = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.item_monitoring_image, parent, false);
+            return new ImageViewHolder(view);
+        }
+        
+        @Override
+        public void onBindViewHolder(@NonNull ImageViewHolder holder, int position) {
+            PlantMonitoringEntity entry = entries.get(position);
+            if (entry.photoPath != null && !entry.photoPath.isEmpty()) {
+                try {
+                    Uri imageUri = Uri.parse(entry.photoPath);
+                    InputStream inputStream = getContentResolver().openInputStream(imageUri);
+                    if (inputStream != null) {
+                        Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+                        holder.imageView.setImageBitmap(bitmap);
+                        inputStream.close();
+                    }
+                } catch (FileNotFoundException e) {
+                    // Try as file path
+                    File imageFile = new File(entry.photoPath);
+                    if (imageFile.exists()) {
+                        Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath());
+                        holder.imageView.setImageBitmap(bitmap);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        
+        @Override
+        public int getItemCount() {
+            return entries.size();
+        }
+        
+        class ImageViewHolder extends RecyclerView.ViewHolder {
+            ImageView imageView;
+            
+            ImageViewHolder(@NonNull View itemView) {
+                super(itemView);
+                imageView = itemView.findViewById(R.id.monitoringImage);
+            }
+        }
     }
 }

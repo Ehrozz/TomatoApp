@@ -25,7 +25,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
-public class InformationInterface extends AppCompatActivity {
+public class InformationInterface extends BaseDrawerActivity {
 
     private RecyclerView diseaseRecyclerView;
     private DiseaseAdapter adapter;
@@ -42,10 +42,20 @@ public class InformationInterface extends AppCompatActivity {
         diseaseNameMap.put("Anthracnose ", "Anthracnose (Colletotrichum spp.)");
         diseaseNameMap.put("Black Leaf Mold", "Black Leaf Mold (Pseudocercospora fuligena)");
     }
+    
+    // Map disease names to image resources
+    private static final HashMap<String, Integer> diseaseImageMap = new HashMap<>();
+    static {
+        diseaseImageMap.put("Anthracnose", R.drawable.disease_anthracnose);
+        diseaseImageMap.put("Anthracnose ", R.drawable.disease_anthracnose);
+        diseaseImageMap.put("Black Leaf Mold", R.drawable.disease_black_leaf_mold);
+        diseaseImageMap.put("Early Blight", R.drawable.disease_early_blight);
+        diseaseImageMap.put("Fusarium Wilt", R.drawable.disease_fusarium_wilt);
+        diseaseImageMap.put("Late Blight", R.drawable.disease_late_blight);
+        diseaseImageMap.put("Yellow Leaf Curl", R.drawable.disease_yellow_leaf_curl);
+        diseaseImageMap.put("Tomato Leaf Curl Virus", R.drawable.disease_yellow_leaf_curl);
+    }
 
-    DrawerLayout drawerLayout;
-    NavigationView navigationView;
-    ActionBarDrawerToggle toggle;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,30 +71,11 @@ public class InformationInterface extends AppCompatActivity {
         adapter = new DiseaseAdapter(diseaseList);
         diseaseRecyclerView.setAdapter(adapter);
 
-        drawerLayout = findViewById(R.id.drawer_layout);
-        navigationView = findViewById(R.id.nav_view);
-
-        toggle = new ActionBarDrawerToggle(this, drawerLayout, R.string.open, R.string.close);
-        drawerLayout.addDrawerListener(toggle);
-        toggle.syncState();
+        setupDrawer();
 
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setTitle(R.string.information_section);
         }
-
-        navigationView.setNavigationItemSelectedListener(item -> {
-            int id = item.getItemId();
-            if (id == R.id.nav_home) {
-                startActivity(new Intent(this, MainActivity.class));
-            } else if (id == R.id.nav_logout) {
-                FirebaseAuth.getInstance().signOut();
-                startActivity(new Intent(this, Login.class));
-                finish();
-            }
-            drawerLayout.closeDrawers();
-            return true;
-        });
     }
 
     private void prepareDiseaseList() {
@@ -92,7 +83,6 @@ public class InformationInterface extends AppCompatActivity {
                 "Tomato Leaf Curl Virus",
                 "Early Blight",
                 "Late Blight",
-                "Bacterial Wilt",
                 "Fusarium Wilt",
                 "Anthracnose ",
                 "Black Leaf Mold"
@@ -165,8 +155,28 @@ public class InformationInterface extends AppCompatActivity {
             holder.title.setText(item.title);
             holder.description.setText(item.description);
             
-            // Set image based on disease type (you can customize this)
-            holder.image.setImageResource(R.mipmap.ic_logo);
+            // Set image based on disease type
+            Integer imageResId = diseaseImageMap.get(item.originalName.trim());
+            if (imageResId != null) {
+                try {
+                    holder.image.setImageResource(imageResId);
+                } catch (Exception e) {
+                    // Fallback to logo if image resource not found
+                    holder.image.setImageResource(R.mipmap.ic_logo);
+                }
+            } else {
+                // Default to logo if no image mapping found
+                holder.image.setImageResource(R.mipmap.ic_logo);
+            }
+            
+            // Make image circular
+            holder.image.setClipToOutline(true);
+            holder.image.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                @Override
+                public void getOutline(android.view.View view, android.graphics.Outline outline) {
+                    outline.setOval(0, 0, view.getWidth(), view.getHeight());
+                }
+            });
             
             // Click listener
             holder.itemView.setOnClickListener(v -> {

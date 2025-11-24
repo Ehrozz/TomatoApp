@@ -86,24 +86,6 @@
                         android:gravity="center_vertical"
                         android:layout_marginBottom="16dp">
 
-                        <!-- Orange Circular Icon -->
-                        <com.google.android.material.card.MaterialCardView
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
-                            android:layout_marginEnd="12dp"
-                            app:cardBackgroundColor="@color/warm_orange"
-                            app:cardCornerRadius="24dp"
-                            app:cardElevation="4dp">
-
-                            <ImageView
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:src="@mipmap/ic_logo"
-                                android:scaleType="centerInside"
-                                android:padding="10dp"
-                                app:tint="@color/white" />
-                        </com.google.android.material.card.MaterialCardView>
-
                         <!-- Disease Title -->
                         <TextView
                             android:id="@+id/diseaseTitle"
@@ -363,6 +345,53 @@
                         android:textStyle="bold"
                         android:layout_marginTop="8dp"
                         android:layout_marginBottom="8dp" />
+
+                    <!-- Pest Image Placeholder -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/pestImageCard"
+                        android:layout_width="match_parent"
+                        android:layout_height="200dp"
+                        android:layout_marginBottom="16dp"
+                        app:cardBackgroundColor="@color/soft_cream"
+                        app:cardCornerRadius="12dp"
+                        app:cardElevation="2dp"
+                        app:strokeWidth="1dp"
+                        app:strokeColor="@color/divider"
+                        android:visibility="gone">
+
+                        <ImageView
+                            android:id="@+id/pestImage"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:src="@mipmap/ic_logo"
+                            android:scaleType="centerCrop"
+                            android:contentDescription="Pest illustration"
+                            android:background="@color/soft_cream" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <!-- Pest Common Name -->
+                    <TextView
+                        android:id="@+id/pestCommonName"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text=""
+                        android:textColor="@color/text_primary"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp"
+                        android:visibility="gone" />
+
+                    <!-- Pest Scientific Name -->
+                    <TextView
+                        android:id="@+id/pestScientificName"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text=""
+                        android:textColor="@color/text_secondary"
+                        android:textSize="14sp"
+                        android:textStyle="italic"
+                        android:layout_marginBottom="12dp"
+                        android:visibility="gone" />
 
                     <TextView
                         android:id="@+id/pestDescription"

@@ -1,53 +1,116 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/drawer_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/soft_cream"
+    tools:context=".CultivarDetailsActivity">
+
+    <!-- Main Content -->
+    <LinearLayout
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp"
-    android:background="@color/soft_cream">
+        android:fitsSystemWindows="true">
 
-    <!-- Cultivar Title -->
+        <!-- Header Card with Cultivar Name -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="6dp"
+            app:cardBackgroundColor="@color/warm_orange"
+            app:strokeWidth="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🌱"
+                    android:textSize="32sp"
+                    android:layout_marginBottom="8dp" />
+
     <TextView
         android:id="@+id/cultivarTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Cultivar Name"
-        android:textSize="24sp"
+                    android:textSize="26sp"
         android:textStyle="bold"
-        android:textColor="@color/text_primary"
-        android:layout_marginBottom="16dp" />
+                    android:textColor="@color/white" />
 
-    <!-- View Mode Selector -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Work Program Details"
+                    android:textSize="14sp"
+                    android:textColor="@color/white"
+                    android:alpha="0.9"
+                    android:layout_marginTop="4dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Controls Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp"
+            app:cardBackgroundColor="@color/white">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginBottom="16dp">
+                    android:layout_marginBottom="12dp">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="View"
+                        android:text="📊 View Mode"
             android:textStyle="bold"
             android:textColor="@color/text_primary"
-            android:layout_marginEnd="8dp" />
+                        android:textSize="14sp"
+                        android:layout_marginEnd="12dp" />
 
         <Spinner
             android:id="@+id/viewModeSpinner"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:background="@android:drawable/edit_text"
+                        android:padding="8dp" />
+                </LinearLayout>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnExportPdf"
-            android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Export PDF"
-            android:layout_marginStart="8dp"
+                    android:text="📄 Export to PDF"
+                    android:textColor="@color/white"
             app:icon="@android:drawable/ic_menu_share"
-            style="@style/Widget.Material3.Button.OutlinedButton" />
+                    app:iconTint="@color/white"
+                    app:backgroundTint="@color/sidebar_dark_green"
+                    style="@style/Widget.Material3.Button" />
     </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
     <ProgressBar
         android:id="@+id/progressBar"
@@ -57,47 +120,349 @@
         android:layout_gravity="center"
         android:visibility="gone" />
 
-    <TextView
-        android:id="@+id/emptyText"
+    <!-- Enhanced Empty State -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/emptyStateCard"
         android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="4dp"
+        app:cardBackgroundColor="@color/white"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="32dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📋"
+                android:textSize="64sp"
+                android:layout_marginBottom="16dp" />
+
+            <TextView
+                android:id="@+id/emptyText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="No Work Programs Found"
+                android:textAlignment="center"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="No work programs found for this cultivar."
         android:textAlignment="center"
         android:textColor="@color/text_secondary"
-        android:padding="24dp"
-        android:visibility="gone" />
+                android:textSize="14sp" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 
     <!-- Spreadsheet/Table View -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/tableRecyclerView"
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/spreadsheetContainer"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1"
+        android:layout_marginBottom="8dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="4dp"
+        app:cardBackgroundColor="@color/white">
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:scrollbars="horizontal">
+
+            <ScrollView
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:fillViewport="true"
+                android:scrollbars="vertical">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <!-- Header Row -->
+                    <LinearLayout
+                        android:id="@+id/spreadsheetHeader"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:background="@color/sidebar_dark_green"
+                        android:padding="0dp"
+                        android:layout_margin="0dp">
+
+                        <TextView
+                            android:layout_width="120dp"
+                            android:layout_height="48dp"
+                            android:text="Cultivar"
+                            android:textColor="@color/white"
+                            android:textStyle="bold"
+                            android:gravity="start|center_vertical"
+                            android:padding="8dp"
+                            android:background="@drawable/spreadsheet_cell_border"
+                            android:minWidth="120dp"
+                            android:maxWidth="120dp"
+                            android:layout_margin="0dp" />
+
+                        <TextView
+                            android:layout_width="100dp"
+                            android:layout_height="48dp"
+                            android:text="Area"
+                            android:textColor="@color/white"
+                            android:textStyle="bold"
+                            android:gravity="start|center_vertical"
+                            android:padding="8dp"
+                            android:background="@drawable/spreadsheet_cell_border"
+                            android:minWidth="100dp"
+                            android:maxWidth="100dp"
+                            android:layout_margin="0dp" />
+
+                        <TextView
+                            android:layout_width="110dp"
+                            android:layout_height="48dp"
+                            android:text="Start Date"
+                            android:textColor="@color/white"
+                            android:textStyle="bold"
+                            android:gravity="start|center_vertical"
+                            android:padding="8dp"
+                            android:background="@drawable/spreadsheet_cell_border"
+                            android:minWidth="110dp"
+                            android:maxWidth="110dp"
+                            android:layout_margin="0dp" />
+
+                        <TextView
+                            android:layout_width="100dp"
+                            android:layout_height="48dp"
+                            android:text="Phase 1"
+                            android:textColor="@color/white"
+                            android:textStyle="bold"
+                            android:gravity="start|center_vertical"
+                            android:padding="8dp"
+                            android:background="@drawable/spreadsheet_cell_border"
+                            android:minWidth="100dp"
+                            android:maxWidth="100dp"
+                            android:layout_margin="0dp" />
+
+                        <TextView
+                            android:layout_width="100dp"
+                            android:layout_height="48dp"
+                            android:text="Phase 2"
+                            android:textColor="@color/white"
+                            android:textStyle="bold"
+                            android:gravity="start|center_vertical"
+                            android:padding="8dp"
+                            android:background="@drawable/spreadsheet_cell_border"
+                            android:minWidth="100dp"
+                            android:maxWidth="100dp"
+                            android:layout_margin="0dp" />
+
+                        <TextView
+                            android:layout_width="100dp"
+                            android:layout_height="48dp"
+                            android:text="Phase 3"
+                            android:textColor="@color/white"
+                            android:textStyle="bold"
+                            android:gravity="start|center_vertical"
+                            android:padding="8dp"
+                            android:background="@drawable/spreadsheet_cell_border"
+                            android:minWidth="100dp"
+                            android:maxWidth="100dp"
+                            android:layout_margin="0dp" />
+
+                        <TextView
+                            android:layout_width="100dp"
+                            android:layout_height="48dp"
+                            android:text="Phase 4"
+                            android:textColor="@color/white"
+                            android:textStyle="bold"
+                            android:gravity="start|center_vertical"
+                            android:padding="8dp"
+                            android:background="@drawable/spreadsheet_cell_border"
+                            android:minWidth="100dp"
+                            android:maxWidth="100dp"
+                            android:layout_margin="0dp" />
+
+                        <TextView
+                            android:layout_width="100dp"
+                            android:layout_height="48dp"
+                            android:text="Phase 5"
+                            android:textColor="@color/white"
+                            android:textStyle="bold"
+                            android:gravity="start|center_vertical"
+                            android:padding="8dp"
+                            android:background="@drawable/spreadsheet_cell_border"
+                            android:minWidth="100dp"
+                            android:maxWidth="100dp"
+                            android:layout_margin="0dp" />
+
+                        <TextView
+                            android:layout_width="100dp"
+                            android:layout_height="48dp"
+                            android:text="Detections"
+                            android:textColor="@color/white"
+                            android:textStyle="bold"
+                            android:gravity="start|center_vertical"
+                            android:padding="8dp"
+                            android:background="@drawable/spreadsheet_cell_border"
+                            android:minWidth="100dp"
+                            android:maxWidth="100dp"
+                            android:layout_margin="0dp" />
+
+                        <TextView
+                            android:layout_width="130dp"
+                            android:layout_height="48dp"
+                            android:text="Income"
+                            android:textColor="@color/white"
+                            android:textStyle="bold"
+                            android:gravity="center"
+                            android:padding="8dp"
+                            android:background="@drawable/spreadsheet_cell_border"
+                            android:minWidth="130dp"
+                            android:maxWidth="130dp"
+                            android:layout_margin="0dp" />
+
+                        <TextView
+                            android:layout_width="130dp"
+                            android:layout_height="48dp"
+                            android:text="Expenses"
+                            android:textColor="@color/white"
+                            android:textStyle="bold"
+                            android:gravity="center"
+                            android:padding="8dp"
+                            android:background="@drawable/spreadsheet_cell_border"
+                            android:minWidth="130dp"
+                            android:maxWidth="130dp"
+                            android:layout_margin="0dp" />
+
+                        <TextView
+                            android:layout_width="130dp"
+                            android:layout_height="48dp"
+                            android:text="Profit"
+                            android:textColor="@color/white"
+                            android:textStyle="bold"
+                            android:gravity="center"
+                            android:padding="8dp"
+                            android:background="@drawable/spreadsheet_cell_border"
+                            android:minWidth="130dp"
+                            android:maxWidth="130dp" />
+                    </LinearLayout>
+
+                    <!-- Data Rows Container -->
+                    <LinearLayout
+                        android:id="@+id/spreadsheetRows"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+                </LinearLayout>
+            </ScrollView>
+        </HorizontalScrollView>
+    </com.google.android.material.card.MaterialCardView>
 
     <!-- Charts View -->
-    <LinearLayout
+    <ScrollView
         android:id="@+id/chartsContainer"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:orientation="vertical"
-        android:visibility="gone">
+        android:fillViewport="true"
+        android:visibility="gone"
+        android:background="@color/soft_cream">
 
-        <!-- Bar Chart: Income vs Expenses -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="8dp">
+
+            <!-- Income vs Expenses Chart Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp"
+                app:cardBackgroundColor="@color/white">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+        android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="💰 Income vs Expenses"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_primary"
+                        android:textSize="16sp"
+                        android:layout_marginBottom="12dp" />
+
         <com.github.mikephil.charting.charts.BarChart
             android:id="@+id/barChart"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:layout_marginBottom="16dp" />
+                        android:layout_height="300dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
-        <!-- Line Chart: Profit Trend -->
+            <!-- Profit Trend Chart Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp"
+                app:cardBackgroundColor="@color/white">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="📈 Profit Trend"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_primary"
+                        android:textSize="16sp"
+                        android:layout_marginBottom="12dp" />
+
         <com.github.mikephil.charting.charts.LineChart
             android:id="@+id/lineChart"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
+                        android:layout_height="300dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+    </ScrollView>
+
     </LinearLayout>
 
-</LinearLayout>
+    <!-- Navigation Drawer -->
+    <com.google.android.material.navigation.NavigationView
+        android:id="@+id/navigation_view"
+        android:layout_width="280dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        app:menu="@menu/drawer_menu"
+        app:headerLayout="@layout/nav_drawer_sidebar"
+        app:itemIconTint="@color/white"
+        app:itemTextColor="@color/white"
+        android:background="@color/sidebar_dark_green" />
+
+</androidx.drawerlayout.widget.DrawerLayout>
 

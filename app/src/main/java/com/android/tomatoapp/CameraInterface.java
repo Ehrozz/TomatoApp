@@ -8,6 +8,7 @@ import android.graphics.BitmapFactory;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -31,7 +32,10 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 
+import com.android.tomatoapp.notifications.NotificationUseCases;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 import org.tensorflow.lite.Interpreter;
 
@@ -49,9 +53,14 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 public class CameraInterface extends AppCompatActivity {
+
+    public static final String EXTRA_LINKED_PROGRAM_ID = "extra_linked_program_id";
+    public static final String EXTRA_LINKED_CULTIVAR = "extra_linked_cultivar";
+    public static final String EXTRA_LINKED_PHASE = "extra_linked_phase";
 
     private PreviewView previewView;
     private ImageCapture imageCapture;
@@ -71,6 +80,10 @@ public class CameraInterface extends AppCompatActivity {
     private String selectedCultivarLabel;
     private int selectedPhase = 1;
     private WorkProgramRepository workProgramRepository;
+    private PlantMonitoringRepository plantMonitoringRepository;
+    private String linkedProgramId;
+    private String linkedCultivarName;
+    private int linkedPhase = -1;
     private static final SimpleDateFormat START_DATE_FORMAT =
             new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
     
@@ -146,6 +159,7 @@ public class CameraInterface extends AppCompatActivity {
                 cultivarOptions.add(buildCultivarLabel(entity));
             }
             cultivarAdapter.notifyDataSetChanged();
+            applyLinkedProgramSelection();
         }));
     }
 
@@ -184,10 +198,23 @@ public class CameraInterface extends AppCompatActivity {
             getSupportActionBar().hide();
         }
 
+        plantMonitoringRepository = new PlantMonitoringRepository(this);
         previewView = findViewById(R.id.previewView);
         cultivarSpinner = findViewById(R.id.spinnerCultivar);
         phaseSpinner = findViewById(R.id.spinnerPhase);
         selectedCultivarLabel = getString(R.string.detection_cultivar_unspecified);
+        Intent launchIntent = getIntent();
+        if (launchIntent != null) {
+            linkedProgramId = launchIntent.getStringExtra(EXTRA_LINKED_PROGRAM_ID);
+            linkedCultivarName = launchIntent.getStringExtra(EXTRA_LINKED_CULTIVAR);
+            linkedPhase = launchIntent.getIntExtra(EXTRA_LINKED_PHASE, -1);
+            if (!TextUtils.isEmpty(linkedCultivarName)) {
+                selectedCultivarLabel = linkedCultivarName;
+            }
+            if (linkedPhase > 0) {
+                selectedPhase = linkedPhase;
+            }
+        }
         workProgramRepository = new WorkProgramRepository(this);
         setupPhaseSpinner();
         setupCultivarSpinner();
@@ -342,6 +369,15 @@ public class CameraInterface extends AppCompatActivity {
                                 selectedCultivarLabel,
                                 selectedPhase
                         );
+                        persistDetectionForProgram(detectionResults, photoUri);
+
+                        NotificationUseCases.notifyDiseaseDetection(
+                                CameraInterface.this,
+                                photoUri.toString(),
+                                detectionResults,
+                                selectedCultivarLabel != null ? selectedCultivarLabel : "Tomato",
+                                selectedPhase
+                        );
 
                         // Pass results to DetectionResults activity
                         Intent intent = new Intent(CameraInterface.this, DetectionResults.class);
@@ -377,11 +413,26 @@ public class CameraInterface extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == 200 && resultCode == RESULT_OK && data != null) {
             Uri selectedImage = data.getData();
+            
+            // Check if image was selected
+            if (selectedImage == null) {
+                Toast.makeText(this, "Failed to load image. Please try again.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
             HashMap<String, String> detectionResults = runTeachableMachineDetection(selectedImage);
+            
+            // Check if detection was successful
+            if (detectionResults == null || detectionResults.isEmpty()) {
+                Toast.makeText(this, "Detection failed. Please try again.", Toast.LENGTH_SHORT).show();
+                return;
+            }
 
+            String imageUriString = selectedImage.toString();
+            
             DetectionHistoryManager.addHistory(
                     CameraInterface.this,
-                    selectedImage.toString(),
+                    imageUriString,
                     detectionResults.get("title"),
                     detectionResults.get("accuracy"),
                     detectionResults.get("description"),
@@ -395,9 +446,18 @@ public class CameraInterface extends AppCompatActivity {
                     selectedCultivarLabel,
                     selectedPhase
             );
+            persistDetectionForProgram(detectionResults, selectedImage);
+
+            NotificationUseCases.notifyDiseaseDetection(
+                    CameraInterface.this,
+                    imageUriString,
+                    detectionResults,
+                    selectedCultivarLabel != null ? selectedCultivarLabel : "Tomato",
+                    selectedPhase
+            );
 
             Intent intent = new Intent(CameraInterface.this, DetectionResults.class);
-            intent.putExtra("imageUri", selectedImage.toString());
+            intent.putExtra("imageUri", imageUriString);
             for (String key : detectionResults.keySet()) {
                 intent.putExtra(key, detectionResults.get(key));
             }
@@ -592,6 +652,82 @@ public class CameraInterface extends AppCompatActivity {
         return results;
     }
 
+    private void applyLinkedProgramSelection() {
+        if (linkedProgramId == null || cultivarSpinner == null || programOptions.isEmpty()) {
+            return;
+        }
+        for (int i = 0; i < programOptions.size(); i++) {
+            WorkProgramEntity entity = programOptions.get(i);
+            if (linkedProgramId.equals(entity.id)) {
+                int spinnerIndex = i + 1; // account for "unspecified" entry
+                if (spinnerIndex < cultivarSpinner.getCount()) {
+                    cultivarSpinner.setSelection(spinnerIndex);
+                }
+                return;
+            }
+        }
+    }
+
+    private void persistDetectionForProgram(HashMap<String, String> detectionResults, Uri imageUri) {
+        if (linkedProgramId == null) {
+            return;
+        }
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) {
+            return;
+        }
+        if (plantMonitoringRepository == null) {
+            plantMonitoringRepository = new PlantMonitoringRepository(this);
+        }
+        String entryId = UUID.randomUUID().toString();
+        int phaseForEntry = linkedPhase > 0 ? linkedPhase : selectedPhase;
+        String shortDescription = detectionResults.get("title");
+        if (TextUtils.isEmpty(shortDescription)) {
+            shortDescription = getString(R.string.scan_section);
+        }
+        String issues = detectionResults.get("symptoms");
+        if (TextUtils.isEmpty(issues)) {
+            issues = detectionResults.get("cause");
+        }
+        String warnings = detectionResults.get("confidenceWarning");
+        if (TextUtils.isEmpty(warnings)) {
+            warnings = detectionResults.get("prevention");
+        }
+        String description = detectionResults.get("description");
+        String accuracy = detectionResults.get("accuracy");
+        StringBuilder notesBuilder = new StringBuilder();
+        if (!TextUtils.isEmpty(accuracy)) {
+            notesBuilder.append("Accuracy: ").append(accuracy);
+        }
+        if (!TextUtils.isEmpty(description)) {
+            if (notesBuilder.length() > 0) {
+                notesBuilder.append("\n");
+            }
+            notesBuilder.append(description);
+        }
+        if (notesBuilder.length() == 0) {
+            notesBuilder.append(getString(R.string.monitor_detection_auto_note));
+        }
+
+        PlantMonitoringEntity entity = new PlantMonitoringEntity(
+                entryId,
+                currentUser.getUid(),
+                linkedProgramId,
+                phaseForEntry,
+                System.currentTimeMillis(),
+                shortDescription,
+                issues,
+                warnings,
+                notesBuilder.toString(),
+                entryId,
+                imageUri != null ? imageUri.toString() : null
+        );
+        plantMonitoringRepository.saveEntry(entity);
+        runOnUiThread(() ->
+                Toast.makeText(this, R.string.monitor_detection_saved_to_program, Toast.LENGTH_SHORT).show()
+        );
+    }
+
     private MappedByteBuffer loadModelFile(String modelName) throws IOException {
         try (FileInputStream fileInputStream = new FileInputStream(getAssets().openFd(modelName).getFileDescriptor())) {
             FileChannel fileChannel = fileInputStream.getChannel();
@@ -706,9 +842,6 @@ public class CameraInterface extends AppCompatActivity {
             return true;
         } else if (id == R.id.nav_home) {
             finish();
-            return true;
-        } else if (id == R.id.nav_history) {
-            startActivity(new Intent(this, DetectionHistoryActivity.class));
             return true;
         } else if (id == R.id.nav_profile) {
             return true;

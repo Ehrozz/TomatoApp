@@ -16,11 +16,6 @@
         android:orientation="vertical"
         android:fitsSystemWindows="true">
 
-        <!-- Spacer for Action Bar -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize" />
-
         <ScrollView
             android:layout_width="match_parent"
             android:layout_height="0dp"
@@ -80,21 +75,12 @@
                     android:padding="20dp"
                     android:background="@color/white">
 
-                    <!-- Header: "Identify View, 3879" and "Results" -->
+                    <!-- Header: "Results" -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
                         android:layout_marginBottom="12dp">
-
-                        <TextView
-                            android:id="@+id/identifyViewText"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Identify View, 3879"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="12sp"
-                        android:layout_marginBottom="4dp" />
 
                     <TextView
                         android:id="@+id/detectionContextInfo"

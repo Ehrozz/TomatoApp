@@ -16,11 +16,6 @@
         android:orientation="vertical"
         android:fitsSystemWindows="true">
 
-        <!-- Spacer for Action Bar -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize" />
-
         <ScrollView
             android:layout_width="match_parent"
             android:layout_height="0dp"
@@ -38,42 +33,44 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="24dp"
-                    app:cardBackgroundColor="@color/white"
-                    app:cardCornerRadius="20dp"
-                    app:cardElevation="4dp">
+                    app:cardBackgroundColor="@color/fresh_green"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="6dp"
+                    app:strokeWidth="0dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="20dp">
+                        android:padding="24dp"
+                        android:gravity="center">
 
-                        <ImageView
-                            android:layout_width="64dp"
-                            android:layout_height="64dp"
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
                             android:layout_gravity="center_horizontal"
-                            android:layout_marginBottom="12dp"
-                            android:src="@mipmap/ic_logo"
-                            android:contentDescription="IPM Logo"
-                            android:scaleType="centerCrop" />
+                            android:text="🌱"
+                            android:textSize="32sp"
+                            android:layout_marginBottom="8dp" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_gravity="center_horizontal"
                             android:text="Integrated Pest Management"
-                            android:textColor="@color/text_primary"
-                            android:textSize="22sp"
+                            android:textColor="@color/white"
+                            android:textSize="24sp"
                             android:textStyle="bold" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_gravity="center_horizontal"
-                            android:layout_marginTop="8dp"
+                            android:layout_marginTop="4dp"
                             android:text="Identify and manage pests and diseases effectively"
-                            android:textColor="@color/text_secondary"
+                            android:textColor="@color/white"
                             android:textSize="14sp"
+                            android:alpha="0.9"
                             android:gravity="center" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
@@ -82,7 +79,7 @@
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/scanCard"
                     android:layout_width="match_parent"
-                    android:layout_height="200dp"
+                    android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
                     app:cardBackgroundColor="@color/white"
                     app:cardCornerRadius="20dp"
@@ -91,52 +88,46 @@
                     android:focusable="true"
                     android:foreground="?android:attr/selectableItemBackground">
 
-                    <RelativeLayout
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
                         android:padding="24dp">
 
-                        <!-- Background Gradient Effect -->
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:background="@drawable/scan_card_gradient"
-                            android:alpha="0.1" />
+                        <!-- Icon Container -->
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="67dp"
+                            android:layout_height="67dp"
+                            android:layout_marginEnd="16dp"
+                            app:cardBackgroundColor="@color/scan_blue"
+                            app:cardCornerRadius="40dp"
+                            app:cardElevation="4dp">
 
-                        <!-- Content -->
+                            <ImageView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:padding="5dp"
+                                android:scaleType="centerInside"
+                                android:src="@android:drawable/ic_menu_camera"
+                                app:tint="@color/white" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <!-- Text Content -->
                         <LinearLayout
-                            android:layout_width="match_parent"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:layout_centerInParent="true"
-                            android:gravity="center">
-
-                            <!-- Icon Container -->
-                            <com.google.android.material.card.MaterialCardView
-                                android:layout_width="80dp"
-                                android:layout_height="80dp"
-                                android:layout_marginBottom="16dp"
-                                app:cardBackgroundColor="@color/scan_blue"
-                                app:cardCornerRadius="40dp"
-                                app:cardElevation="4dp">
-
-                                <ImageView
-                                    android:layout_width="match_parent"
-                                    android:layout_height="match_parent"
-                                    android:src="@android:drawable/ic_menu_camera"
-                                    android:scaleType="centerInside"
-                                    android:padding="20dp"
-                                    app:tint="@color/white" />
-                            </com.google.android.material.card.MaterialCardView>
+                            android:layout_weight="1"
+                            android:orientation="vertical">
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
+                                android:layout_marginBottom="4dp"
                                 android:text="@string/scan"
                                 android:textColor="@color/text_primary"
-                                android:textSize="24sp"
-                                android:textStyle="bold"
-                                android:layout_marginBottom="4dp" />
+                                android:textSize="20sp"
+                                android:textStyle="bold" />
 
                             <TextView
                                 android:layout_width="wrap_content"
@@ -145,14 +136,14 @@
                                 android:textColor="@color/text_secondary"
                                 android:textSize="14sp" />
                         </LinearLayout>
-                    </RelativeLayout>
+                    </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- Information Card -->
+                <!-- Detection History Card -->
                 <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/infoCard"
+                    android:id="@+id/historyCard"
                     android:layout_width="match_parent"
-                    android:layout_height="200dp"
+                    android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
                     app:cardBackgroundColor="@color/white"
                     app:cardCornerRadius="20dp"
@@ -161,50 +152,108 @@
                     android:focusable="true"
                     android:foreground="?android:attr/selectableItemBackground">
 
-                    <RelativeLayout
+                    <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
                         android:padding="24dp">
 
-                        <!-- Background Gradient Effect -->
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:background="@drawable/info_card_gradient"
-                            android:alpha="0.1" />
+                        <!-- Icon Container -->
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="67dp"
+                            android:layout_height="67dp"
+                            android:layout_marginEnd="16dp"
+                            app:cardBackgroundColor="@color/warm_orange"
+                            app:cardCornerRadius="40dp"
+                            app:cardElevation="4dp">
 
-                        <!-- Content -->
+                            <ImageView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:src="@android:drawable/ic_menu_recent_history"
+                                android:scaleType="centerInside"
+                                android:padding="20dp"
+                                app:tint="@color/white" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <!-- Text Content -->
                         <LinearLayout
-                            android:layout_width="match_parent"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:layout_centerInParent="true"
-                            android:gravity="center">
+                            android:layout_weight="1"
+                            android:orientation="vertical">
 
-                            <!-- Icon Container -->
-                            <com.google.android.material.card.MaterialCardView
-                                android:layout_width="80dp"
-                                android:layout_height="80dp"
-                                android:layout_marginBottom="16dp"
-                                app:cardBackgroundColor="@color/info_green"
-                                app:cardCornerRadius="40dp"
-                                app:cardElevation="4dp">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Detection History"
+                                android:textColor="@color/text_primary"
+                                android:textSize="20sp"
+                                android:textStyle="bold"
+                                android:layout_marginBottom="4dp" />
 
-                                <ImageView
-                                    android:layout_width="match_parent"
-                                    android:layout_height="match_parent"
-                                    android:src="@android:drawable/ic_menu_info_details"
-                                    android:scaleType="centerInside"
-                                    android:padding="20dp"
-                                    app:tint="@color/white" />
-                            </com.google.android.material.card.MaterialCardView>
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="View your past disease and pest detections"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="14sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Information Card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/infoCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:cardBackgroundColor="@color/white"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="6dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?android:attr/selectableItemBackground">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:padding="24dp">
+
+                        <!-- Icon Container -->
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="67dp"
+                            android:layout_height="67dp"
+                            android:layout_marginEnd="16dp"
+                            app:cardBackgroundColor="@color/info_green"
+                            app:cardCornerRadius="40dp"
+                            app:cardElevation="4dp">
+
+                            <ImageView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:src="@android:drawable/ic_menu_info_details"
+                                android:scaleType="centerInside"
+                                android:padding="20dp"
+                                app:tint="@color/white" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <!-- Text Content -->
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="@string/information"
                                 android:textColor="@color/text_primary"
-                                android:textSize="24sp"
+                                android:textSize="20sp"
                                 android:textStyle="bold"
                                 android:layout_marginBottom="4dp" />
 
@@ -215,7 +264,7 @@
                                 android:textColor="@color/text_secondary"
                                 android:textSize="14sp" />
                         </LinearLayout>
-                    </RelativeLayout>
+                    </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
                 <!-- Quick Tips Card -->

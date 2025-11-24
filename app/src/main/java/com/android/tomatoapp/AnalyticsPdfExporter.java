@@ -94,8 +94,8 @@ public class AnalyticsPdfExporter {
         yPosition += LINE_HEIGHT * 2;
 
         // Table header
-        String[] headers = {"Cultivar", "Area (hectare)", "Start Date", "Phases", "Detections", "Income", "Expenses", "Profit"};
-        float[] columnWidths = {80, 60, 80, 60, 70, 80, 80, 80};
+        String[] headers = {"Cultivar", "Area (hectare)", "Start Date", "Phases", "Income", "Expenses", "Profit"};
+        float[] columnWidths = {80, 60, 80, 120, 80, 80, 80};
         float xPos = MARGIN;
         
         for (int i = 0; i < headers.length; i++) {
@@ -125,8 +125,7 @@ public class AnalyticsPdfExporter {
                 e.cultivarName != null ? e.cultivarName : "N/A",
                 String.format("%.2f hectare", e.areaSize),
                 e.startingDate != null ? e.startingDate : "N/A",
-                getPhasesSummary(e),
-                getDetectionsSummary(context, e),
+                getPhasesSummary(context, e),
                 String.format("₱%,.2f", e.projectedIncome),
                 String.format("₱%,.2f", e.projectedExpenses),
                 String.format("₱%,.2f", e.projectedIncome - e.projectedExpenses)
@@ -228,7 +227,7 @@ public class AnalyticsPdfExporter {
         document.finishPage(page);
     }
 
-    private static String getPhasesSummary(WorkProgramEntity e) {
+    private static String getPhasesSummary(Context context, WorkProgramEntity e) {
         String phasesJson = e.phasesJson;
         if (phasesJson == null || phasesJson.isEmpty()) {
             if (e.cultivarName != null && e.startingDate != null) {
@@ -242,17 +241,16 @@ public class AnalyticsPdfExporter {
         
         try {
             org.json.JSONObject phases = new org.json.JSONObject(phasesJson);
-            return WorkProgramDataHelper.getPhasesActivitySummary(phases);
+            // Get phases summary with detections integrated
+            return WorkProgramDataHelper.getPhasesActivitySummaryWithDetections(
+                    phases, 
+                    context, 
+                    e.cultivarName, 
+                    e.startingDate
+            );
         } catch (org.json.JSONException ex) {
             return "N/A";
         }
-    }
-
-    private static String getDetectionsSummary(Context context, WorkProgramEntity e) {
-        if (e.startingDate != null) {
-            return WorkProgramDataHelper.getDetectionsSummary(context, e.startingDate);
-        }
-        return "None";
     }
 
     private static File createPdfFile(Context context, String cultivarName) {

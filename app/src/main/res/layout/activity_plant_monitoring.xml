@@ -11,6 +11,12 @@
         android:orientation="vertical"
         android:padding="20dp">
 
+        <!-- Spacer for Action Bar -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:layout_marginBottom="60dp"/>
+
         <androidx.cardview.widget.CardView
             android:id="@+id/referenceCard"
             android:layout_width="match_parent"
@@ -23,6 +29,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
+
 
                 <ImageView
                     android:id="@+id/referenceImage"
@@ -73,11 +80,94 @@
                 android:gravity="top|start" />
         </com.google.android.material.textfield.TextInputLayout>
 
+        <!-- Captured Image Holder -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/capturedImageCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:visibility="gone"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="12dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Captured Image"
+                        android:textColor="@color/text_primary"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnDeleteImage"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Delete"
+                        android:textAllCaps="false"
+                        android:textColor="@color/error"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:icon="@android:drawable/ic_menu_delete"
+                        app:iconTint="@color/error" />
+                </LinearLayout>
+
+                <ImageView
+                    android:id="@+id/capturedImageView"
+                    android:layout_width="match_parent"
+                    android:layout_height="200dp"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="Captured image"
+                    android:background="@android:color/darker_gray" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Side-by-side buttons: Scan (left) and Capture (right) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="12dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnScanDiseases"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
+                android:text="@string/monitor_scan_button"
+                android:textAllCaps="false"
+                android:icon="@android:drawable/ic_menu_camera" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCapture"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:text="Capture"
+                android:textAllCaps="false"
+                android:icon="@android:drawable/ic_menu_camera" />
+        </LinearLayout>
+
+        <!-- Save Button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSaveMonitoring"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/monitor_save_entry"
+            android:text="Save"
             android:textAllCaps="false"
             android:icon="@android:drawable/ic_menu_save" />
 

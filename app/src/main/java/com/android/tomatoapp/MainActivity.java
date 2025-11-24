@@ -37,6 +37,9 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.ValueEventListener;
 
+import com.android.tomatoapp.notifications.GeneralUpdateScheduler;
+import com.android.tomatoapp.notifications.NotificationChannels;
+import com.android.tomatoapp.notifications.NotificationPermissionHelper;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import android.location.Location;
@@ -52,17 +55,13 @@ import java.io.InputStreamReader;
 import org.json.JSONObject;
 import org.json.JSONArray;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends BaseDrawerActivity {
 
     FirebaseAuth mAuth;
     FirebaseUser user;
-    TextView textView;
     CardView workprogramselectionCard;
     CardView IPMCard;
     CardView projectedIncomeCard;
-    DrawerLayout drawerLayout;
-    NavigationView navigationView;
-    ActionBarDrawerToggle toggle;
 
     // Weather UI
     private TextView weatherCondition;
@@ -71,17 +70,7 @@ public class MainActivity extends AppCompatActivity {
     private ImageView weatherIcon;
     private CardView weatherCard;
 
-    // Financial Overview UI
-    private DonutChartView donutChart;
-    private TextView legend1Value, legend2Value, legend3Value;
-    
-    // Calendar Calculation UI
-    private TextView calendarDailyValue;
-    private TextView calendarTotalValue;
-
     private FusedLocationProviderClient fusedLocationClient;
-    private DatabaseReference financialRef;
-    private DatabaseReference calendarRef;
     private static final int REQ_LOCATION = 2001;
     private static final String WEATHER_PREF = "WeatherPref";
     private static final String KEY_LAT = "lat";
@@ -94,15 +83,33 @@ public class MainActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
 
+        NotificationChannels.ensureCreated(this);
+        NotificationPermissionHelper.ensurePermission(this);
+        GeneralUpdateScheduler.ensureDailyTipScheduled(this);
+
         mAuth = FirebaseAuth.getInstance();
-        textView = findViewById(R.id.TomatoApp);
         user = mAuth.getCurrentUser();
         workprogramselectionCard = findViewById(R.id.wpsCard);
         IPMCard = findViewById(R.id.ipmCard);
         projectedIncomeCard = findViewById(R.id.projectedIncomeCard);
 
-        drawerLayout = findViewById(R.id.drawer_layout);
-        navigationView = findViewById(R.id.navigation_view);
+        // Notification bell icon
+        ImageView notificationBellIcon = findViewById(R.id.notificationBellIcon);
+        if (notificationBellIcon != null) {
+            notificationBellIcon.setOnClickListener(v -> {
+                try {
+                    Intent intent = new Intent(this, NotificationListActivity.class);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                } catch (android.content.ActivityNotFoundException e) {
+                    e.printStackTrace();
+                    Toast.makeText(this, "Notification screen not found", Toast.LENGTH_SHORT).show();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    Toast.makeText(this, "Error opening notifications: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+            });
+        }
 
         // Weather views
         weatherCondition = findViewById(R.id.weatherCondition);
@@ -111,23 +118,20 @@ public class MainActivity extends AppCompatActivity {
         weatherIcon = findViewById(R.id.weatherIcon);
         weatherCard = findViewById(R.id.weatherCard);
 
-        // Financial Overview views
-        donutChart = findViewById(R.id.donutChart);
-        legend1Value = findViewById(R.id.legend1Value);
-        legend2Value = findViewById(R.id.legend2Value);
-        legend3Value = findViewById(R.id.legend3Value);
-
-        // Calendar Calculation views
-        calendarDailyValue = findViewById(R.id.calendarDailyValue);
-        calendarTotalValue = findViewById(R.id.calendarTotalValue);
-
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         requestWeather();
         
-        // Initialize financial overview and calendar
+        // Sync all data from Firebase to local database
         if (user != null) {
-            initializeFinancialOverview();
-            initializeCalendar();
+            LocalDataManager manager = LocalDataManager.getInstance(this);
+            manager.syncWorkProgramsFromFirebase(user.getUid());
+            manager.syncCalculationsFromFirebase(user.getUid());
+            manager.syncDetectionHistoryFromFirebase(this, user.getUid());
+            manager.syncSettingsToLocal(this, user.getUid());
+            
+            // Update weather data for all active work programs (runs in background)
+            // This ensures weather data stays current for research purposes
+            WeatherDataCollector.updateWeatherForAllActivePrograms(this);
         }
 
         if (weatherCard != null) {
@@ -135,20 +139,26 @@ public class MainActivity extends AppCompatActivity {
             weatherCard.setOnLongClickListener(v -> { openPhilippinesLocationPicker(); return true; });
         }
 
-        workprogramselectionCard.setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, WorkProgramSelection.class);
-            startActivity(intent);
-        });
+        if (workprogramselectionCard != null) {
+            workprogramselectionCard.setOnClickListener(v -> {
+                Intent intent = new Intent(MainActivity.this, WorkProgramSelection.class);
+                startActivity(intent);
+            });
+        }
 
-        IPMCard.setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, IPM.class);
-            startActivity(intent);
-        });
+        if (IPMCard != null) {
+            IPMCard.setOnClickListener(v -> {
+                Intent intent = new Intent(MainActivity.this, IPM.class);
+                startActivity(intent);
+            });
+        }
 
-        projectedIncomeCard.setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, CostSelection.class);
-            startActivity(intent);
-        });
+        if (projectedIncomeCard != null) {
+            projectedIncomeCard.setOnClickListener(v -> {
+                Intent intent = new Intent(MainActivity.this, CostSelection.class);
+                startActivity(intent);
+            });
+        }
 
         if (user == null) {
             Intent intent = new Intent(getApplicationContext(), Login.class);
@@ -159,86 +169,38 @@ public class MainActivity extends AppCompatActivity {
             boolean isFirstLogin = prefs.getBoolean("isFirstLogin_" + user.getUid(), true);
 
             if (isFirstLogin) {
-                // First-time login → show "Welcome"
-                textView.setText("Welcome " + user.getEmail());
+                // Check if terms have been accepted for this user
+                if (!TermsDialog.areTermsAccepted(this, user.getUid())) {
+                    // Show terms dialog on first login
+                    showTermsDialogOnFirstLogin(user.getUid());
+                }
 
                 // Mark as not first login anymore
                 SharedPreferences.Editor editor = prefs.edit();
                 editor.putBoolean("isFirstLogin_" + user.getUid(), false);
                 editor.apply();
-            } else {
-                // Re-login → show random greeting
-                String[] greetings = {
-                        "Good morning",
-                        "Good day",
-                        "Hello",
-                        "Hi there",
-                        "Glad to see you back"
-                };
-
-                java.util.Random random = new java.util.Random();
-                int index = random.nextInt(greetings.length);
-                textView.setText(greetings[index] + " " + user.getDisplayName());
             }
         }
 
 
 
         // Right-side drawer toggle
-        toggle = new ActionBarDrawerToggle(this, drawerLayout, R.string.open, R.string.close);
-        drawerLayout.addDrawerListener(toggle);
-        toggle.syncState();
+        setupDrawer();
 
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            if (toggle != null) {
             toggle.getDrawerArrowDrawable().setDirection(
                     androidx.appcompat.graphics.drawable.DrawerArrowDrawable.ARROW_DIRECTION_END
             );
             getSupportActionBar().setHomeAsUpIndicator(toggle.getDrawerArrowDrawable());
         }
-
-        navigationView.setNavigationItemSelectedListener(item -> {
-            int id = item.getItemId();
-            if (id == R.id.nav_home) {
-                // Already on home, just close drawer
-            } else if (id == R.id.nav_profile) {
-                // Handle Profile - can add profile activity later
-                Toast.makeText(this, "Profile coming soon", Toast.LENGTH_SHORT).show();
-            } else if (id == R.id.nav_history) {
-                Intent intent = new Intent(MainActivity.this, DetectionHistoryActivity.class);
-                startActivity(intent);
-            } else if (id == R.id.nav_balance) {
-                // Navigate to Financial/Projected Income
-                Intent intent = new Intent(MainActivity.this, CostSelection.class);
-                startActivity(intent);
-            } else if (id == R.id.nav_analytics) {
-                // Navigate to Cultivar Analytics
-                Intent intent = new Intent(MainActivity.this, AnalyticsActivity.class);
-                startActivity(intent);
-            } else if (id == R.id.nav_settings) {
-                // Handle Settings - can add settings activity later
-                Toast.makeText(this, "Settings coming soon", Toast.LENGTH_SHORT).show();
-            } else if (id == R.id.nav_logout) {
-                FirebaseAuth.getInstance().signOut();
-                startActivity(new Intent(getApplicationContext(), Login.class));
-                finish();
-            }
-            drawerLayout.closeDrawers();
-            return true;
-        });
+        }
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
-
-        // Show User Agreement if not accepted yet
-        SharedPreferences prefs = getSharedPreferences("AppPrefs", MODE_PRIVATE);
-        boolean accepted = prefs.getBoolean("UserAgreementAccepted", false);
-        if (!accepted) {
-            showUserAgreementDialog(prefs);
-        }
     }
 
     private void requestWeather() {
@@ -344,6 +306,18 @@ public class MainActivity extends AppCompatActivity {
                 int wcode = current.optInt("weather_code", -1);
 
                 String condition = mapWeatherCode(wcode);
+                
+                // Get weather unit setting
+                String weatherUnit = SettingsPreferences.getWeatherUnit(MainActivity.this);
+                boolean useFahrenheit = weatherUnit.equals(SettingsPreferences.WEATHER_UNIT_FAHRENHEIT);
+                
+                // Convert temperature if needed
+                double displayTemp = tempC;
+                if (useFahrenheit && !Double.isNaN(tempC)) {
+                    displayTemp = (tempC * 9.0 / 5.0) + 32.0;
+                }
+                String tempUnit = useFahrenheit ? "°F" : "°C";
+                
                 // Daily min/max
                 String extra = "";
                 try {
@@ -352,14 +326,20 @@ public class MainActivity extends AppCompatActivity {
                     JSONArray tmin = daily.optJSONArray("temperature_2m_min");
                     JSONArray pr = daily.optJSONArray("precipitation_probability_max");
                     if (tmax != null && tmax.length() > 0 && tmin != null && tmin.length() > 0) {
-                        int mx = (int) Math.round(tmax.optDouble(0));
-                        int mn = (int) Math.round(tmin.optDouble(0));
+                        double mxC = tmax.optDouble(0);
+                        double mnC = tmin.optDouble(0);
+                        if (useFahrenheit) {
+                            mxC = (mxC * 9.0 / 5.0) + 32.0;
+                            mnC = (mnC * 9.0 / 5.0) + 32.0;
+                        }
+                        int mx = (int) Math.round(mxC);
+                        int mn = (int) Math.round(mnC);
                         String prp = (pr != null && pr.length() > 0) ? (" · Rain " + pr.optInt(0) + "%") : "";
                         extra = " (" + mn + "°/" + mx + "°" + ")" + prp;
                     }
                 } catch (Exception ignored) {}
 
-                String tempText = (Double.isNaN(tempC) ? "--" : Math.round(tempC) + "°C") + extra;
+                String tempText = (Double.isNaN(displayTemp) ? "--" : Math.round(displayTemp) + tempUnit) + extra;
 
                 runOnUiThread(() -> {
                     if (weatherCondition != null) weatherCondition.setText(condition);
@@ -600,24 +580,60 @@ public class MainActivity extends AppCompatActivity {
     private void showUserAgreementDialog(SharedPreferences prefs) {
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_user_agreement, null);
 
-        CheckBox chkAgree = dialogView.findViewById(R.id.chkAgree);
-        Button btnDone = dialogView.findViewById(R.id.btnDone);
+        com.google.android.material.checkbox.MaterialCheckBox chkAgree = dialogView.findViewById(R.id.chkAgree);
+        com.google.android.material.button.MaterialButton btnAccept = dialogView.findViewById(R.id.btnAccept);
+
+        if (chkAgree == null || btnAccept == null) {
+            // If views are not found, the dialog layout might have changed
+            return;
+        }
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("User Agreement")
                 .setView(dialogView)
                 .setCancelable(false) // must accept
                 .create();
 
         chkAgree.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            btnDone.setEnabled(isChecked);
+            btnAccept.setEnabled(isChecked);
         });
 
-        btnDone.setOnClickListener(v -> {
-            prefs.edit().putBoolean("UserAgreementAccepted", true).apply();
-            dialog.dismiss(); // allow user to continue
+        btnAccept.setOnClickListener(v -> {
+            if (chkAgree.isChecked()) {
+                prefs.edit().putBoolean("UserAgreementAccepted", true).apply();
+                dialog.dismiss(); // allow user to continue
+            }
         });
 
+        dialog.show();
+    }
+    
+    // Show Terms Dialog on First Login
+    private void showTermsDialogOnFirstLogin(String userId) {
+        TermsDialog dialog = new TermsDialog(this, userId, new TermsDialog.OnTermsAcceptedListener() {
+            @Override
+            public void onTermsAccepted() {
+                // Terms accepted, user can continue using the app
+                Toast.makeText(MainActivity.this, getString(R.string.success_login), Toast.LENGTH_SHORT).show();
+                
+                // Show tutorial after terms acceptance
+                if (TutorialManager.shouldShowTutorial(MainActivity.this, userId)) {
+                    // Use post to ensure terms dialog is fully dismissed first
+                    findViewById(android.R.id.content).post(() -> {
+                        TutorialManager.startTutorial(MainActivity.this, userId);
+                    });
+                }
+            }
+            
+            @Override
+            public void onTermsDeclined() {
+                // User must accept terms - sign them out
+                Toast.makeText(MainActivity.this, getString(R.string.terms_must_accept), Toast.LENGTH_LONG).show();
+                FirebaseAuth.getInstance().signOut();
+                Intent intent = new Intent(getApplicationContext(), Login.class);
+                startActivity(intent);
+                finish();
+            }
+        });
         dialog.show();
     }
 
@@ -633,167 +649,15 @@ public class MainActivity extends AppCompatActivity {
         }
         return super.onOptionsItemSelected(item);
     }
-
-    /**
-     * Initialize Financial Overview with donut chart
-     * Fetches data from Firebase and calculates income, expenses, and net income
-     */
-    private void initializeFinancialOverview() {
-        if (user == null) return;
-        
-        String userId = user.getUid();
-        financialRef = FirebaseDatabase.getInstance()
-                .getReference("users")
-                .child(userId)
-                .child("calculations");
-
-        financialRef.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                double totalIncome = 0;
-                double totalExpenses = 0;
-
-                // Calculate totals from all calculations
-                for (DataSnapshot calcSnapshot : snapshot.getChildren()) {
-                    Double grossIncome = calcSnapshot.child("grossIncome").getValue(Double.class);
-                    Double expenses = calcSnapshot.child("totalExpenses").getValue(Double.class);
-                    
-                    if (grossIncome != null) totalIncome += grossIncome;
-                    if (expenses != null) totalExpenses += expenses;
-                }
-
-                double netIncome = totalIncome - totalExpenses;
-
-                // Update donut chart (showing Income vs Expenses)
-                if (donutChart != null) {
-                    float incomeValue = (float) Math.max(0, totalIncome);
-                    float expensesValue = (float) Math.max(0, totalExpenses);
-                    
-                    // Ensure at least one value is greater than 0 for the chart to display
-                    if (incomeValue > 0 || expensesValue > 0) {
-                        float[] values = {incomeValue, expensesValue};
-                        int[] colors = {
-                                ContextCompat.getColor(MainActivity.this, R.color.sidebar_dark_green),
-                                ContextCompat.getColor(MainActivity.this, R.color.chart_orange)
-                        };
-                        donutChart.setData(values, colors);
-                    } else {
-                        // Show empty chart with default values
-                        float[] values = {0f, 0f};
-                        int[] colors = {
-                                ContextCompat.getColor(MainActivity.this, R.color.sidebar_dark_green),
-                                ContextCompat.getColor(MainActivity.this, R.color.chart_orange)
-                        };
-                        donutChart.setData(values, colors);
-                    }
-                }
-
-                // Update legend values
-                if (legend1Value != null) {
-                    legend1Value.setText(String.format("₱%,.2f", totalIncome));
-                }
-                if (legend2Value != null) {
-                    legend2Value.setText(String.format("₱%,.2f", totalExpenses));
-                }
-                if (legend3Value != null) {
-                    legend3Value.setText(String.format("₱%,.2f", netIncome));
-                }
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                // Set default values on error
-                if (donutChart != null) {
-                    float[] values = {0, 0};
-                    int[] colors = {
-                            ContextCompat.getColor(MainActivity.this, R.color.sidebar_dark_green),
-                            ContextCompat.getColor(MainActivity.this, R.color.chart_orange)
-                    };
-                    donutChart.setData(values, colors);
-                }
-                if (legend1Value != null) legend1Value.setText("₱0");
-                if (legend2Value != null) legend2Value.setText("₱0");
-                if (legend3Value != null) legend3Value.setText("₱0");
-            }
-        });
-    }
-
-    /**
-     * Initialize Calendar with task calculations
-     * Fetches work programs and calculates daily/total tasks
-     */
-    private void initializeCalendar() {
-        if (user == null) return;
-
-        String userId = user.getUid();
-        calendarRef = FirebaseDatabase.getInstance()
-                .getReference("users")
-                .child(userId)
-                .child("routineLogs");
-
-        calendarRef.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                int totalCompletedTasks = 0;
-                java.util.Set<String> uniqueDaysUsed = new java.util.HashSet<>();
-
-                // Get today's date for filtering
-                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-                String today = sdf.format(new java.util.Date());
-
-                // Process all work programs
-                for (DataSnapshot programSnapshot : snapshot.getChildren()) {
-                    DataSnapshot tasksSnapshot = programSnapshot.child("tasks");
-                    if (tasksSnapshot.exists()) {
-                        for (DataSnapshot taskSnapshot : tasksSnapshot.getChildren()) {
-                            String dateStr = taskSnapshot.getKey();
-                            String status = taskSnapshot.getValue(String.class);
-                            
-                            if (dateStr != null) {
-                                // Count unique days used (days that have tasks, regardless of status)
-                                uniqueDaysUsed.add(dateStr);
-                                
-                                // Count completed tasks for total
-                                if ("completed".equals(status)) {
-                                    totalCompletedTasks++;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                int daysUsed = uniqueDaysUsed.size();
-
-                // Update calendar calculation values
-                if (calendarDailyValue != null) {
-                    if (daysUsed == 1) {
-                        calendarDailyValue.setText(String.format("%d day", daysUsed));
-                    } else {
-                        calendarDailyValue.setText(String.format("%d days", daysUsed));
-                    }
-                }
-                if (calendarTotalValue != null) {
-                    if (totalCompletedTasks == 1) {
-                        calendarTotalValue.setText(String.format("%d task", totalCompletedTasks));
-                    } else {
-                        calendarTotalValue.setText(String.format("%d tasks", totalCompletedTasks));
-                    }
-                }
-
-
-                // Note: Calendar decorators would need to be added here
-                // For now, we're just tracking the dates
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                if (calendarDailyValue != null) {
-                    calendarDailyValue.setText("0 days");
-                }
-                if (calendarTotalValue != null) {
-                    calendarTotalValue.setText("0 tasks");
-                }
-            }
-        });
+    
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Save all data before app closes
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            LocalDataManager manager = LocalDataManager.getInstance(this);
+            manager.syncSettingsToLocal(this, currentUser.getUid());
+        }
     }
 }

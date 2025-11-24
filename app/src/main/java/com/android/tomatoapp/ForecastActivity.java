@@ -2,12 +2,10 @@ package com.android.tomatoapp;
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.widget.ArrayAdapter;
-import android.widget.ListView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.ImageView;
 
 import androidx.annotation.Nullable;
@@ -30,7 +28,7 @@ import java.util.Locale;
 public class ForecastActivity extends AppCompatActivity {
 
     private TextView locationTitle;
-    private ListView listView;
+    private LinearLayout forecastContainer;
 
     private static final String WEATHER_PREF = "WeatherPref";
     private static final String KEY_LAT = "lat";
@@ -49,7 +47,7 @@ public class ForecastActivity extends AppCompatActivity {
         }
 
         locationTitle = findViewById(R.id.locationTitle);
-        listView = findViewById(R.id.forecastList);
+        forecastContainer = findViewById(R.id.forecastContainer);
 
         SharedPreferences wp = getSharedPreferences(WEATHER_PREF, MODE_PRIVATE);
         double lat = Double.longBitsToDouble(wp.getLong(KEY_LAT, Double.doubleToLongBits(0)));
@@ -98,14 +96,25 @@ public class ForecastActivity extends AppCompatActivity {
                     JSONArray tmin = daily.getJSONArray("temperature_2m_min");
                     JSONArray pr = daily.optJSONArray("precipitation_probability_max");
 
+                    // Get weather unit setting
+                    String weatherUnit = SettingsPreferences.getWeatherUnit(ForecastActivity.this);
+                    boolean useFahrenheit = weatherUnit.equals(SettingsPreferences.WEATHER_UNIT_FAHRENHEIT);
+                    String tempUnit = useFahrenheit ? "°F" : "°C";
+                    
                     List<Row> rows = new ArrayList<>();
                     SimpleDateFormat in = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
                     SimpleDateFormat out = new SimpleDateFormat("EEE, MMM d", Locale.getDefault());
                     for (int i = 0; i < dates.length(); i++) {
                         String d = dates.getString(i);
                         int code = wcodes.optInt(i, -1);
-                        int mx = (int) Math.round(tmax.optDouble(i));
-                        int mn = (int) Math.round(tmin.optDouble(i));
+                        double mxC = tmax.optDouble(i);
+                        double mnC = tmin.optDouble(i);
+                        if (useFahrenheit) {
+                            mxC = (mxC * 9.0 / 5.0) + 32.0;
+                            mnC = (mnC * 9.0 / 5.0) + 32.0;
+                        }
+                        int mx = (int) Math.round(mxC);
+                        int mn = (int) Math.round(mnC);
                         String prp = (pr != null && pr.length() > i) ? (" · Rain " + pr.optInt(i) + "%") : "";
                         String label;
                         try {
@@ -124,7 +133,7 @@ public class ForecastActivity extends AppCompatActivity {
 
                     List<Row> finalRows = rows;
                     runOnUiThread(() -> {
-                        listView.setAdapter(new ForecastAdapter(finalRows));
+                        displayForecast(finalRows);
                     });
                 }
             } catch (Exception ignored) {
@@ -136,7 +145,7 @@ public class ForecastActivity extends AppCompatActivity {
                     r.details = "";
                     r.iconRes = android.R.drawable.ic_dialog_alert;
                     fallback.add(r);
-                    listView.setAdapter(new ForecastAdapter(fallback));
+                    displayForecast(fallback);
                 });
             } finally {
                 if (reader != null) try { reader.close(); } catch (Exception ignored2) {}
@@ -180,30 +189,27 @@ public class ForecastActivity extends AppCompatActivity {
         String details;
         int iconRes;
     }
-
-    private class ForecastAdapter extends ArrayAdapter<Row> {
-        private final List<Row> items;
-        ForecastAdapter(List<Row> items) {
-            super(ForecastActivity.this, 0, items);
-            this.items = items;
-        }
-
-        @Override
-        public View getView(int position, View convertView, ViewGroup parent) {
-            View view = convertView;
-            if (view == null) {
-                view = LayoutInflater.from(getContext()).inflate(R.layout.item_forecast_row, parent, false);
-            }
-            Row item = items.get(position);
-            ImageView icon = view.findViewById(R.id.icon);
-            TextView date = view.findViewById(R.id.date);
-            TextView cond = view.findViewById(R.id.condition);
-            TextView det = view.findViewById(R.id.details);
-            icon.setImageResource(item.iconRes);
-            date.setText(item.date);
-            cond.setText(item.condition);
-            det.setText(item.details);
-            return view;
+    
+    private void displayForecast(List<Row> rows) {
+        if (forecastContainer == null) return;
+        
+        forecastContainer.removeAllViews();
+        
+        LayoutInflater inflater = LayoutInflater.from(this);
+        for (Row row : rows) {
+            View itemView = inflater.inflate(R.layout.item_forecast_row, forecastContainer, false);
+            
+            ImageView icon = itemView.findViewById(R.id.icon);
+            TextView date = itemView.findViewById(R.id.date);
+            TextView cond = itemView.findViewById(R.id.condition);
+            TextView det = itemView.findViewById(R.id.details);
+            
+            if (icon != null) icon.setImageResource(row.iconRes);
+            if (date != null) date.setText(row.date);
+            if (cond != null) cond.setText(row.condition);
+            if (det != null) det.setText(row.details);
+            
+            forecastContainer.addView(itemView);
         }
     }
 }

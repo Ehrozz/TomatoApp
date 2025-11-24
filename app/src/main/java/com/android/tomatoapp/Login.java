@@ -2,7 +2,10 @@ package com.android.tomatoapp;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
+import android.util.Patterns;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -12,7 +15,7 @@ import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.text.TextUtils; // ✅ Correct import
+import android.text.TextUtils;
 
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
@@ -27,26 +30,63 @@ import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
+import com.google.firebase.database.ValueEventListener;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class Login extends AppCompatActivity {
-    TextInputEditText editTextEmail, editTextPassword;
-    View buttonLogin;
-    FirebaseAuth mAuth;
-    ProgressBar progressBar;
-    TextView textView;
+    private TextInputEditText editTextEmail;
+    private TextInputEditText editTextPassword;
+    private View buttonLogin;
+    private View buttonGoogleSignIn;
+    private FirebaseAuth mAuth;
+    private ProgressBar progressBar;
+    private TextView textView;
+    private DatabaseReference usersRef;
 
     // Google Sign-In
     private static final int RC_SIGN_IN = 9001;
     private GoogleSignInClient googleSignInClient;
+    
+    // Identifier resolution
+    private static final long IDENTIFIER_RESOLUTION_TIMEOUT_MS = 30_000L; // 30 seconds
+    private final List<ValueEventListener> activeListeners = new ArrayList<>();
+    private Handler timeoutHandler;
+    private boolean isResolvingIdentifier = false;
 
     @Override
     public void onStart() {
         super.onStart();
+        if (mAuth == null) {
+            mAuth = FirebaseAuth.getInstance();
+        }
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser != null) {
             Intent intent = new Intent(getApplicationContext(), MainActivity.class);
             startActivity(intent);
             finish();
+        }
+    }
+    
+    @Override
+    protected void onStop() {
+        super.onStop();
+        cancelIdentifierResolution();
+    }
+    
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        cleanupListeners();
+        if (timeoutHandler != null) {
+            timeoutHandler.removeCallbacksAndMessages(null);
+            timeoutHandler = null;
         }
     }
 
@@ -58,13 +98,29 @@ public class Login extends AppCompatActivity {
         }
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_login);
-
+        
+        // Initialize views first
         editTextEmail = findViewById(R.id.email);
         editTextPassword = findViewById(R.id.password);
         buttonLogin = findViewById(R.id.btn_login);
+        buttonGoogleSignIn = findViewById(R.id.btn_google_signin);
         progressBar = findViewById(R.id.progressBarLogin);
         mAuth = FirebaseAuth.getInstance();
         textView = findViewById(R.id.registerNow);
+        timeoutHandler = new Handler(Looper.getMainLooper());
+        
+        // Null checks
+        if (editTextEmail == null || editTextPassword == null || buttonLogin == null ||
+                buttonGoogleSignIn == null || progressBar == null || textView == null) {
+            Toast.makeText(this, getString(R.string.info_ui_elements_missing), Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
+        
+        initializeLogin();
+    }
+    
+    private void initializeLogin() {
 
         // Google Sign-In setup
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -74,7 +130,7 @@ public class Login extends AppCompatActivity {
         googleSignInClient = GoogleSignIn.getClient(this, gso);
 
         // Google button click
-        findViewById(R.id.btn_google_signin).setOnClickListener(v -> signInWithGoogle());
+        buttonGoogleSignIn.setOnClickListener(v -> signInWithGoogle());
 
         // Register link
         textView.setOnClickListener(v -> {
@@ -83,44 +139,53 @@ public class Login extends AppCompatActivity {
             finish();
         });
 
-        // Email/Password login
+        // Email/Username/Phone login
+        usersRef = FirebaseDatabase.getInstance().getReference("users");
+
+        setupLoginListeners();
+    }
+    
+    private void setupLoginListeners() {
         buttonLogin.setOnClickListener(v -> {
             progressBar.setVisibility(View.VISIBLE);
-            String email = String.valueOf(editTextEmail.getText());
-            String password = String.valueOf(editTextPassword.getText());
+            setLoginEnabled(false);
+            String identifier = editTextEmail.getText().toString().trim();
+            String password = editTextPassword.getText().toString().trim();
 
-            if (TextUtils.isEmpty(email)) {
-                Toast.makeText(Login.this, "Enter email", Toast.LENGTH_SHORT).show();
+            if (TextUtils.isEmpty(identifier)) {
+                Toast.makeText(Login.this, getString(R.string.error_enter_identifier), Toast.LENGTH_SHORT).show();
                 progressBar.setVisibility(View.GONE);
+                setLoginEnabled(true);
                 return;
             }
 
             if (TextUtils.isEmpty(password)) {
-                Toast.makeText(Login.this, "Enter password", Toast.LENGTH_SHORT).show();
+                Toast.makeText(Login.this, getString(R.string.error_enter_password), Toast.LENGTH_SHORT).show();
                 progressBar.setVisibility(View.GONE);
+                setLoginEnabled(true);
                 return;
             }
 
-            mAuth.signInWithEmailAndPassword(email, password)
-                    .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
-                        public void onComplete(@NonNull Task<AuthResult> task) {
-                            progressBar.setVisibility(View.GONE);
-                            if (task.isSuccessful()) {
-                                Toast.makeText(Login.this, "Login Successful", Toast.LENGTH_SHORT).show();
-                                Intent intent = new Intent(getApplicationContext(), MainActivity.class);
-                                startActivity(intent);
-                                finish();
-                            } else {
-                                Toast.makeText(Login.this, "Authentication failed.",
-                                        Toast.LENGTH_SHORT).show();
-                            }
-                        }
-                    });
+            resolveEmailForIdentifier(identifier, resolvedEmail -> {
+                if (resolvedEmail == null) {
+                    progressBar.setVisibility(View.GONE);
+                    setLoginEnabled(true);
+                    Toast.makeText(Login.this, getString(R.string.error_account_not_found), Toast.LENGTH_SHORT).show();
+                } else {
+                    signInWithEmail(resolvedEmail, password);
+                }
+            });
         });
     }
 
     // --- Google Sign-In methods ---
     private void signInWithGoogle() {
+        if (buttonGoogleSignIn != null) {
+            buttonGoogleSignIn.setEnabled(false);
+        }
+        if (progressBar != null) {
+            progressBar.setVisibility(View.VISIBLE);
+        }
         Intent signInIntent = googleSignInClient.getSignInIntent();
         startActivityForResult(signInIntent, RC_SIGN_IN);
     }
@@ -136,7 +201,13 @@ public class Login extends AppCompatActivity {
                 firebaseAuthWithGoogle(account.getIdToken());
             } catch (ApiException e) {
                 Log.w("GoogleSignIn", "Google sign in failed", e);
-                Toast.makeText(this, "Google sign in failed", Toast.LENGTH_SHORT).show();
+                if (progressBar != null) {
+                    progressBar.setVisibility(View.GONE);
+                }
+                if (buttonGoogleSignIn != null) {
+                    buttonGoogleSignIn.setEnabled(true);
+                }
+                Toast.makeText(this, getString(R.string.error_google_signin_failed), Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -145,15 +216,190 @@ public class Login extends AppCompatActivity {
         AuthCredential credential = GoogleAuthProvider.getCredential(idToken, null);
         mAuth.signInWithCredential(credential)
                 .addOnCompleteListener(this, task -> {
+                    if (progressBar != null) {
+                        progressBar.setVisibility(View.GONE);
+                    }
+                    if (buttonGoogleSignIn != null) {
+                        buttonGoogleSignIn.setEnabled(true);
+                    }
                     if (task.isSuccessful()) {
                         FirebaseUser user = mAuth.getCurrentUser();
-                        Toast.makeText(this, "Welcome " + user.getEmail(), Toast.LENGTH_SHORT).show();
+                        if (user != null && user.getEmail() != null) {
+                            Toast.makeText(this, getString(R.string.welcome_user, user.getEmail()), Toast.LENGTH_SHORT).show();
+                        }
                         Intent intent = new Intent(getApplicationContext(), MainActivity.class);
                         startActivity(intent);
                         finish();
                     } else {
-                        Toast.makeText(this, "Google authentication failed", Toast.LENGTH_SHORT).show();
+                        String errorMessage = FirebaseErrorHandler.getErrorMessage(this, task.getException());
+                        Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show();
                     }
                 });
+    }
+
+    private void signInWithEmail(String email, String password) {
+        mAuth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        progressBar.setVisibility(View.GONE);
+                        setLoginEnabled(true);
+                        if (task.isSuccessful()) {
+                            Toast.makeText(Login.this, getString(R.string.success_login), Toast.LENGTH_SHORT).show();
+                            Intent intent = new Intent(getApplicationContext(), MainActivity.class);
+                            startActivity(intent);
+                            finish();
+                        } else {
+                            String errorMessage = FirebaseErrorHandler.getErrorMessage(Login.this, task.getException());
+                            Toast.makeText(Login.this, errorMessage, Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+    }
+
+    private void resolveEmailForIdentifier(String identifier, EmailResolutionCallback callback) {
+        if (isResolvingIdentifier) {
+            callback.onResult(null);
+            return;
+        }
+        
+        isResolvingIdentifier = true;
+        startIdentifierResolutionTimeout(callback);
+        
+        if (Patterns.EMAIL_ADDRESS.matcher(identifier).matches()) {
+            cancelIdentifierResolution();
+            callback.onResult(identifier);
+            return;
+        }
+
+        String trimmed = identifier.trim();
+        if (trimmed.isEmpty()) {
+            cancelIdentifierResolution();
+            callback.onResult(null);
+            return;
+        }
+
+        if (PhoneUtils.isLikelyPhone(trimmed)) {
+            querySequential(new String[]{"phone", "phoneInternational", "phoneLocal"},
+                    PhoneUtils.buildCandidates(trimmed),
+                    callback);
+        } else {
+            String normalizedUsername = PhoneUtils.normalizeUsername(trimmed);
+            querySequential(new String[]{"usernameLower"}, new String[]{normalizedUsername}, callback);
+        }
+    }
+    
+    private void startIdentifierResolutionTimeout(EmailResolutionCallback callback) {
+        if (timeoutHandler != null) {
+            timeoutHandler.postDelayed(() -> {
+                if (isResolvingIdentifier) {
+                    cleanupListeners();
+                    isResolvingIdentifier = false;
+                    callback.onResult(null);
+                }
+            }, IDENTIFIER_RESOLUTION_TIMEOUT_MS);
+        }
+    }
+    
+    private void cancelIdentifierResolution() {
+        isResolvingIdentifier = false;
+        if (timeoutHandler != null) {
+            timeoutHandler.removeCallbacksAndMessages(null);
+        }
+    }
+
+    private void querySequential(String[] fields, String[] candidates, EmailResolutionCallback callback) {
+        queryRecursive(fields, candidates, 0, 0, callback);
+    }
+
+    private void queryRecursive(String[] fields,
+                                String[] candidates,
+                                int fieldIndex,
+                                int candidateIndex,
+                                EmailResolutionCallback callback) {
+        if (fields == null || candidates == null ||
+                fieldIndex >= fields.length || candidateIndex >= candidates.length) {
+            callback.onResult(null);
+            return;
+        }
+
+        String field = fields[fieldIndex];
+        String value = candidates[candidateIndex];
+        if (TextUtils.isEmpty(value)) {
+            advance(fields, candidates, fieldIndex, candidateIndex, callback);
+            return;
+        }
+
+        Query query = usersRef.orderByChild(field).equalTo(value);
+        ValueEventListener listener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (!isResolvingIdentifier) {
+                    return; // Resolution was cancelled
+                }
+                
+                for (DataSnapshot child : snapshot.getChildren()) {
+                    String email = child.child("email").getValue(String.class);
+                    if (!TextUtils.isEmpty(email)) {
+                        cleanupListeners();
+                        cancelIdentifierResolution();
+                        callback.onResult(email);
+                        return;
+                    }
+                }
+                advance(fields, candidates, fieldIndex, candidateIndex, callback);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.w("Login", "Identifier lookup cancelled: " + error.getMessage());
+                if (!isResolvingIdentifier) {
+                    return;
+                }
+                advance(fields, candidates, fieldIndex, candidateIndex, callback);
+            }
+        };
+        query.addListenerForSingleValueEvent(listener);
+        activeListeners.add(listener);
+    }
+
+    private void advance(String[] fields,
+                         String[] candidates,
+                         int fieldIndex,
+                         int candidateIndex,
+                         EmailResolutionCallback callback) {
+        if (!isResolvingIdentifier) {
+            return; // Resolution was cancelled
+        }
+        
+        int nextField = fieldIndex;
+        int nextCandidate = candidateIndex + 1;
+        if (nextCandidate >= candidates.length) {
+            nextField++;
+            nextCandidate = 0;
+        }
+        if (nextField >= fields.length) {
+            cleanupListeners();
+            cancelIdentifierResolution();
+            callback.onResult(null);
+        } else {
+            queryRecursive(fields, candidates, nextField, nextCandidate, callback);
+        }
+    }
+
+    private void setLoginEnabled(boolean enabled) {
+        if (buttonLogin != null) buttonLogin.setEnabled(enabled);
+    }
+    
+    private void cleanupListeners() {
+        for (ValueEventListener listener : activeListeners) {
+            if (usersRef != null) {
+                usersRef.removeEventListener(listener);
+            }
+        }
+        activeListeners.clear();
+    }
+
+    private interface EmailResolutionCallback {
+        void onResult(String email);
     }
 }

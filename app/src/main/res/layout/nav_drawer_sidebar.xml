@@ -1,21 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/drawerHeader"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:background="@color/sidebar_dark_green"
     android:padding="24dp"
-    android:gravity="center_horizontal">
+    android:gravity="center_horizontal"
+    android:clickable="true"
+    android:focusable="true"
+    android:backgroundTint="@color/sidebar_dark_green">
 
-    <!-- Tomato Logo at Top -->
+    <!-- Profile Picture at Top -->
     <ImageView
-        android:id="@+id/sidebarLogo"
+        android:id="@+id/sidebarProfileImage"
         android:layout_width="80dp"
         android:layout_height="80dp"
         android:src="@mipmap/ic_logo"
         android:layout_marginTop="16dp"
-        android:layout_marginBottom="32dp"
-        android:contentDescription="App Logo" />
+        android:layout_marginBottom="16dp"
+        android:contentDescription="Profile Picture"
+        android:scaleType="centerCrop"
+        android:background="@drawable/circle_background"
+        android:padding="3dp"
+        android:clipToOutline="true" />
+
+    <!-- User Name -->
+    <TextView
+        android:id="@+id/sidebarUserName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="User Name"
+        android:textColor="@color/white"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:layout_marginBottom="4dp" />
+
+    <!-- User Email -->
+    <TextView
+        android:id="@+id/sidebarUserEmail"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="user@example.com"
+        android:textColor="@color/white"
+        android:textSize="12sp"
+        android:gravity="center"
+        android:alpha="0.8"
+        android:layout_marginBottom="16dp"
+        android:maxLines="1"
+        android:ellipsize="end" />
 
 </LinearLayout>
 

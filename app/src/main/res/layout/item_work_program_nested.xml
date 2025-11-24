@@ -42,7 +42,7 @@
                 android:textColor="@color/text_secondary" />
         </LinearLayout>
 
-        <!-- Second Row: Phases and Detections -->
+        <!-- Second Row: Phases (with detections integrated) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -52,18 +52,9 @@
 
             <TextView
                 android:id="@+id/nestedPhases"
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:text="Phases"
-                android:textSize="11sp"
-                android:textColor="@color/text_secondary" />
-
-            <TextView
-                android:id="@+id/nestedDetections"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Detections"
                 android:textSize="11sp"
                 android:textColor="@color/text_secondary" />
         </LinearLayout>

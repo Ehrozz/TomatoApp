@@ -254,6 +254,7 @@ public class WorkProgramDataHelper {
 
     /**
      * Adjust projected income and expenses based on completion data.
+     * Simplified and more transparent approach focusing on critical phases.
      */
     public static AdjustedProjection adjustProjectionsByCompletionRate(double projectedIncome,
                                                                        double projectedExpenses,
@@ -262,24 +263,43 @@ public class WorkProgramDataHelper {
             return new AdjustedProjection(projectedIncome, projectedExpenses);
         }
 
-        double completionFactor = Math.max(0, Math.min(1, stats.completionRate / 100.0));
-        double skippedRatio = stats.totalTasks > 0 ? (double) stats.skippedTasks / stats.totalTasks : 0;
+        // Income adjustment based on critical phases (Flowering & Harvest)
+        // These phases have the most impact on yield and income
+        double floweringCompletion = stats.phaseTotals[3] > 0
+                ? (double) stats.phaseCompleted[3] / stats.phaseTotals[3]
+                : 1.0;
         double harvestCompletion = stats.phaseTotals[4] > 0
                 ? (double) stats.phaseCompleted[4] / stats.phaseTotals[4]
-                : completionFactor;
-        harvestCompletion = Math.max(0, Math.min(1, harvestCompletion));
+                : 1.0;
+        
+        // Use the lower of the two critical phases (bottleneck effect)
+        double criticalPhaseCompletion = Math.min(floweringCompletion, harvestCompletion);
+        
+        // Overall completion rate
+        double overallCompletion = Math.max(0, Math.min(1, stats.completionRate / 100.0));
 
-        // Weight harvest completion higher since it impacts income the most
-        double phaseWeight = 0.6 + (harvestCompletion * 0.4);
+        // Income adjustment: 30% base (minimum) + up to 70% based on critical phases
+        // This ensures that even with poor completion, some income is expected
+        double incomeAdjustment = 0.30 + (criticalPhaseCompletion * 0.70);
+        
+        // Apply overall completion as a secondary factor (weighted 20%)
+        incomeAdjustment = incomeAdjustment * 0.8 + (overallCompletion * 0.2);
+        
+        // Ensure adjustment is between 30% and 100% of projected income
+        incomeAdjustment = Math.max(0.30, Math.min(1.0, incomeAdjustment));
+        double adjustedIncome = projectedIncome * incomeAdjustment;
 
-        double skipFactor = Math.max(0.6, 1 - (skippedRatio * 0.2));
-        double adjustedIncome = projectedIncome * completionFactor * phaseWeight * skipFactor;
-        adjustedIncome = Math.min(projectedIncome, adjustedIncome);
-
-        double missedRatio = stats.totalTasks > 0 ? (double) stats.missedTasks / stats.totalTasks : 0;
-        double expenseReductionFactor = 1 - (missedRatio * 0.3) - (skippedRatio * 0.15);
-        expenseReductionFactor = Math.max(0.4, expenseReductionFactor);
-        double adjustedExpenses = projectedExpenses * expenseReductionFactor;
+        // Expense adjustment: Expenses are still incurred even if tasks are missed
+        // Only reduce expenses if tasks were actually skipped (not just missed)
+        // Missed tasks still incur costs (materials, labor already spent)
+        double skippedRatio = stats.totalTasks > 0 ? (double) stats.skippedTasks / stats.totalTasks : 0;
+        
+        // Small reduction for skipped tasks (max 10% reduction)
+        // This accounts for materials/inputs not used when tasks are skipped
+        double expenseAdjustment = 1.0 - (skippedRatio * 0.10);
+        expenseAdjustment = Math.max(0.90, Math.min(1.0, expenseAdjustment)); // Between 90% and 100%
+        
+        double adjustedExpenses = projectedExpenses * expenseAdjustment;
 
         return new AdjustedProjection(adjustedIncome, adjustedExpenses);
     }
@@ -388,6 +408,113 @@ public class WorkProgramDataHelper {
         // Phase 4: Flowering & Fruit Setting (fertilization, pest monitoring, flower management)
         // Phase 5: Harvest Phase (harvesting, watering, disease management)
         return "1:Land Prep & Nursery, 2:Transplant & Establishment, 3:Vegetative Growth, 4:Flowering & Fruit Set, 5:Harvest";
+    }
+
+    /**
+     * Get a summary of activities done in each phase with detection counts integrated.
+     * Returns a concise string describing phases with detection counts per phase.
+     * Format: "Phase 1 (2 detections), Phase 2 (1 detection), ..."
+     */
+    public static String getPhasesActivitySummaryWithDetections(org.json.JSONObject phases,
+                                                                 android.content.Context context,
+                                                                 String cultivarName,
+                                                                 String startDate) {
+        if (phases == null) return "N/A";
+        
+        // Get detection counts per phase
+        int[] detectionCounts = getDetectionCountsPerPhase(context, cultivarName, startDate, phases);
+        
+        // Build summary string with detection counts
+        StringBuilder summary = new StringBuilder();
+        String[] phaseNames = {
+            "1:Land Prep & Nursery",
+            "2:Transplant & Establishment", 
+            "3:Vegetative Growth",
+            "4:Flowering & Fruit Set",
+            "5:Harvest"
+        };
+        
+        for (int i = 0; i < 5; i++) {
+            if (i > 0) {
+                summary.append(", ");
+            }
+            summary.append(phaseNames[i]);
+            if (detectionCounts[i] > 0) {
+                summary.append(" (").append(detectionCounts[i]);
+                summary.append(detectionCounts[i] == 1 ? " detection)" : " detections)");
+            }
+        }
+        
+        return summary.toString();
+    }
+
+    /**
+     * Count detections per phase for a work program.
+     * Returns an array of 5 integers representing detection counts for phases 1-5.
+     */
+    private static int[] getDetectionCountsPerPhase(android.content.Context context,
+                                                     String cultivarName,
+                                                     String startDate,
+                                                     org.json.JSONObject phases) {
+        int[] counts = new int[5];
+        
+        if (context == null || cultivarName == null || startDate == null || phases == null) {
+            return counts;
+        }
+        
+        try {
+            // Get all detection history
+            ArrayList<org.json.JSONObject> allHistory = DetectionHistoryManager.getHistory(context);
+            if (allHistory == null || allHistory.isEmpty()) {
+                return counts;
+            }
+            
+            // Parse start date
+            Date programStart = sdf.parse(startDate);
+            if (programStart == null) {
+                return counts;
+            }
+            
+            // Calculate phase date ranges from phases JSON
+            String phase1End = phases.optString("phase1End", "");
+            String phase2Start = phases.optString("phase2Start", "");
+            String phase2End = phases.optString("phase2End", "");
+            String phase3Start = phases.optString("phase3Start", "");
+            String phase3End = phases.optString("phase3End", "");
+            String phase4Start = phases.optString("phase4Start", "");
+            String phase4End = phases.optString("phase4End", "");
+            String phase5Start = phases.optString("phase5Start", "");
+            String phase5End = phases.optString("phase5End", "");
+            
+            // Count detections per phase
+            for (org.json.JSONObject entry : allHistory) {
+                // Check if detection matches cultivar
+                String detectionCultivar = entry.optString("cultivar", "");
+                if (!cultivarName.equals(detectionCultivar)) {
+                    continue;
+                }
+                
+                // Get detection phase and timestamp
+                int detectionPhase = entry.optInt("phase", 0);
+                long timestamp = entry.optLong("timestamp", 0);
+                
+                if (detectionPhase >= 1 && detectionPhase <= 5 && timestamp > 0) {
+                    Date detectionDate = new Date(timestamp);
+                    
+                    // Verify detection is within program date range
+                    if (detectionDate.before(programStart)) {
+                        continue;
+                    }
+                    
+                    // Count detection for its phase
+                    counts[detectionPhase - 1]++;
+                }
+            }
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        
+        return counts;
     }
 
     private static int getTaskCountForDay(@Nullable String cultivarName,

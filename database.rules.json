@@ -4,9 +4,49 @@
       "$userId": {
         ".read": "auth != null && auth.uid === $userId",
         ".write": "auth != null && auth.uid === $userId",
+        "fullName": {
+          ".validate": "newData.isString() && newData.val().length > 0"
+        },
+        "username": {
+          ".validate": "newData.isString() && newData.val().length > 0"
+        },
+        "email": {
+          ".validate": "newData.isString() && newData.val().length > 0"
+        },
+        "phone": {
+          ".validate": "newData.isString() && newData.val().length > 0"
+        },
+        "address": {
+          ".validate": "newData.isString()"
+        },
         "workPrograms": {
           "$programId": {
-            ".validate": "newData.hasChildren(['cultivarName','startingDate','areaSize']) && newData.child('cultivarName').isString() && newData.child('startingDate').isString() && newData.child('areaSize').isNumber() && (!newData.child('projectedIncome').exists() || newData.child('projectedIncome').isNumber()) && (!newData.child('projectedExpenses').exists() || newData.child('projectedExpenses').isNumber()) && (!newData.child('phasesJson').exists() || newData.child('phasesJson').isString()) && (!newData.child('detectionHistoriesJson').exists() || newData.child('detectionHistoriesJson').isString()) && (!newData.child('completionRate').exists() || newData.child('completionRate').isNumber())"
+            ".validate": "newData.hasChildren(['cultivarName','startingDate','areaSize']) && newData.child('cultivarName').isString() && newData.child('startingDate').isString() && newData.child('areaSize').isNumber() && (!newData.child('projectedIncome').exists() || newData.child('projectedIncome').isNumber()) && (!newData.child('projectedExpenses').exists() || newData.child('projectedExpenses').isNumber()) && (!newData.child('adjustedIncome').exists() || newData.child('adjustedIncome').isNumber()) && (!newData.child('adjustedExpenses').exists() || newData.child('adjustedExpenses').isNumber()) && (!newData.child('phases').exists() || newData.child('phases').hasChildren()) && (!newData.child('phasesJson').exists() || newData.child('phasesJson').isString()) && (!newData.child('detectionHistories').exists() || newData.child('detectionHistories').hasChildren()) && (!newData.child('detectionHistoriesJson').exists() || newData.child('detectionHistoriesJson').isString()) && (!newData.child('completionRate').exists() || newData.child('completionRate').isNumber()) && (!newData.child('totalTasks').exists() || newData.child('totalTasks').isNumber()) && (!newData.child('completedTasks').exists() || newData.child('completedTasks').isNumber()) && (!newData.child('missedTasks').exists() || newData.child('missedTasks').isNumber()) && (!newData.child('skippedTasks').exists() || newData.child('skippedTasks').isNumber()) && (!newData.child('phaseCompletionJson').exists() || newData.child('phaseCompletionJson').isString()) && (!newData.child('cultivar').exists() || newData.child('cultivar').isString()) && (!newData.child('startDate').exists() || newData.child('startDate').isString()) && (!newData.child('landArea').exists() || newData.child('landArea').isNumber())",
+            "dailyExpenses": {
+              "$date": {
+                ".validate": "(!newData.child('date').exists() || newData.child('date').isString()) && (!newData.child('timestamp').exists() || newData.child('timestamp').isNumber()) && (!newData.child('labor').exists() || newData.child('labor').hasChildren()) && (!newData.child('material').exists() || newData.child('material').hasChildren()) && (!newData.child('equipment').exists() || newData.child('equipment').hasChildren()) && (!newData.child('miscellaneous').exists() || newData.child('miscellaneous').hasChildren()) && (!newData.child('fertilizer').exists() || newData.child('fertilizer').isNumber()) && (!newData.child('manpower').exists() || newData.child('manpower').isNumber()) && (!newData.child('pesticide').exists() || newData.child('pesticide').isNumber()) && (!newData.child('seedlings').exists() || newData.child('seedlings').isNumber()) && (!newData.child('other').exists() || newData.child('other').isNumber())",
+                "labor": {
+                  "$itemId": {
+                    ".validate": "(!newData.child('numWorkers').exists() || newData.child('numWorkers').isNumber()) && (!newData.child('dailyWage').exists() || newData.child('dailyWage').isNumber()) && (!newData.child('totalCost').exists() || newData.child('totalCost').isNumber()) && (!newData.child('notes').exists() || newData.child('notes').isString())"
+                  }
+                },
+                "material": {
+                  "$itemId": {
+                    ".validate": "(!newData.child('materialName').exists() || newData.child('materialName').isString()) && (!newData.child('quantity').exists() || newData.child('quantity').isNumber()) && (!newData.child('quantityUnit').exists() || newData.child('quantityUnit').isString()) && (!newData.child('unitCost').exists() || newData.child('unitCost').isNumber()) && (!newData.child('totalCost').exists() || newData.child('totalCost').isNumber())"
+                  }
+                },
+                "equipment": {
+                  "$itemId": {
+                    ".validate": "(!newData.child('equipmentName').exists() || newData.child('equipmentName').isString()) && (!newData.child('usageValue').exists() || newData.child('usageValue').isNumber()) && (!newData.child('usageUnit').exists() || newData.child('usageUnit').isString()) && (!newData.child('isOwned').exists() || newData.child('isOwned').isBoolean()) && (!newData.child('cost').exists() || newData.child('cost').isNumber()) && (!newData.child('totalCost').exists() || newData.child('totalCost').isNumber()) && (!newData.child('usage').exists() || newData.child('usage').isString())"
+                  }
+                },
+                "miscellaneous": {
+                  "$itemId": {
+                    ".validate": "(!newData.child('expenseName').exists() || newData.child('expenseName').isString()) && (!newData.child('cost').exists() || newData.child('cost').isNumber())"
+                  }
+                }
+              }
+            }
           }
         },
         "routineLogs": {
@@ -41,4 +81,3 @@
     }
   }
 }
-

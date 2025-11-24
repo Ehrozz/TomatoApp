@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
@@ -25,6 +27,7 @@
         tools:ignore="ScopedStorage" />
 
     <application
+        android:name=".TomatoAppApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -67,10 +70,22 @@
             android:name=".CameraInterface"
             android:exported="false" />
         <activity
+            android:name=".SimpleCaptureActivity"
+            android:exported="false" />
+        <activity
             android:name=".IPM"
             android:exported="false" />
         <activity
             android:name=".DailyTask"
+            android:exported="false" />
+        <activity
+            android:name=".DailyExpensesActivity"
+            android:exported="false" />
+        <activity
+            android:name=".CurrentExpensesActivity"
+            android:exported="false" />
+        <activity
+            android:name=".DailyExpensesHistoryActivity"
             android:exported="false" />
         <activity
             android:name=".Workprogram"
@@ -100,6 +115,38 @@
             android:name=".PlantMonitoringActivity"
             android:exported="false"
             android:label="@string/monitor_title" />
+        <activity
+            android:name=".ProfileActivity"
+            android:exported="false"
+            android:label="Profile" />
+        <activity
+            android:name=".SeasonComparisonActivity"
+            android:exported="false"
+            android:label="Season Comparison" />
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:label="Settings" />
+        <activity
+            android:name=".UserManualActivity"
+            android:exported="false"
+            android:label="User Manual" />
+        <activity
+            android:name=".NotificationListActivity"
+            android:exported="false"
+            android:label="Notifications" />
+
+        <receiver
+            android:name=".notifications.NotificationReceiver"
+            android:exported="false" />
+        <receiver
+            android:name=".notifications.NotificationBootReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
         <provider
             android:name="androidx.core.content.FileProvider"

@@ -18,14 +18,12 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 
-public class IPM extends AppCompatActivity {
+public class IPM extends BaseDrawerActivity {
 
     CardView ScanCard;
+    CardView HistoryCard;
     CardView InformationCard;
 
-    private DrawerLayout drawerLayout;
-    private NavigationView navigationView;
-    private ActionBarDrawerToggle toggle;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,10 +32,16 @@ public class IPM extends AppCompatActivity {
         setContentView(R.layout.activity_ipm);
 
         ScanCard = findViewById(R.id.scanCard);
+        HistoryCard = findViewById(R.id.historyCard);
         InformationCard = findViewById(R.id.infoCard);
 
         ScanCard.setOnClickListener(v -> {
             Intent intent = new Intent(IPM.this, CameraInterface.class);
+            startActivity(intent);
+        });
+
+        HistoryCard.setOnClickListener(v -> {
+            Intent intent = new Intent(IPM.this, DetectionHistoryActivity.class);
             startActivity(intent);
         });
 
@@ -52,30 +56,11 @@ public class IPM extends AppCompatActivity {
             return insets;
         });
 
-        drawerLayout = findViewById(R.id.drawer_layout);
-        navigationView = findViewById(R.id.nav_view);
-
-        toggle = new ActionBarDrawerToggle(this, drawerLayout, R.string.open, R.string.close);
-        drawerLayout.addDrawerListener(toggle);
-        toggle.syncState();
+        setupDrawer();
 
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setTitle(R.string.integrated_pest_management);
         }
-
-        navigationView.setNavigationItemSelectedListener(item -> {
-            int id = item.getItemId();
-            if (id == R.id.nav_home) {
-                startActivity(new Intent(this, MainActivity.class));
-            } else if (id == R.id.nav_logout) {
-                FirebaseAuth.getInstance().signOut();
-                startActivity(new Intent(this, Login.class));
-                finish();
-            }
-            drawerLayout.closeDrawers();
-            return true;
-        });
     }
 
     @Override
@@ -83,11 +68,4 @@ public class IPM extends AppCompatActivity {
         return true; // no back button menu
     }
 
-    @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        if (toggle.onOptionsItemSelected(item)) {
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
 }
