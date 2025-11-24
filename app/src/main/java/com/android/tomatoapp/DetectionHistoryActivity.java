@@ -24,7 +24,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Locale;
 
-public class DetectionHistoryActivity extends AppCompatActivity {
+public class DetectionHistoryActivity extends BaseDrawerActivity {
 
     private RecyclerView historyRecyclerView;
     private View emptyState;
@@ -36,12 +36,13 @@ public class DetectionHistoryActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_detection_history);
 
+        setupDrawer();
+
         historyRecyclerView = findViewById(R.id.historyRecyclerView);
         emptyState = findViewById(R.id.emptyState);
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Detection History");
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
 
         // Setup RecyclerView

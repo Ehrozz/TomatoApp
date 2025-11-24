@@ -25,7 +25,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
-public class InformationInterface extends AppCompatActivity {
+public class InformationInterface extends BaseDrawerActivity {
 
     private RecyclerView diseaseRecyclerView;
     private DiseaseAdapter adapter;
@@ -43,9 +43,6 @@ public class InformationInterface extends AppCompatActivity {
         diseaseNameMap.put("Black Leaf Mold", "Black Leaf Mold (Pseudocercospora fuligena)");
     }
 
-    DrawerLayout drawerLayout;
-    NavigationView navigationView;
-    ActionBarDrawerToggle toggle;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,30 +58,11 @@ public class InformationInterface extends AppCompatActivity {
         adapter = new DiseaseAdapter(diseaseList);
         diseaseRecyclerView.setAdapter(adapter);
 
-        drawerLayout = findViewById(R.id.drawer_layout);
-        navigationView = findViewById(R.id.nav_view);
-
-        toggle = new ActionBarDrawerToggle(this, drawerLayout, R.string.open, R.string.close);
-        drawerLayout.addDrawerListener(toggle);
-        toggle.syncState();
+        setupDrawer();
 
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setTitle(R.string.information_section);
         }
-
-        navigationView.setNavigationItemSelectedListener(item -> {
-            int id = item.getItemId();
-            if (id == R.id.nav_home) {
-                startActivity(new Intent(this, MainActivity.class));
-            } else if (id == R.id.nav_logout) {
-                FirebaseAuth.getInstance().signOut();
-                startActivity(new Intent(this, Login.class));
-                finish();
-            }
-            drawerLayout.closeDrawers();
-            return true;
-        });
     }
 
     private void prepareDiseaseList() {

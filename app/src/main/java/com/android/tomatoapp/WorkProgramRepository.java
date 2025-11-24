@@ -63,6 +63,13 @@ public class WorkProgramRepository {
             workProgramsRef.child(entity.id).child("areaSize").setValue(entity.areaSize);
             workProgramsRef.child(entity.id).child("projectedIncome").setValue(entity.projectedIncome);
             workProgramsRef.child(entity.id).child("projectedExpenses").setValue(entity.projectedExpenses);
+            // Research fields
+            workProgramsRef.child(entity.id).child("season").setValue(entity.season);
+            workProgramsRef.child(entity.id).child("seasonMonth").setValue(entity.seasonMonth);
+            workProgramsRef.child(entity.id).child("isOffSeason").setValue(entity.isOffSeason);
+            workProgramsRef.child(entity.id).child("actualYield").setValue(entity.actualYield);
+            workProgramsRef.child(entity.id).child("totalYield").setValue(entity.totalYield);
+            workProgramsRef.child(entity.id).child("harvestDate").setValue(entity.harvestDate);
             // phases and detection histories can be synced later when structured
         }
     }
@@ -155,6 +162,25 @@ public class WorkProgramRepository {
 
                     // Detection histories will be loaded on-demand in AnalyticsActivity
                     // For now, we'll leave it null and load it when needed
+                    
+                    // Parse research fields from Firebase
+                    String season = child.child("season").getValue(String.class);
+                    Integer seasonMonthObj = child.child("seasonMonth").getValue(Integer.class);
+                    Boolean isOffSeasonObj = child.child("isOffSeason").getValue(Boolean.class);
+                    Double actualYieldObj = child.child("actualYield").getValue(Double.class);
+                    Double totalYieldObj = child.child("totalYield").getValue(Double.class);
+                    String harvestDate = child.child("harvestDate").getValue(String.class);
+                    
+                    // Auto-detect season if not set
+                    if (season == null && startingDate != null) {
+                        season = SeasonHelper.getSeason(startingDate);
+                    }
+                    int seasonMonth = seasonMonthObj != null ? seasonMonthObj : 
+                                     (startingDate != null ? SeasonHelper.getSeasonMonth(startingDate) : 0);
+                    boolean isOffSeason = isOffSeasonObj != null ? isOffSeasonObj : 
+                                         (startingDate != null ? SeasonHelper.isOffSeason(startingDate) : false);
+                    double actualYield = actualYieldObj != null ? actualYieldObj : 0.0;
+                    double totalYield = totalYieldObj != null ? totalYieldObj : 0.0;
 
                     WorkProgramEntity entity = new WorkProgramEntity(
                             id,
@@ -177,7 +203,13 @@ public class WorkProgramRepository {
                             0,
                             0,
                             0,
-                            0
+                            0,
+                            season != null ? season : (startingDate != null ? SeasonHelper.getSeason(startingDate) : "unknown"),
+                            seasonMonth,
+                            isOffSeason,
+                            actualYield,
+                            totalYield,
+                            harvestDate
                     );
                     buffer.add(entity);
                 }

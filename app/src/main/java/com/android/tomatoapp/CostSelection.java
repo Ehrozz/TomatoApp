@@ -43,7 +43,7 @@ import com.google.firebase.database.ValueEventListener;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CostSelection extends AppCompatActivity {
+public class CostSelection extends BaseDrawerActivity {
 
     private RecyclerView recyclerView;
     private FloatingActionButton btnAdd;
@@ -57,9 +57,6 @@ public class CostSelection extends AppCompatActivity {
     private String userId;
     private String currentSortOrder = "date_desc"; // Default: newest first
 
-    DrawerLayout drawerLayout;
-    NavigationView navigationView;
-    ActionBarDrawerToggle toggle;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,80 +85,126 @@ public class CostSelection extends AppCompatActivity {
         userId = currentUser.getUid();
         dbRef = FirebaseDatabase.getInstance().getReference("users").child(userId).child("workPrograms");
 
+        // Load data with offline fallback
+        loadWorkPrograms();
+
+        // Set up Firebase listener for real-time updates (when online)
         dbRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                cultivarList.clear();
+                // Only update if online (to avoid conflicts with offline data)
+                if (LocalDataManager.isOnline(CostSelection.this)) {
+                    cultivarList.clear();
 
-                for (DataSnapshot child : snapshot.getChildren()) {
-                    String programId = child.getKey();
-                    String cultivar = child.child("cultivar").getValue(String.class);
-                    String startDate = child.child("startDate").getValue(String.class);
+                    for (DataSnapshot child : snapshot.getChildren()) {
+                        String programId = child.getKey();
+                        String cultivar = child.child("cultivarName").getValue(String.class);
+                        String startDate = child.child("startingDate").getValue(String.class);
 
-                    if (programId != null && cultivar != null && startDate != null) {
-                        cultivarList.add(new Cultivar(programId, cultivar, startDate, R.mipmap.ic_logo));
+                        if (programId != null && cultivar != null && startDate != null) {
+                            cultivarList.add(new Cultivar(programId, cultivar, startDate, R.mipmap.ic_logo));
+                        }
                     }
+                    
+                    updateUI();
                 }
-                
-                // Update program count
-                int count = cultivarList.size();
-                if (programCountText != null) {
-                    if (count == 1) {
-                        programCountText.setText("1 program");
-                    } else {
-                        programCountText.setText(String.format("%d programs", count));
-                    }
-                }
-                
-                // Show/hide empty state
-                if (emptyState != null && recyclerView != null) {
-                    if (count == 0) {
-                        emptyState.setVisibility(View.VISIBLE);
-                        recyclerView.setVisibility(View.GONE);
-                    } else {
-                        emptyState.setVisibility(View.GONE);
-                        recyclerView.setVisibility(View.VISIBLE);
-                    }
-                }
-                
-                // Apply current sort order
-                sortPrograms(currentSortOrder);
-                adapter.notifyDataSetChanged();
             }
 
             @Override
-            public void onCancelled(@NonNull DatabaseError error) {}
+            public void onCancelled(@NonNull DatabaseError error) {
+                // If Firebase fails, try loading from local database
+                if (!LocalDataManager.isOnline(CostSelection.this)) {
+                    loadWorkProgramsFromLocal();
+                }
+            }
         });
 
         btnAdd.setOnClickListener(v -> showAddCalculationDialog());
 
-        drawerLayout = findViewById(R.id.drawer_layout);
-        navigationView = findViewById(R.id.navigation_view);
-
-        toggle = new ActionBarDrawerToggle(this, drawerLayout, R.string.open, R.string.close);
-        drawerLayout.addDrawerListener(toggle);
-        toggle.syncState();
+        setupDrawer();
 
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setTitle("Projected Income/Expenses");
         }
 
-        navigationView.setNavigationItemSelectedListener(item -> {
-            int id = item.getItemId();
-            if (id == R.id.nav_home) {
-                startActivity(new Intent(this, MainActivity.class));
-            } else if (id == R.id.nav_logout) {
-                FirebaseAuth.getInstance().signOut();
-                startActivity(new Intent(this, Login.class));
-                finish();
-            }
-            drawerLayout.closeDrawers();
-            return true;
-        });
-
         // Header menu button - Sort options
         headerMenuButton.setOnClickListener(v -> showSortMenu());
+    }
+
+    private void loadWorkPrograms() {
+        if (LocalDataManager.isOnline(this)) {
+            // Try Firebase first if online
+            dbRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                    cultivarList.clear();
+                    for (DataSnapshot child : snapshot.getChildren()) {
+                        String programId = child.getKey();
+                        String cultivar = child.child("cultivarName").getValue(String.class);
+                        String startDate = child.child("startingDate").getValue(String.class);
+
+                        if (programId != null && cultivar != null && startDate != null) {
+                            cultivarList.add(new Cultivar(programId, cultivar, startDate, R.mipmap.ic_logo));
+                        }
+                    }
+                    updateUI();
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError error) {
+                    // Fallback to local database
+                    loadWorkProgramsFromLocal();
+                }
+            });
+        } else {
+            // Offline - load from local database
+            loadWorkProgramsFromLocal();
+        }
+    }
+
+    private void loadWorkProgramsFromLocal() {
+        new Thread(() -> {
+            List<WorkProgramEntity> entities = LocalDataManager.getInstance(this).getWorkProgramsFromLocal(userId);
+            runOnUiThread(() -> {
+                cultivarList.clear();
+                for (WorkProgramEntity entity : entities) {
+                    if (entity.cultivarName != null && entity.startingDate != null) {
+                        cultivarList.add(new Cultivar(entity.id, entity.cultivarName, entity.startingDate, R.mipmap.ic_logo));
+                    }
+                }
+                updateUI();
+                if (!LocalDataManager.isOnline(this) && cultivarList.size() > 0) {
+                    Toast.makeText(this, "Showing offline data", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }).start();
+    }
+
+    private void updateUI() {
+        // Update program count
+        int count = cultivarList.size();
+        if (programCountText != null) {
+            if (count == 1) {
+                programCountText.setText("1 program");
+            } else {
+                programCountText.setText(String.format("%d programs", count));
+            }
+        }
+        
+        // Show/hide empty state
+        if (emptyState != null && recyclerView != null) {
+            if (count == 0) {
+                emptyState.setVisibility(View.VISIBLE);
+                recyclerView.setVisibility(View.GONE);
+            } else {
+                emptyState.setVisibility(View.GONE);
+                recyclerView.setVisibility(View.VISIBLE);
+            }
+        }
+        
+        // Apply current sort order
+        sortPrograms(currentSortOrder);
+        adapter.notifyDataSetChanged();
     }
 
     private void showSortMenu() {
@@ -325,14 +368,14 @@ public class CostSelection extends AppCompatActivity {
                 
                 // Find the work program matching this cultivar and date
                 for (DataSnapshot child : snapshot.getChildren()) {
-                    String programCultivar = child.child("cultivar").getValue(String.class);
-                    String programDate = child.child("startDate").getValue(String.class);
+                    String programCultivar = child.child("cultivarName").getValue(String.class);
+                    String programDate = child.child("startingDate").getValue(String.class);
                     
                     if (cultivarName.equals(programCultivar) && dateSaved.equals(programDate)) {
                         programId = child.getKey();
-                        // Check if hectare is stored in the work program as "landArea"
+                        // Check if hectare is stored in the work program as "areaSize"
                         // Try different data types (Double, Long, String)
-                        Object hectareObj = child.child("landArea").getValue();
+                        Object hectareObj = child.child("areaSize").getValue();
                         if (hectareObj != null) {
                             if (hectareObj instanceof Double) {
                                 savedHectare = (Double) hectareObj;
@@ -449,13 +492,6 @@ public class CostSelection extends AppCompatActivity {
         return true; // no back button menu
     }
 
-    @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        if (toggle.onOptionsItemSelected(item)) {
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
 
     // ---- Cultivar Model ----
     static class Cultivar {

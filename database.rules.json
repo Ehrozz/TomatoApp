@@ -4,9 +4,24 @@
       "$userId": {
         ".read": "auth != null && auth.uid === $userId",
         ".write": "auth != null && auth.uid === $userId",
+        "fullName": {
+          ".validate": "newData.isString() && newData.val().length > 0"
+        },
+        "username": {
+          ".validate": "newData.isString() && newData.val().length > 0"
+        },
+        "email": {
+          ".validate": "newData.isString() && newData.val().length > 0"
+        },
+        "phone": {
+          ".validate": "newData.isString() && newData.val().length > 0"
+        },
+        "address": {
+          ".validate": "newData.isString()"
+        },
         "workPrograms": {
           "$programId": {
-            ".validate": "newData.hasChildren(['cultivarName','startingDate','areaSize']) && newData.child('cultivarName').isString() && newData.child('startingDate').isString() && newData.child('areaSize').isNumber() && (!newData.child('projectedIncome').exists() || newData.child('projectedIncome').isNumber()) && (!newData.child('projectedExpenses').exists() || newData.child('projectedExpenses').isNumber()) && (!newData.child('phasesJson').exists() || newData.child('phasesJson').isString()) && (!newData.child('detectionHistoriesJson').exists() || newData.child('detectionHistoriesJson').isString()) && (!newData.child('completionRate').exists() || newData.child('completionRate').isNumber())"
+            ".validate": "newData.hasChildren(['cultivarName','startingDate','areaSize']) && newData.child('cultivarName').isString() && newData.child('startingDate').isString() && newData.child('areaSize').isNumber() && (!newData.child('projectedIncome').exists() || newData.child('projectedIncome').isNumber()) && (!newData.child('projectedExpenses').exists() || newData.child('projectedExpenses').isNumber()) && (!newData.child('adjustedIncome').exists() || newData.child('adjustedIncome').isNumber()) && (!newData.child('adjustedExpenses').exists() || newData.child('adjustedExpenses').isNumber()) && (!newData.child('phases').exists() || newData.child('phases').hasChildren()) && (!newData.child('phasesJson').exists() || newData.child('phasesJson').isString()) && (!newData.child('detectionHistories').exists() || newData.child('detectionHistories').hasChildren()) && (!newData.child('detectionHistoriesJson').exists() || newData.child('detectionHistoriesJson').isString()) && (!newData.child('completionRate').exists() || newData.child('completionRate').isNumber()) && (!newData.child('totalTasks').exists() || newData.child('totalTasks').isNumber()) && (!newData.child('completedTasks').exists() || newData.child('completedTasks').isNumber()) && (!newData.child('missedTasks').exists() || newData.child('missedTasks').isNumber()) && (!newData.child('skippedTasks').exists() || newData.child('skippedTasks').isNumber()) && (!newData.child('phaseCompletionJson').exists() || newData.child('phaseCompletionJson').isString()) && (!newData.child('cultivar').exists() || newData.child('cultivar').isString()) && (!newData.child('startDate').exists() || newData.child('startDate').isString()) && (!newData.child('landArea').exists() || newData.child('landArea').isNumber())"
           }
         },
         "routineLogs": {
@@ -41,4 +56,3 @@
     }
   }
 }
-

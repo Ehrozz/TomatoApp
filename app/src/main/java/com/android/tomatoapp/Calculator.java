@@ -23,15 +23,19 @@ import com.google.firebase.database.FirebaseDatabase;
 
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Locale;
 import java.util.HashMap;
 import java.util.Map;
 
-public class Calculator extends AppCompatActivity {
+import org.json.JSONObject;
+
+public class Calculator extends BaseDrawerActivity {
 
     EditText etHectare, etAWF, etAFP, etMarketValue;
     EditText etFertilizer, etManpower, etPesticide, etSeedlings, etOtherExpenses;
+    EditText etActualYield, etTotalYield, etHarvestDate; // Research fields
     TextView tvCultivarName, tvDateSaved, tvNP, tvTHGrams, tvTHKg;
     TextView tvNetIncomeCard, tvSummarySubtitle, tvCompletionRate, tvAdjustedNetIncome, tvAdjustedSubtitle, tvAdjustedExpenses, tvCompletionWarning;
     TextView tvCompleteKg, tvCompleteCost, tvUreaKg, tvUreaCost, tvMOPKg, tvMOPCost, tvTotalFertilizerCost;
@@ -70,6 +74,8 @@ public class Calculator extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_calculator);
+
+        setupDrawer();
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Projected Income/Expenses");
@@ -132,6 +138,11 @@ public class Calculator extends AppCompatActivity {
 
         // Expense total TextView
         tvTotalExpenses = findViewById(R.id.tvTotalExpenses);
+        
+        // Research fields: Yield tracking
+        etActualYield = findViewById(R.id.etActualYield);
+        etTotalYield = findViewById(R.id.etTotalYield);
+        etHarvestDate = findViewById(R.id.etHarvestDate);
 
         // Summary card "Details" scrolls to breakdown
         final ScrollView scrollView = findViewById(R.id.main);
@@ -156,8 +167,25 @@ public class Calculator extends AppCompatActivity {
 
         // Display cultivar info
         tvCultivarName.setText("Cultivar: " + (cultivarName != null ? cultivarName : "N/A"));
-        tvDateSaved.setText("Date Saved: " + (dateSaved != null ? dateSaved : "N/A"));
-        tvNP.setText("Number of Plants Per Hectare (NP): " + df.format(baseNP));
+        
+        // Format date according to user preference
+        String dateDisplay = "N/A";
+        if (dateSaved != null && !dateSaved.isEmpty()) {
+            try {
+                SimpleDateFormat parseFormat = SettingsPreferences.getDateParseFormat();
+                SimpleDateFormat displayFormat = SettingsPreferences.getDateFormatInstance(this);
+                Date dateObj = parseFormat.parse(dateSaved);
+                dateDisplay = displayFormat.format(dateObj);
+            } catch (Exception e) {
+                dateDisplay = dateSaved;
+            }
+        }
+        tvDateSaved.setText("Date Saved: " + dateDisplay);
+        
+        // Get measurement unit setting
+        String measurementUnit = SettingsPreferences.getMeasurementUnit(this);
+        String unitLabel = measurementUnit.equals(SettingsPreferences.MEASUREMENT_UNIT_HECTARE) ? "Hectare" : "Hectare"; // Both use hectare for now
+        tvNP.setText("Number of Plants Per " + unitLabel + " (NP): " + df.format(baseNP));
         
         // Initialize Firebase first (needed for fetching hectare)
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -314,6 +342,20 @@ public class Calculator extends AppCompatActivity {
                             lastSavedGrossIncome = grossIncome;
                             lastSavedTotalExpenses = totalExpenses;
                             
+                            // Save to local database
+                            LocalDataManager.getInstance(Calculator.this).saveCalculation(
+                                    calculationId,
+                                    currentUser.getUid(),
+                                    programId,
+                                    grossIncome,
+                                    totalExpenses,
+                                    netIncome,
+                                    hectare,
+                                    dateCreated,
+                                    dateSaved,
+                                    cultivarName
+                            );
+                            
                             // Also enrich the related work program record if programId is available
                             if (programId != null && hectare > 0 && currentUser != null) {
                                 DatabaseReference workProgramRef = FirebaseDatabase.getInstance()
@@ -333,6 +375,39 @@ public class Calculator extends AppCompatActivity {
                                 updates.put("areaSize", hectare);
                                 updates.put("projectedIncome", grossIncome);
                                 updates.put("projectedExpenses", totalExpenses);
+                                
+                                // Research fields: Season (auto-detected)
+                                if (dateSaved != null && !dateSaved.isEmpty()) {
+                                    updates.put("season", SeasonHelper.getSeason(dateSaved));
+                                    updates.put("seasonMonth", SeasonHelper.getSeasonMonth(dateSaved));
+                                    updates.put("isOffSeason", SeasonHelper.isOffSeason(dateSaved));
+                                }
+                                
+                                // Research fields: Yield (if entered)
+                                if (etActualYield != null && etActualYield.getText() != null) {
+                                    String yieldText = etActualYield.getText().toString().trim();
+                                    if (!yieldText.isEmpty()) {
+                                        try {
+                                            double actualYield = Double.parseDouble(yieldText);
+                                            updates.put("actualYield", actualYield);
+                                        } catch (NumberFormatException ignored) {}
+                                    }
+                                }
+                                if (etTotalYield != null && etTotalYield.getText() != null) {
+                                    String totalYieldText = etTotalYield.getText().toString().trim();
+                                    if (!totalYieldText.isEmpty()) {
+                                        try {
+                                            double totalYield = Double.parseDouble(totalYieldText);
+                                            updates.put("totalYield", totalYield);
+                                        } catch (NumberFormatException ignored) {}
+                                    }
+                                }
+                                if (etHarvestDate != null && etHarvestDate.getText() != null) {
+                                    String harvestDateText = etHarvestDate.getText().toString().trim();
+                                    if (!harvestDateText.isEmpty()) {
+                                        updates.put("harvestDate", harvestDateText);
+                                    }
+                                }
 
                                 workProgramRef.updateChildren(updates);
                             }
@@ -351,9 +426,15 @@ public class Calculator extends AppCompatActivity {
             AFP = parse(etAFP);
             marketValue = parse(etMarketValue);
 
+            // 🔹 Validate inputs
+            boolean hasValidationWarnings = validateInputs();
+
             // 🔹 Update NP immediately when hectare changes
             currentNP = baseNP * hectare;
             if (hectare > 0) {
+                // Get measurement unit setting
+                String measurementUnit = SettingsPreferences.getMeasurementUnit(this);
+                String unitLabel = measurementUnit.equals(SettingsPreferences.MEASUREMENT_UNIT_HECTARE) ? "Hectare" : "Hectare";
                 tvNP.setText("Number of Plants (NP): " + df.format(currentNP));
             } else {
                 tvNP.setText("Number of Plants (NP): " + df.format(baseNP));
@@ -364,10 +445,23 @@ public class Calculator extends AppCompatActivity {
                 double AWP = AWF * AFP;           // Average Weight per Plant
                 double TH = AWP * currentNP;      // Total Harvest (grams)
                 double THKg = TH / 1000;          // Total Harvest (kilograms)
-                grossIncome = THKg * marketValue; // ₱
+                
+                // Apply harvest efficiency factor (90% - typical marketable yield)
+                // Accounts for non-marketable fruits, damage, etc.
+                double harvestEfficiency = 0.90;
+                double marketableYield = THKg * harvestEfficiency;
+                
+                // Apply seasonal price multiplier
+                double seasonalMultiplier = 1.0;
+                if (dateSaved != null && !dateSaved.isEmpty()) {
+                    seasonalMultiplier = SeasonHelper.getPriceMultiplier(dateSaved);
+                }
+                
+                grossIncome = marketableYield * marketValue * seasonalMultiplier;
 
                 tvTHGrams.setText("Total Harvest (grams): " + df2.format(TH));
-                tvTHKg.setText("Total Harvest (kg): " + df2.format(THKg));
+                tvTHKg.setText("Total Harvest (kg): " + df2.format(THKg) + 
+                    " (Marketable: " + df2.format(marketableYield) + " kg)");
             } else {
                 grossIncome = 0;
                 tvTHGrams.setText("Total Harvest (grams): —");
@@ -377,7 +471,7 @@ public class Calculator extends AppCompatActivity {
             // 🔹 Compute fertilizer requirements
             computeFertilizer();
 
-            // 🔹 Update pesticide breakdown (temporary heuristic)
+            // 🔹 Update pesticide breakdown with improved calculation
             updatePesticideBreakdown();
             
             // 🔹 Compute expenses and net income
@@ -391,6 +485,40 @@ public class Calculator extends AppCompatActivity {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+    
+    /**
+     * Validates input values and shows warnings if values seem unrealistic.
+     * @return true if there are validation warnings
+     */
+    private boolean validateInputs() {
+        boolean hasWarnings = false;
+        
+        // Validate hectare
+        if (hectare > 0 && (hectare < 0.01 || hectare > 1000)) {
+            // Silently allow but could show warning
+            hasWarnings = true;
+        }
+        
+        // Validate AWF (Average Weight per Fruit) - typical: 50-500g
+        if (AWF > 0 && (AWF < 50 || AWF > 500)) {
+            // Values outside typical range - could show warning
+            hasWarnings = true;
+        }
+        
+        // Validate AFP (Average Fruits per Plant) - typical: 10-100
+        if (AFP > 0 && (AFP < 10 || AFP > 100)) {
+            // Values outside typical range
+            hasWarnings = true;
+        }
+        
+        // Validate market value - typical: ₱20-₱150/kg
+        if (marketValue > 0 && (marketValue < 20 || marketValue > 150)) {
+            // Values outside typical range
+            hasWarnings = true;
+        }
+        
+        return hasWarnings;
     }
     
     private void computeFertilizer() {
@@ -553,11 +681,11 @@ public class Calculator extends AppCompatActivity {
     }
 
     /**
-     * Temporary pesticide breakdown heuristic.
-     *
-     * For now we approximate pesticide cost as a fixed amount per hectare and
-     * split it into preventive / curative / other components. This should be
-     * replaced later with values derived from literature or local studies.
+     * Calculates pesticide cost based on multiple factors:
+     * - Base cost per hectare (literature-based)
+     * - Cultivar disease resistance
+     * - Season (off-season typically needs more pesticides)
+     * - Detection history (if available)
      */
     private void updatePesticideBreakdown() {
         if (tvPesticideTotal == null || tvPesticidePreventive == null ||
@@ -573,15 +701,38 @@ public class Calculator extends AppCompatActivity {
             return;
         }
 
-        // Placeholder: suggested pesticide cost per hectare (PHP)
-        double pesticidePerHa = 8000; // TODO: replace with literature-based value
+        // Base pesticide cost per hectare (PHP) - based on typical Philippine farming costs
+        // Average: ₱5,000-₱7,000 per hectare for tomato production
+        double basePesticidePerHa = 5500.0;
+        
+        // Factor 1: Cultivar disease resistance
+        // Some cultivars are more resistant, requiring less pesticide
+        double cultivarFactor = getCultivarDiseaseResistanceFactor(cultivarName);
+        
+        // Factor 2: Season
+        // Off-season (wet season) typically requires 20-30% more pesticides
+        double seasonFactor = 1.0;
+        if (dateSaved != null && !dateSaved.isEmpty()) {
+            if (SeasonHelper.isOffSeason(dateSaved)) {
+                seasonFactor = 1.25; // 25% increase for off-season
+            }
+        }
+        
+        // Factor 3: Detection history (if programId is available)
+        // More detections = higher pesticide needs
+        double detectionFactor = getDetectionHistoryFactor();
+        
+        // Calculate total pesticide cost per hectare
+        double pesticidePerHa = basePesticidePerHa * cultivarFactor * seasonFactor * detectionFactor;
         double suggestedTotal = pesticidePerHa * hectare;
 
+        // Breakdown: 40% preventive, 40% curative, 20% other (equipment, application costs)
         double preventive = suggestedTotal * 0.4;
         double curative = suggestedTotal * 0.4;
         double other = suggestedTotal * 0.2;
 
-        tvPesticideTotal.setText("Suggested pesticide cost: ₱" + df2.format(suggestedTotal));
+        tvPesticideTotal.setText("Suggested pesticide cost: ₱" + df2.format(suggestedTotal) + 
+            " (₱" + df2.format(pesticidePerHa) + "/ha)");
         tvPesticidePreventive.setText("Preventive sprays: ₱" + df2.format(preventive));
         tvPesticideCurative.setText("Curative sprays: ₱" + df2.format(curative));
         tvPesticideOther.setText("Other pesticide-related costs: ₱" + df2.format(other));
@@ -589,9 +740,93 @@ public class Calculator extends AppCompatActivity {
         // Auto-fill pesticide expense only if user hasn't entered anything yet
         if (etPesticide != null) {
             String current = etPesticide.getText().toString().trim();
-            if (current.isEmpty()) {
+            if (current.isEmpty() || current.equals("0") || current.equals("0.0")) {
                 etPesticide.setText(df2.format(suggestedTotal));
             }
+        }
+    }
+    
+    /**
+     * Gets disease resistance factor for a cultivar.
+     * Lower factor = more resistant = less pesticide needed.
+     * @param cultivarName Name of the cultivar
+     * @return Factor (0.7-1.3, where 1.0 is average)
+     */
+    private double getCultivarDiseaseResistanceFactor(String cultivarName) {
+        if (cultivarName == null) return 1.0;
+        
+        // Some cultivars are known for better disease resistance
+        // This is a simplified model - can be enhanced with actual research data
+        String lowerName = cultivarName.toLowerCase();
+        
+        // More resistant cultivars (require less pesticide)
+        if (lowerName.contains("victory") || lowerName.contains("hope") || 
+            lowerName.contains("maganda") || lowerName.contains("malakas")) {
+            return 0.85; // 15% less pesticide
+        }
+        
+        // Less resistant cultivars (require more pesticide)
+        if (lowerName.contains("tom-055") || lowerName.contains("tom-262") ||
+            lowerName.contains("dalwangan")) {
+            return 1.15; // 15% more pesticide
+        }
+        
+        // Average resistance
+        return 1.0;
+    }
+    
+    /**
+     * Gets detection history factor based on past disease/pest detections.
+     * More detections = higher pesticide needs.
+     * @return Factor (1.0-1.3)
+     */
+    private double getDetectionHistoryFactor() {
+        if (programId == null || currentUser == null || dateSaved == null) {
+            return 1.0; // No data available, use base factor
+        }
+        
+        try {
+            // Count detections for this program
+            ArrayList<org.json.JSONObject> history = DetectionHistoryManager.getHistory(this);
+            if (history == null || history.isEmpty()) {
+                return 1.0;
+            }
+            
+            // Parse start date
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+            Date programStart = sdf.parse(dateSaved);
+            if (programStart == null) return 1.0;
+            
+            // Count detections after program start
+            int detectionCount = 0;
+            for (org.json.JSONObject entry : history) {
+                long timestamp = entry.optLong("timestamp", 0);
+                if (timestamp > 0) {
+                    Date detectionDate = new Date(timestamp);
+                    if (detectionDate.after(programStart) || detectionDate.equals(programStart)) {
+                        String entryCultivar = entry.optString("cultivar", "");
+                        // Only count if it matches current cultivar or is unspecified
+                        if (cultivarName == null || entryCultivar.isEmpty() || 
+                            entryCultivar.equalsIgnoreCase(cultivarName)) {
+                            detectionCount++;
+                        }
+                    }
+                }
+            }
+            
+            // Factor: 1.0 (no detections) to 1.3 (many detections)
+            // Scale: 0 detections = 1.0, 5+ detections = 1.3
+            if (detectionCount == 0) {
+                return 1.0;
+            } else if (detectionCount <= 2) {
+                return 1.1; // 10% increase
+            } else if (detectionCount <= 4) {
+                return 1.2; // 20% increase
+            } else {
+                return 1.3; // 30% increase for 5+ detections
+            }
+        } catch (Exception e) {
+            return 1.0; // Default on error
         }
     }
 

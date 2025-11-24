@@ -2,6 +2,7 @@ package com.android.tomatoapp;
 
 import androidx.annotation.NonNull;
 import androidx.room.Entity;
+import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
 /**
@@ -41,6 +42,22 @@ public class WorkProgramEntity {
     public int skippedTasks;
     public double completionRate;
 
+    // Research fields: Season classification
+    public String season; // "on-season" or "off-season"
+    public int seasonMonth; // 1-12
+    public boolean isOffSeason;
+
+    // Research fields: Yield tracking
+    public double actualYield; // kg/hectare
+    public double totalYield; // total kg harvested
+    public String harvestDate; // Date when harvest was completed
+
+    /**
+     * Constructor without research fields (for backward compatibility).
+     * Research fields will be auto-initialized.
+     * @Ignore annotation tells Room to use the full constructor instead.
+     */
+    @Ignore
     public WorkProgramEntity(@NonNull String id,
                              String userId,
                              String cultivarName,
@@ -83,6 +100,81 @@ public class WorkProgramEntity {
         this.missedTasks = missedTasks;
         this.skippedTasks = skippedTasks;
         this.completionRate = completionRate;
+        
+        // Auto-detect season from planting date
+        if (startingDate != null && !startingDate.isEmpty()) {
+            this.isOffSeason = SeasonHelper.isOffSeason(startingDate);
+            this.season = SeasonHelper.getSeason(startingDate);
+            this.seasonMonth = SeasonHelper.getSeasonMonth(startingDate);
+        } else {
+            this.isOffSeason = false;
+            this.season = "unknown";
+            this.seasonMonth = 0;
+        }
+        
+        // Initialize yield fields
+        this.actualYield = 0.0;
+        this.totalYield = 0.0;
+        this.harvestDate = null;
+    }
+    
+    /**
+     * Constructor with all fields including research fields.
+     */
+    public WorkProgramEntity(@NonNull String id,
+                             String userId,
+                             String cultivarName,
+                             double areaSize,
+                             String startingDate,
+                             String phasesJson,
+                             String detectionHistoriesJson,
+                             double projectedIncome,
+                             double projectedExpenses,
+                             double adjustedIncome,
+                             double adjustedExpenses,
+                             double phase1Completion,
+                             double phase2Completion,
+                             double phase3Completion,
+                             double phase4Completion,
+                             double phase5Completion,
+                             int totalTasks,
+                             int completedTasks,
+                             int missedTasks,
+                             int skippedTasks,
+                             double completionRate,
+                             String season,
+                             int seasonMonth,
+                             boolean isOffSeason,
+                             double actualYield,
+                             double totalYield,
+                             String harvestDate) {
+        this.id = id;
+        this.userId = userId;
+        this.cultivarName = cultivarName;
+        this.areaSize = areaSize;
+        this.startingDate = startingDate;
+        this.phasesJson = phasesJson;
+        this.detectionHistoriesJson = detectionHistoriesJson;
+        this.projectedIncome = projectedIncome;
+        this.projectedExpenses = projectedExpenses;
+        this.adjustedIncome = adjustedIncome;
+        this.adjustedExpenses = adjustedExpenses;
+        this.phase1Completion = phase1Completion;
+        this.phase2Completion = phase2Completion;
+        this.phase3Completion = phase3Completion;
+        this.phase4Completion = phase4Completion;
+        this.phase5Completion = phase5Completion;
+        this.totalTasks = totalTasks;
+        this.completedTasks = completedTasks;
+        this.missedTasks = missedTasks;
+        this.skippedTasks = skippedTasks;
+        this.completionRate = completionRate;
+        this.season = season;
+        this.seasonMonth = seasonMonth;
+        this.isOffSeason = isOffSeason;
+        this.actualYield = actualYield;
+        this.totalYield = totalYield;
+        this.harvestDate = harvestDate;
     }
 }
 

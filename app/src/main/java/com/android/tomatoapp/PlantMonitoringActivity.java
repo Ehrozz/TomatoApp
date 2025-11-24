@@ -10,6 +10,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
+import com.android.tomatoapp.notifications.MonitoringReminderScheduler;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
@@ -28,6 +29,7 @@ public class PlantMonitoringActivity extends AppCompatActivity {
     private TextView referencePhaseLabel;
     private TextView referenceDescription;
     private MaterialButton btnSave;
+    private MaterialButton btnScan;
     private TextInputEditText inputNotes;
 
     private PlantMonitoringRepository repository;
@@ -59,6 +61,7 @@ public class PlantMonitoringActivity extends AppCompatActivity {
         referencePhaseLabel = findViewById(R.id.referencePhaseLabel);
         referenceDescription = findViewById(R.id.referenceDescription);
         btnSave = findViewById(R.id.btnSaveMonitoring);
+        btnScan = findViewById(R.id.btnScanDiseases);
         inputNotes = findViewById(R.id.inputNotes);
     }
 
@@ -80,6 +83,9 @@ public class PlantMonitoringActivity extends AppCompatActivity {
 
     private void setupActions() {
         btnSave.setOnClickListener(v -> saveEntry());
+        if (btnScan != null) {
+            btnScan.setOnClickListener(v -> launchDiseaseScanner());
+        }
     }
 
     private void saveEntry() {
@@ -109,9 +115,29 @@ public class PlantMonitoringActivity extends AppCompatActivity {
         );
 
         repository.saveEntry(entity);
+        MonitoringReminderScheduler.scheduleFollowUp(
+                this,
+                programId,
+                cultivarName != null ? cultivarName : "Work program",
+                phase
+        );
         Toast.makeText(this, R.string.monitor_saved_success, Toast.LENGTH_SHORT).show();
         setResult(RESULT_OK);
         finish();
+    }
+
+    private void launchDiseaseScanner() {
+        if (programId == null || programId.isEmpty()) {
+            Toast.makeText(this, R.string.monitor_scan_requires_program, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Intent intent = new Intent(this, CameraInterface.class);
+        intent.putExtra(CameraInterface.EXTRA_LINKED_PROGRAM_ID, programId);
+        if (cultivarName != null) {
+            intent.putExtra(CameraInterface.EXTRA_LINKED_CULTIVAR, cultivarName);
+        }
+        intent.putExtra(CameraInterface.EXTRA_LINKED_PHASE, phase);
+        startActivity(intent);
     }
 
     private String getTextValue(@Nullable TextInputEditText editText) {

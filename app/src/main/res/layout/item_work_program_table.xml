@@ -48,28 +48,16 @@
             android:textColor="@color/text_primary"
             android:gravity="center" />
 
-        <!-- Phases Summary Column -->
+        <!-- Phases Summary Column (with detections integrated) -->
         <TextView
             android:id="@+id/tablePhases"
-            android:layout_width="80dp"
+            android:layout_width="180dp"
             android:layout_height="wrap_content"
             android:text="Phases"
             android:textSize="12sp"
             android:textColor="@color/text_secondary"
             android:gravity="center"
-            android:maxLines="1"
-            android:ellipsize="end" />
-
-        <!-- Detection History Summary Column -->
-        <TextView
-            android:id="@+id/tableDetections"
-            android:layout_width="100dp"
-            android:layout_height="wrap_content"
-            android:text="Detections"
-            android:textSize="12sp"
-            android:textColor="@color/text_secondary"
-            android:gravity="center"
-            android:maxLines="1"
+            android:maxLines="2"
             android:ellipsize="end" />
 
         <!-- Projected Income Column -->

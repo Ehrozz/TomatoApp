@@ -98,14 +98,25 @@ public class ForecastActivity extends AppCompatActivity {
                     JSONArray tmin = daily.getJSONArray("temperature_2m_min");
                     JSONArray pr = daily.optJSONArray("precipitation_probability_max");
 
+                    // Get weather unit setting
+                    String weatherUnit = SettingsPreferences.getWeatherUnit(ForecastActivity.this);
+                    boolean useFahrenheit = weatherUnit.equals(SettingsPreferences.WEATHER_UNIT_FAHRENHEIT);
+                    String tempUnit = useFahrenheit ? "°F" : "°C";
+                    
                     List<Row> rows = new ArrayList<>();
                     SimpleDateFormat in = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
                     SimpleDateFormat out = new SimpleDateFormat("EEE, MMM d", Locale.getDefault());
                     for (int i = 0; i < dates.length(); i++) {
                         String d = dates.getString(i);
                         int code = wcodes.optInt(i, -1);
-                        int mx = (int) Math.round(tmax.optDouble(i));
-                        int mn = (int) Math.round(tmin.optDouble(i));
+                        double mxC = tmax.optDouble(i);
+                        double mnC = tmin.optDouble(i);
+                        if (useFahrenheit) {
+                            mxC = (mxC * 9.0 / 5.0) + 32.0;
+                            mnC = (mnC * 9.0 / 5.0) + 32.0;
+                        }
+                        int mx = (int) Math.round(mxC);
+                        int mn = (int) Math.round(mnC);
                         String prp = (pr != null && pr.length() > i) ? (" · Rain " + pr.optInt(i) + "%") : "";
                         String label;
                         try {

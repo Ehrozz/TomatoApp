@@ -7,6 +7,7 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -39,21 +40,21 @@ import java.util.List;
 /**
  * Details screen for a specific cultivar showing all work programs with table and chart views.
  */
-public class CultivarDetailsActivity extends AppCompatActivity {
+public class CultivarDetailsActivity extends BaseDrawerActivity {
 
     private String cultivarName;
     private Spinner viewModeSpinner;
-    private RecyclerView tableRecyclerView;
+    private LinearLayout spreadsheetRows;
     private BarChart barChart;
     private LineChart lineChart;
     private ProgressBar progressBar;
     private TextView emptyText;
     private TextView cultivarTitle;
     private View chartsContainer;
+    private View spreadsheetContainer;
 
     private WorkProgramRepository repository;
     private final List<WorkProgramEntity> workPrograms = new ArrayList<>();
-    private WorkProgramAdapter adapter;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -68,27 +69,28 @@ public class CultivarDetailsActivity extends AppCompatActivity {
             return;
         }
 
+        setupDrawer();
+
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Cultivar Details");
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
 
         repository = new WorkProgramRepository(this);
 
         viewModeSpinner = findViewById(R.id.viewModeSpinner);
-        tableRecyclerView = findViewById(R.id.tableRecyclerView);
+        spreadsheetRows = findViewById(R.id.spreadsheetRows);
         barChart = findViewById(R.id.barChart);
         lineChart = findViewById(R.id.lineChart);
         progressBar = findViewById(R.id.progressBar);
         emptyText = findViewById(R.id.emptyText);
         cultivarTitle = findViewById(R.id.cultivarTitle);
         chartsContainer = findViewById(R.id.chartsContainer);
+        spreadsheetContainer = findViewById(R.id.spreadsheetContainer);
         Button btnExportPdf = findViewById(R.id.btnExportPdf);
 
         cultivarTitle.setText(cultivarName);
 
         setupViewModeSelector();
-        setupRecyclerView();
         loadData();
 
         if (btnExportPdf != null) {
@@ -115,11 +117,6 @@ public class CultivarDetailsActivity extends AppCompatActivity {
         });
     }
 
-    private void setupRecyclerView() {
-        tableRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        adapter = new WorkProgramAdapter(workPrograms);
-        tableRecyclerView.setAdapter(adapter);
-    }
 
     private void loadData() {
         progressBar.setVisibility(View.VISIBLE);
@@ -143,13 +140,23 @@ public class CultivarDetailsActivity extends AppCompatActivity {
                 return b.startingDate.compareTo(a.startingDate);
             });
 
+            View emptyStateCard = findViewById(R.id.emptyStateCard);
+
             if (workPrograms.isEmpty()) {
+                if (emptyStateCard != null) {
+                    emptyStateCard.setVisibility(View.VISIBLE);
+                }
                 emptyText.setVisibility(View.VISIBLE);
-                tableRecyclerView.setVisibility(View.GONE);
+                if (spreadsheetContainer != null) {
+                    spreadsheetContainer.setVisibility(View.GONE);
+                }
                 chartsContainer.setVisibility(View.GONE);
             } else {
+                if (emptyStateCard != null) {
+                    emptyStateCard.setVisibility(View.GONE);
+                }
                 emptyText.setVisibility(View.GONE);
-                adapter.notifyDataSetChanged();
+                populateSpreadsheet();
                 updateCharts();
             }
         }));
@@ -157,13 +164,178 @@ public class CultivarDetailsActivity extends AppCompatActivity {
 
     private void updateViewMode(String mode) {
         if ("charts".equals(mode)) {
-            tableRecyclerView.setVisibility(View.GONE);
+            if (spreadsheetContainer != null) {
+                spreadsheetContainer.setVisibility(View.GONE);
+            }
+            if (chartsContainer != null) {
             chartsContainer.setVisibility(View.VISIBLE);
+            }
             updateCharts();
         } else {
-            tableRecyclerView.setVisibility(View.VISIBLE);
+            if (spreadsheetContainer != null) {
+                spreadsheetContainer.setVisibility(View.VISIBLE);
+            }
+            if (chartsContainer != null) {
             chartsContainer.setVisibility(View.GONE);
         }
+        }
+    }
+    
+    private void populateSpreadsheet() {
+        if (spreadsheetRows == null) return;
+        
+        spreadsheetRows.removeAllViews();
+        
+        for (WorkProgramEntity e : workPrograms) {
+            LinearLayout row = createSpreadsheetRow(e);
+            spreadsheetRows.addView(row);
+        }
+    }
+    
+    private LinearLayout createSpreadsheetRow(WorkProgramEntity e) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        
+        // Match header row layout exactly - no margins, no padding
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        rowParams.setMargins(0, 0, 0, 0);
+        row.setLayoutParams(rowParams);
+        row.setPadding(0, 0, 0, 0);
+        
+        // Alternate row colors for better readability (spreadsheet style)
+        boolean isEven = workPrograms.indexOf(e) % 2 == 0;
+        int rowColor = isEven ? 
+            getResources().getColor(R.color.white, null) : 
+            0xFFF5F5F5; // Light gray for alternating rows
+        row.setBackgroundColor(rowColor);
+        
+        // Column 1: Cultivar Name
+        row.addView(createCell(e.cultivarName != null ? e.cultivarName : "N/A", 120));
+        
+        // Column 2: Area Size
+        row.addView(createCell(String.format("%.2f ha", e.areaSize), 100));
+        
+        // Column 3: Start Date
+        row.addView(createCell(e.startingDate != null ? e.startingDate : "N/A", 110));
+        
+        // Columns 4-8: Phase dates
+        String[] phaseDates = getPhaseDates(e);
+        for (int i = 0; i < 5; i++) {
+            row.addView(createCell(phaseDates[i], 100));
+        }
+        
+        // Column 9: Detections
+        row.addView(createCell(getDetectionsSummaryForEntity(e), 100));
+        
+        // Column 10: Income
+        row.addView(createCell(String.format("₱%,.0f", e.projectedIncome), 130, true));
+        
+        // Column 11: Expenses
+        row.addView(createCell(String.format("₱%,.0f", e.projectedExpenses), 130, true));
+        
+        // Column 12: Profit
+        double profit = e.projectedIncome - e.projectedExpenses;
+        row.addView(createCell(String.format("₱%,.0f", profit), 130, true, profit >= 0));
+        
+        return row;
+    }
+    
+    private TextView createCell(String text, int width) {
+        return createCell(text, width, false, false);
+    }
+    
+    private TextView createCell(String text, int width, boolean isFinancial) {
+        return createCell(text, width, isFinancial, false);
+    }
+    
+    private TextView createCell(String text, int widthDp, boolean isFinancial, boolean isPositive) {
+        TextView cell = new TextView(this);
+        cell.setText(text);
+        
+        // Convert dp to pixels to match XML exactly
+        float density = getResources().getDisplayMetrics().density;
+        int widthPx = Math.round(widthDp * density);
+        int heightPx = Math.round(48 * density);
+        
+        // Use exact pixel dimensions to match header cells
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(widthPx, heightPx);
+        params.setMargins(0, 0, 0, 0);
+        cell.setLayoutParams(params);
+        
+        // Force exact width - no shrinking or expanding
+        cell.setMinWidth(widthPx);
+        cell.setMaxWidth(widthPx);
+        cell.setWidth(widthPx);
+        
+        // Set alignment based on content type - match header alignment exactly
+        if (isFinancial) {
+            cell.setGravity(android.view.Gravity.CENTER | android.view.Gravity.CENTER_VERTICAL);
+        } else {
+            // Left align for text columns to match header
+            cell.setGravity(android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL);
+        }
+        
+        // Match header padding exactly (8dp = 8 * density pixels)
+        int paddingPx = Math.round(8 * density);
+        cell.setPadding(paddingPx, paddingPx, paddingPx, paddingPx);
+        cell.setTextSize(12);
+        cell.setBackgroundResource(R.drawable.spreadsheet_cell_border);
+        cell.setSingleLine(true);
+        cell.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        
+        if (isFinancial) {
+            if (isPositive) {
+                cell.setTextColor(getResources().getColor(R.color.sidebar_dark_green, null));
+            } else {
+                cell.setTextColor(getResources().getColor(R.color.tomato_red, null));
+            }
+            cell.setTypeface(null, android.graphics.Typeface.BOLD);
+        } else {
+            cell.setTextColor(getResources().getColor(R.color.text_primary, null));
+        }
+        
+        return cell;
+    }
+    
+    private String[] getPhaseDates(WorkProgramEntity e) {
+        String[] dates = {"N/A", "N/A", "N/A", "N/A", "N/A"};
+        
+        String phasesJson = e.phasesJson;
+        if (phasesJson == null || phasesJson.isEmpty()) {
+            if (e.cultivarName != null && e.startingDate != null) {
+                phasesJson = WorkProgramDataHelper.calculatePhasesJson(e.cultivarName, e.startingDate);
+            }
+        }
+        
+        if (phasesJson != null) {
+            try {
+                org.json.JSONObject phases = new org.json.JSONObject(phasesJson);
+                for (int i = 1; i <= 5; i++) {
+                    String phaseKey = "phase" + i;
+                    if (phases.has(phaseKey)) {
+                        org.json.JSONObject phase = phases.getJSONObject(phaseKey);
+                        if (phase.has("startDate")) {
+                            String date = phase.getString("startDate");
+                            dates[i - 1] = date != null && date.length() >= 10 ? date.substring(5) : date;
+                        }
+                    }
+                }
+            } catch (org.json.JSONException ex) {
+                // Keep default N/A values
+            }
+        }
+        
+        return dates;
+    }
+    
+    private String getDetectionsSummaryForEntity(WorkProgramEntity e) {
+        if (e.startingDate != null) {
+            return WorkProgramDataHelper.getDetectionsSummary(this, e.startingDate);
+        }
+        return "None";
     }
 
     private void updateCharts() {
@@ -187,12 +359,14 @@ public class CultivarDetailsActivity extends AppCompatActivity {
         }
 
         BarDataSet incomeDataSet = new BarDataSet(incomeEntries, "Income");
-        incomeDataSet.setColor(ColorTemplate.MATERIAL_COLORS[0]);
-        incomeDataSet.setValueTextSize(10f);
+        incomeDataSet.setColor(getResources().getColor(R.color.sidebar_dark_green, null));
+        incomeDataSet.setValueTextSize(12f);
+        incomeDataSet.setValueTextColor(getResources().getColor(R.color.text_primary, null));
 
         BarDataSet expenseDataSet = new BarDataSet(expenseEntries, "Expenses");
-        expenseDataSet.setColor(ColorTemplate.MATERIAL_COLORS[1]);
-        expenseDataSet.setValueTextSize(10f);
+        expenseDataSet.setColor(getResources().getColor(R.color.chart_orange, null));
+        expenseDataSet.setValueTextSize(12f);
+        expenseDataSet.setValueTextColor(getResources().getColor(R.color.text_primary, null));
 
         BarData barData = new BarData(incomeDataSet, expenseDataSet);
         float barWidth = 0.4f;
@@ -225,11 +399,16 @@ public class CultivarDetailsActivity extends AppCompatActivity {
         }
 
         LineDataSet profitDataSet = new LineDataSet(profitEntries, "Profit");
-        profitDataSet.setColor(ColorTemplate.MATERIAL_COLORS[2]);
-        profitDataSet.setValueTextSize(10f);
-        profitDataSet.setLineWidth(2f);
-        profitDataSet.setCircleColor(ColorTemplate.MATERIAL_COLORS[2]);
-        profitDataSet.setCircleRadius(4f);
+        int profitColor = getResources().getColor(R.color.tomato_red, null);
+        profitDataSet.setColor(profitColor);
+        profitDataSet.setValueTextSize(12f);
+        profitDataSet.setValueTextColor(getResources().getColor(R.color.text_primary, null));
+        profitDataSet.setLineWidth(3f);
+        profitDataSet.setCircleColor(profitColor);
+        profitDataSet.setCircleRadius(5f);
+        profitDataSet.setFillColor(profitColor);
+        profitDataSet.setDrawFilled(true);
+        profitDataSet.setFillAlpha(30);
 
         LineData lineData = new LineData(profitDataSet);
         lineChart.setData(lineData);
@@ -274,7 +453,6 @@ public class CultivarDetailsActivity extends AppCompatActivity {
             holder.areaSize.setText(String.format("%.2f hectare", e.areaSize));
             holder.startingDate.setText(e.startingDate != null ? e.startingDate : "N/A");
             holder.phases.setText(getPhasesSummary(e));
-            holder.detections.setText(getDetectionsSummary(e));
             holder.projectedIncome.setText(String.format("₱%,.2f", e.projectedIncome));
             holder.projectedExpenses.setText(String.format("₱%,.2f", e.projectedExpenses));
             double profit = e.projectedIncome - e.projectedExpenses;
@@ -295,17 +473,16 @@ public class CultivarDetailsActivity extends AppCompatActivity {
             
             try {
                 org.json.JSONObject phases = new org.json.JSONObject(phasesJson);
-                return WorkProgramDataHelper.getPhasesActivitySummary(phases);
+                // Get phases summary with detections integrated
+                return WorkProgramDataHelper.getPhasesActivitySummaryWithDetections(
+                        phases, 
+                        context, 
+                        e.cultivarName, 
+                        e.startingDate
+                );
             } catch (org.json.JSONException ex) {
                 return "N/A";
             }
-        }
-
-        private String getDetectionsSummary(WorkProgramEntity e) {
-            if (e.startingDate != null) {
-                return WorkProgramDataHelper.getDetectionsSummary(context, e.startingDate);
-            }
-            return "None";
         }
 
         @Override
@@ -393,7 +570,7 @@ public class CultivarDetailsActivity extends AppCompatActivity {
     }
 
     static class WorkProgramViewHolder extends RecyclerView.ViewHolder {
-        TextView cultivarName, areaSize, startingDate, phases, detections, projectedIncome, projectedExpenses, profit;
+        TextView cultivarName, areaSize, startingDate, phases, projectedIncome, projectedExpenses, profit;
 
         WorkProgramViewHolder(View itemView) {
             super(itemView);
@@ -401,7 +578,6 @@ public class CultivarDetailsActivity extends AppCompatActivity {
             areaSize = itemView.findViewById(R.id.detailsAreaSize);
             startingDate = itemView.findViewById(R.id.detailsStartingDate);
             phases = itemView.findViewById(R.id.detailsPhases);
-            detections = itemView.findViewById(R.id.detailsDetections);
             projectedIncome = itemView.findViewById(R.id.detailsProjectedIncome);
             projectedExpenses = itemView.findViewById(R.id.detailsProjectedExpenses);
             profit = itemView.findViewById(R.id.detailsProfit);

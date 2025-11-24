@@ -19,11 +19,8 @@ import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.ArrayList;
 
-public class DetectionResults extends AppCompatActivity {
+public class DetectionResults extends BaseDrawerActivity {
 
-    private DrawerLayout drawerLayout;
-    private NavigationView navigationView;
-    private ActionBarDrawerToggle toggle;
 
     private TextView identifyViewText, scoreText, finding1, finding2, finding3;
     private TextView detectionContextInfo;
@@ -176,30 +173,11 @@ public class DetectionResults extends AppCompatActivity {
             detectionAccuracy.setText(accuracyText.toString());
         }
 
-        drawerLayout = findViewById(R.id.drawer_layout);
-        navigationView = findViewById(R.id.nav_view);
-
-        toggle = new ActionBarDrawerToggle(this, drawerLayout, R.string.open, R.string.close);
-        drawerLayout.addDrawerListener(toggle);
-        toggle.syncState();
+        setupDrawer();
 
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setTitle("Scan Results");
         }
-
-        navigationView.setNavigationItemSelectedListener(item -> {
-            int id = item.getItemId();
-            if (id == R.id.nav_home) {
-                startActivity(new Intent(this, MainActivity.class));
-            } else if (id == R.id.nav_logout) {
-                FirebaseAuth.getInstance().signOut();
-                startActivity(new Intent(this, Login.class));
-                finish();
-            }
-            drawerLayout.closeDrawers();
-            return true;
-        });
     }
 
     @Override
@@ -207,11 +185,4 @@ public class DetectionResults extends AppCompatActivity {
         return true; // no back button menu
     }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (toggle.onOptionsItemSelected(item)) {
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
 }

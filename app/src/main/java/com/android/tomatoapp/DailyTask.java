@@ -35,7 +35,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-public class DailyTask extends AppCompatActivity {
+public class DailyTask extends BaseDrawerActivity {
 
     private TextView cultivarNameHeader, cultivarDescription, dateHeader, taskSectionTitle, taskCountText;
     private ImageView cultivarImageHeader;
@@ -54,9 +54,6 @@ public class DailyTask extends AppCompatActivity {
     private int maturityDays;
     private DatabaseReference taskRef;
 
-    DrawerLayout drawerLayout;
-    NavigationView navigationView;
-    ActionBarDrawerToggle toggle;
 
     private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
 
@@ -102,7 +99,15 @@ public class DailyTask extends AppCompatActivity {
             cultivarImageHeader.setImageResource(getCultivarImageResource(cultivar));
         }
         if (date != null) {
-            dateHeader.setText("Date: " + date);
+            // Format date according to user preference
+            try {
+                Date dateObj = sdf.parse(date);
+                SimpleDateFormat displayFormat = SettingsPreferences.getDateFormatInstance(this);
+                String formattedDate = displayFormat.format(dateObj);
+                dateHeader.setText("Date: " + formattedDate);
+            } catch (ParseException e) {
+                dateHeader.setText("Date: " + date);
+            }
         }
 
         // Calculate day number and get tasks
@@ -154,30 +159,11 @@ public class DailyTask extends AppCompatActivity {
             btnMonitor.setEnabled(!isNewProgram);
         }
 
-        drawerLayout = findViewById(R.id.drawer_layout);
-        navigationView = findViewById(R.id.navigation_view);
-
-        toggle = new ActionBarDrawerToggle(this, drawerLayout, R.string.open, R.string.close);
-        drawerLayout.addDrawerListener(toggle);
-        toggle.syncState();
+        setupDrawer();
 
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setTitle("Daily Tasks");
         }
-
-        navigationView.setNavigationItemSelectedListener(item -> {
-            int id = item.getItemId();
-            if (id == R.id.nav_home) {
-                startActivity(new Intent(this, MainActivity.class));
-            } else if (id == R.id.nav_logout) {
-                FirebaseAuth.getInstance().signOut();
-                startActivity(new Intent(this, Login.class));
-                finish();
-            }
-            drawerLayout.closeDrawers();
-            return true;
-        });
     }
 
     private void updateTaskCount() {
@@ -227,6 +213,24 @@ public class DailyTask extends AppCompatActivity {
         } else if (taskRef != null) {
             taskRef.child(date).setValue("completed")
                     .addOnSuccessListener(unused -> {
+                        // Save to local database
+                        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+                        if (currentUser != null && programId != null && !taskList.isEmpty()) {
+                            // Save first task as representative (all tasks share the same status)
+                            TaskModel firstTask = taskList.get(0);
+                            LocalDataManager.getInstance(DailyTask.this).saveTaskStatus(
+                                    currentUser.getUid(),
+                                    programId,
+                                    date,
+                                    firstTask.taskName,
+                                    firstTask.category,
+                                    firstTask.iconType,
+                                    firstTask.dayNumber,
+                                    firstTask.phase,
+                                    "completed"
+                            );
+                        }
+                        
                         Toast.makeText(this, "Marked as complete!", Toast.LENGTH_SHORT).show();
 
                         Intent resultIntent = new Intent();
@@ -253,6 +257,24 @@ public class DailyTask extends AppCompatActivity {
         }
         taskRef.child(date).setValue("skipped")
                 .addOnSuccessListener(unused -> {
+                    // Save to local database
+                    FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+                    if (currentUser != null && programId != null && !taskList.isEmpty()) {
+                        // Save first task as representative (all tasks share the same status)
+                        TaskModel firstTask = taskList.get(0);
+                        LocalDataManager.getInstance(DailyTask.this).saveTaskStatus(
+                                currentUser.getUid(),
+                                programId,
+                                date,
+                                firstTask.taskName,
+                                firstTask.category,
+                                firstTask.iconType,
+                                firstTask.dayNumber,
+                                firstTask.phase,
+                                "skipped"
+                        );
+                    }
+                    
                     Toast.makeText(this, "Tasks marked as skipped.", Toast.LENGTH_SHORT).show();
                     finish();
                 })
@@ -391,11 +413,4 @@ public class DailyTask extends AppCompatActivity {
         return true;
     }
 
-    @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        if (toggle.onOptionsItemSelected(item)) {
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
 }

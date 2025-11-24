@@ -44,10 +44,11 @@ import java.util.Locale;
 /**
  * Analytics screen showing cultivar productivity in table and chart form.
  */
-public class AnalyticsActivity extends AppCompatActivity {
+public class AnalyticsActivity extends BaseDrawerActivity {
 
     private Spinner viewModeSpinner;
     private Spinner cultivarFilterSpinner;
+    private Spinner seasonFilterSpinner;
     private RecyclerView tableRecyclerView;
     private BarChart barChart;
     private LineChart completionChart;
@@ -66,6 +67,8 @@ public class AnalyticsActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_analytics);
 
+        setupDrawer();
+
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Cultivar Analytics");
         }
@@ -75,12 +78,14 @@ public class AnalyticsActivity extends AppCompatActivity {
 
         viewModeSpinner = findViewById(R.id.viewModeSpinner);
         cultivarFilterSpinner = findViewById(R.id.cultivarFilterSpinner);
+        seasonFilterSpinner = findViewById(R.id.seasonFilterSpinner);
         tableRecyclerView = findViewById(R.id.tableRecyclerView);
         barChart = findViewById(R.id.barChart);
         completionChart = findViewById(R.id.completionChart);
         progressBar = findViewById(R.id.analyticsProgress);
         emptyText = findViewById(R.id.emptyText);
         Button btnExportPdf = findViewById(R.id.btnExportPdf);
+        Button btnExportCsv = findViewById(R.id.btnExportCsv);
 
         setupViewModeSelector();
         setupRecyclerView();
@@ -88,6 +93,10 @@ public class AnalyticsActivity extends AppCompatActivity {
 
         if (btnExportPdf != null) {
             btnExportPdf.setOnClickListener(v -> showExportDialog());
+        }
+        
+        if (btnExportCsv != null) {
+            btnExportCsv.setOnClickListener(v -> exportToCsv());
         }
     }
 
@@ -125,16 +134,54 @@ public class AnalyticsActivity extends AppCompatActivity {
                 allPrograms.addAll(items);
             }
 
+            View emptyStateCard = findViewById(R.id.emptyStateCard);
+            View chartsContainer = findViewById(R.id.chartsContainer);
+
             if (allPrograms.isEmpty()) {
+                if (emptyStateCard != null) {
+                    emptyStateCard.setVisibility(View.VISIBLE);
+                }
                 emptyText.setVisibility(View.VISIBLE);
                 tableRecyclerView.setVisibility(View.GONE);
+                if (chartsContainer != null) {
+                    chartsContainer.setVisibility(View.GONE);
+                }
                 barChart.setVisibility(View.GONE);
             } else {
+                if (emptyStateCard != null) {
+                    emptyStateCard.setVisibility(View.GONE);
+                }
                 emptyText.setVisibility(View.GONE);
                 buildCultivarFilter();
+                buildSeasonFilter();
                 updateSummaries();
             }
         }));
+    }
+
+    private void buildSeasonFilter() {
+        List<String> seasons = new ArrayList<>();
+        seasons.add("All seasons");
+        seasons.add("On-season");
+        seasons.add("Off-season");
+        
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_spinner_item,
+                seasons
+        );
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        seasonFilterSpinner.setAdapter(adapter);
+        seasonFilterSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                String selected = position == 0 ? null : (position == 1 ? "on-season" : "off-season");
+                filterBySeason(selected);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) { }
+        });
     }
 
     private void buildCultivarFilter() {
@@ -173,20 +220,49 @@ public class AnalyticsActivity extends AppCompatActivity {
         updateCompletionChart();
     }
 
+    private String currentSeasonFilter = null;
+    private String currentCultivarFilter = null;
+    
     private void filterSummaries(String cultivarFilter) {
-        List<AnalyticsManager.CultivarSummary> filtered = new ArrayList<>();
-        for (AnalyticsManager.CultivarSummary s : summaries) {
-            if (cultivarFilter == null || s.cultivarName.equals(cultivarFilter)) {
-                filtered.add(s);
+        currentCultivarFilter = cultivarFilter;
+        applyFilters();
+    }
+    
+    private void filterBySeason(String seasonFilter) {
+        currentSeasonFilter = seasonFilter;
+        applyFilters();
+    }
+    
+    private void applyFilters() {
+        // Filter programs first
+        List<WorkProgramEntity> filteredPrograms = new ArrayList<>();
+        for (WorkProgramEntity e : allPrograms) {
+            boolean matchesCultivar = currentCultivarFilter == null || 
+                                     (e.cultivarName != null && e.cultivarName.equals(currentCultivarFilter));
+            boolean matchesSeason = currentSeasonFilter == null || 
+                                   (e.season != null && e.season.equals(currentSeasonFilter)) ||
+                                   (currentSeasonFilter != null && currentSeasonFilter.equals("off-season") && e.isOffSeason) ||
+                                   (currentSeasonFilter != null && currentSeasonFilter.equals("on-season") && !e.isOffSeason);
+            
+            if (matchesCultivar && matchesSeason) {
+                filteredPrograms.add(e);
             }
         }
-        expandableAdapter.updateData(filtered, allPrograms);
+        
+        // Recalculate summaries with filtered programs
+        List<AnalyticsManager.CultivarSummary> filtered = analyticsManager.summarizeByCultivar(filteredPrograms);
+        Collections.sort(filtered, (a, b) -> Double.compare(b.getProfitPerArea(), a.getProfitPerArea()));
+        expandableAdapter.updateData(filtered, filteredPrograms);
         updateChart();
         updateCompletionChart();
     }
 
     private void updateViewMode(String mode) {
+        View chartsContainer = findViewById(R.id.chartsContainer);
         if ("chart".equals(mode)) {
+            if (chartsContainer != null) {
+                chartsContainer.setVisibility(View.VISIBLE);
+            }
             barChart.setVisibility(View.VISIBLE);
             if (completionChart != null) {
                 completionChart.setVisibility(View.VISIBLE);
@@ -195,6 +271,9 @@ public class AnalyticsActivity extends AppCompatActivity {
             updateChart();
             updateCompletionChart();
         } else {
+            if (chartsContainer != null) {
+                chartsContainer.setVisibility(View.GONE);
+            }
             barChart.setVisibility(View.GONE);
             if (completionChart != null) {
                 completionChart.setVisibility(View.GONE);
@@ -221,8 +300,16 @@ public class AnalyticsActivity extends AppCompatActivity {
         }
 
         BarDataSet dataSet = new BarDataSet(entries, "Profit per area");
-        dataSet.setColors(ColorTemplate.MATERIAL_COLORS);
-        dataSet.setValueTextSize(10f);
+        // Use vibrant colors matching the design
+        dataSet.setColors(
+                getResources().getColor(R.color.sidebar_dark_green, null),
+                getResources().getColor(R.color.tomato_red, null),
+                getResources().getColor(R.color.warm_orange, null),
+                getResources().getColor(R.color.scan_blue, null),
+                getResources().getColor(R.color.fresh_green, null)
+        );
+        dataSet.setValueTextSize(12f);
+        dataSet.setValueTextColor(getResources().getColor(R.color.text_primary, null));
 
         BarData data = new BarData(dataSet);
         data.setBarWidth(0.9f);
@@ -263,11 +350,18 @@ public class AnalyticsActivity extends AppCompatActivity {
         }
 
         LineDataSet dataSet = new LineDataSet(entries, "Average completion rate (%)");
-        dataSet.setColor(ColorTemplate.MATERIAL_COLORS[0]);
-        dataSet.setCircleColor(ColorTemplate.MATERIAL_COLORS[1 % ColorTemplate.MATERIAL_COLORS.length]);
-        dataSet.setLineWidth(2f);
-        dataSet.setCircleRadius(4f);
-        dataSet.setValueTextSize(10f);
+        // Use vibrant colors matching the design
+        int lineColor = getResources().getColor(R.color.scan_blue, null);
+        int circleColor = getResources().getColor(R.color.sidebar_dark_green, null);
+        dataSet.setColor(lineColor);
+        dataSet.setCircleColor(circleColor);
+        dataSet.setLineWidth(3f);
+        dataSet.setCircleRadius(5f);
+        dataSet.setValueTextSize(12f);
+        dataSet.setValueTextColor(getResources().getColor(R.color.text_primary, null));
+        dataSet.setFillColor(lineColor);
+        dataSet.setDrawFilled(true);
+        dataSet.setFillAlpha(30);
 
         LineData data = new LineData(dataSet);
         completionChart.setData(data);
@@ -393,7 +487,6 @@ public class AnalyticsActivity extends AppCompatActivity {
             holder.startDate.setText(e.startingDate != null ? e.startingDate : "N/A");
             holder.area.setText(String.format("%.2f hectare", e.areaSize));
             holder.phases.setText(getPhasesSummary(e));
-            holder.detections.setText(getDetectionsSummary(e));
             holder.income.setText(String.format("₱%,.0f", e.projectedIncome));
             holder.expenses.setText(String.format("₱%,.0f", e.projectedExpenses));
             double profit = e.projectedIncome - e.projectedExpenses;
@@ -414,21 +507,16 @@ public class AnalyticsActivity extends AppCompatActivity {
             
             try {
                 org.json.JSONObject phases = new org.json.JSONObject(phasesJson);
-                return WorkProgramDataHelper.getPhasesActivitySummary(phases);
+                // Get phases summary with detections integrated
+                return WorkProgramDataHelper.getPhasesActivitySummaryWithDetections(
+                        phases, 
+                        context, 
+                        e.cultivarName, 
+                        e.startingDate
+                );
             } catch (org.json.JSONException ex) {
                 return "N/A";
             }
-        }
-
-        private String getDetectionsSummary(WorkProgramEntity e) {
-            // Load detection history count from DetectionHistoryManager
-            if (e.startingDate != null) {
-                return WorkProgramDataHelper.getDetectionsSummary(
-                        context,
-                        e.startingDate
-                );
-            }
-            return "None";
         }
 
         @Override
@@ -438,14 +526,13 @@ public class AnalyticsActivity extends AppCompatActivity {
     }
 
     static class WorkProgramViewHolder extends RecyclerView.ViewHolder {
-        TextView area, startDate, phases, detections, income, expenses, profit;
+        TextView area, startDate, phases, income, expenses, profit;
 
         WorkProgramViewHolder(View itemView) {
             super(itemView);
             area = itemView.findViewById(R.id.nestedArea);
             startDate = itemView.findViewById(R.id.nestedStartDate);
             phases = itemView.findViewById(R.id.nestedPhases);
-            detections = itemView.findViewById(R.id.nestedDetections);
             income = itemView.findViewById(R.id.nestedIncome);
             expenses = itemView.findViewById(R.id.nestedExpenses);
             profit = itemView.findViewById(R.id.nestedProfit);
@@ -555,6 +642,43 @@ public class AnalyticsActivity extends AppCompatActivity {
                     Toast.makeText(this, "PDF exported to Downloads: " + filePath, Toast.LENGTH_LONG).show();
                 } else {
                     Toast.makeText(this, "Failed to export PDF", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }).start();
+    }
+    
+    private void exportToCsv() {
+        if (allPrograms.isEmpty()) {
+            Toast.makeText(this, "No work programs to export", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        progressBar.setVisibility(View.VISIBLE);
+        
+        new Thread(() -> {
+            // Get filtered programs based on current filters
+            List<WorkProgramEntity> programsToExport = new ArrayList<>();
+            for (WorkProgramEntity e : allPrograms) {
+                boolean matchesCultivar = currentCultivarFilter == null || 
+                                         (e.cultivarName != null && e.cultivarName.equals(currentCultivarFilter));
+                boolean matchesSeason = currentSeasonFilter == null || 
+                                       (e.season != null && e.season.equals(currentSeasonFilter)) ||
+                                       (currentSeasonFilter != null && currentSeasonFilter.equals("off-season") && e.isOffSeason) ||
+                                       (currentSeasonFilter != null && currentSeasonFilter.equals("on-season") && !e.isOffSeason);
+                
+                if (matchesCultivar && matchesSeason) {
+                    programsToExport.add(e);
+                }
+            }
+            
+            String filePath = ResearchExporter.exportToCsvWithWeather(this, programsToExport);
+            
+            runOnUiThread(() -> {
+                progressBar.setVisibility(View.GONE);
+                if (filePath != null) {
+                    Toast.makeText(this, "CSV exported to Downloads: " + filePath, Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(this, "Failed to export CSV", Toast.LENGTH_SHORT).show();
                 }
             });
         }).start();

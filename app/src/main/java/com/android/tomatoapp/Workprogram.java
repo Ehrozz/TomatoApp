@@ -37,6 +37,9 @@ import com.prolificinteractive.materialcalendarview.DayViewDecorator;
 import com.prolificinteractive.materialcalendarview.DayViewFacade;
 import com.prolificinteractive.materialcalendarview.MaterialCalendarView;
 
+import android.content.SharedPreferences;
+import android.location.Location;
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
@@ -46,7 +49,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 
-public class Workprogram extends AppCompatActivity {
+public class Workprogram extends BaseDrawerActivity {
 
     private CardView cultivarCard;
     private Spinner cultivarSpinner;
@@ -77,15 +80,17 @@ public class Workprogram extends AppCompatActivity {
     private String userId;
 
     private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+    
+    // Weather data collection
+    private static final String WEATHER_PREF = "WeatherPref";
+    private static final String KEY_LAT = "lat";
+    private static final String KEY_LON = "lon";
 
     private HashSet<CalendarDay> completedDates = new HashSet<>();
     private HashSet<CalendarDay> missedDates = new HashSet<>();
     private HashSet<CalendarDay> skippedDates = new HashSet<>();
     private HashSet<CalendarDay> accessibleDates = new HashSet<>(); // Dates that can be clicked
 
-    private DrawerLayout drawerLayout;
-    private NavigationView navigationView;
-    private ActionBarDrawerToggle toggle;
 
     private final String[][] cultivarsData = {
             {"Victory F1", "Semi-determinate", "90", "110"},
@@ -129,21 +134,10 @@ public class Workprogram extends AppCompatActivity {
         setContentView(R.layout.activity_workprogram);
 
         // Drawer setup
-        drawerLayout = findViewById(R.id.drawer_layout);
-        navigationView = findViewById(R.id.navigation_view);
-        toggle = new ActionBarDrawerToggle(this, drawerLayout,
-                R.string.navigation_drawer_open, R.string.navigation_drawer_close);
-        drawerLayout.addDrawerListener(toggle);
-        toggle.syncState();
+        setupDrawer();
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setTitle("Work Program");
         }
-        navigationView.setNavigationItemSelectedListener(item -> {
-            boolean handled = handleNavigationItem(item.getItemId());
-            drawerLayout.closeDrawers();
-            return handled;
-        });
 
         // Views
         cultivarCard = findViewById(R.id.floatingFormCard);
@@ -221,6 +215,18 @@ public class Workprogram extends AppCompatActivity {
                     android.R.layout.simple_spinner_item, cultivarNames);
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
             cultivarSpinner.setAdapter(adapter);
+            
+            // Pre-select default cultivar if set
+            String defaultCultivar = SettingsPreferences.getDefaultCultivar(this);
+            if (!defaultCultivar.isEmpty()) {
+                for (int i = 0; i < cultivarNames.length; i++) {
+                    if (cultivarNames[i].equals(defaultCultivar)) {
+                        cultivarSpinner.setSelection(i);
+                        selectedCultivar = defaultCultivar;
+                        break;
+                    }
+                }
+            }
 
             // Initialize selectedDate
             selectedDate = String.format(Locale.getDefault(), "%04d-%02d-%02d",
@@ -241,8 +247,17 @@ public class Workprogram extends AppCompatActivity {
                     Toast.makeText(this, "Please fill land area, cultivar, and start date", Toast.LENGTH_SHORT).show();
                     return;
                 }
-                if (!landArea.matches("\\d+")) {
-                    Toast.makeText(this, "Land area must be numbers only", Toast.LENGTH_SHORT).show();
+                
+                // Validate land area is a valid number (integer or decimal)
+                double areaSizeValue;
+                try {
+                    areaSizeValue = Double.parseDouble(landArea);
+                    if (areaSizeValue <= 0) {
+                        Toast.makeText(this, "Land area must be greater than 0", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                } catch (NumberFormatException e) {
+                    Toast.makeText(this, "Land area must be a valid number", Toast.LENGTH_SHORT).show();
                     return;
                 }
 
@@ -253,9 +268,29 @@ public class Workprogram extends AppCompatActivity {
                 }
                 programId = id;
 
-                WorkProgramModel model = new WorkProgramModel(selectedCultivar, selectedDate, landArea);
-                dbRef.child(id).setValue(model).addOnSuccessListener(unused -> {
+                // Prepare data map with correct field names that match WorkProgramEntity structure
+                // Firebase rules require: cultivarName, startingDate, areaSize
+                // Optional but recommended: projectedIncome, projectedExpenses
+                java.util.Map<String, Object> programData = new java.util.HashMap<>();
+                programData.put("cultivarName", selectedCultivar);
+                programData.put("startingDate", selectedDate);
+                programData.put("areaSize", areaSizeValue);
+                programData.put("projectedIncome", 0.0);
+                programData.put("projectedExpenses", 0.0);
+                programData.put("adjustedIncome", 0.0);
+                programData.put("adjustedExpenses", 0.0);
+                programData.put("detectionHistories", new java.util.HashMap<String, Object>());
+                
+                // Save all data at once
+                DatabaseReference programRef = dbRef.child(id);
+                programRef.setValue(programData).addOnSuccessListener(unused -> {
                     Toast.makeText(this, "Work Program saved successfully!", Toast.LENGTH_LONG).show();
+
+                    // Sync to local database
+                    LocalDataManager.getInstance(Workprogram.this).syncWorkProgramsFromFirebase(userId);
+
+                    // Initialize weather data collection for this program
+                    initializeWeatherDataCollection(programId, selectedDate, selectedCultivar);
 
                     logsRef = FirebaseDatabase.getInstance()
                             .getReference("users")
@@ -588,103 +623,154 @@ public class Workprogram extends AppCompatActivity {
 
     private void attachLogsListener() {
         if (logsRef == null) return;
-        logsRef.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
+        
+        // Load task statuses with offline fallback
+        if (LocalDataManager.isOnline(this) && programId != null && userId != null) {
+            // Try Firebase first if online
+            logsRef.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                    processTaskStatuses(snapshot);
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError error) {
+                    // Fallback to local database
+                    loadTaskStatusesFromLocal();
+                }
+            });
+        } else {
+            // Offline - load from local database
+            loadTaskStatusesFromLocal();
+        }
+    }
+
+    private void processTaskStatuses(DataSnapshot snapshot) {
+        completedDates.clear();
+        missedDates.clear();
+        skippedDates.clear();
+        accessibleDates.clear();
+        Date today = new Date();
+
+        // Store all task statuses
+        java.util.HashMap<String, String> taskStatuses = new java.util.HashMap<>();
+        for (DataSnapshot child : snapshot.getChildren()) {
+            String dateKey = child.getKey();
+            String status = child.getValue(String.class);
+            if (status != null) {
+                taskStatuses.put(dateKey, status);
+            }
+        }
+        
+        processTaskStatusesMap(taskStatuses, today);
+    }
+
+    private void loadTaskStatusesFromLocal() {
+        if (programId == null || userId == null) return;
+        
+        new Thread(() -> {
+            List<TaskEntity> tasks = LocalDataManager.getInstance(Workprogram.this).getTasksFromLocal(userId, programId);
+            runOnUiThread(() -> {
+                java.util.HashMap<String, String> taskStatuses = new java.util.HashMap<>();
+                for (TaskEntity task : tasks) {
+                    taskStatuses.put(task.dateKey, task.status);
+                }
+                
                 completedDates.clear();
                 missedDates.clear();
                 skippedDates.clear();
                 accessibleDates.clear();
                 Date today = new Date();
-
-                // Store all task statuses
-                java.util.HashMap<String, String> taskStatuses = new java.util.HashMap<>();
-                for (DataSnapshot child : snapshot.getChildren()) {
-                    String dateKey = child.getKey();
-                    String status = child.getValue(String.class);
-                    if (status != null) {
-                        taskStatuses.put(dateKey, status);
-                    }
+                processTaskStatusesMap(taskStatuses, today);
+                
+                if (!LocalDataManager.isOnline(this)) {
+                    Toast.makeText(this, "Showing offline task data", Toast.LENGTH_SHORT).show();
                 }
+            });
+        }).start();
+    }
 
-                // Process dates and determine accessible dates
-                try {
-                    Date start = sdf.parse(programStartDate);
-                    if (start == null) return;
-                    
-                    Calendar cal = Calendar.getInstance();
-                    cal.setTime(start);
-                    
-                    // Calculate accessible dates: a date is accessible if all previous dates are completed or missed
-                    Calendar checkCal = Calendar.getInstance();
-                    checkCal.setTime(start);
-                    Date endDate = today;
-                    // Add some future dates to check
-                    Calendar futureCal = Calendar.getInstance();
-                    futureCal.setTime(today);
-                    futureCal.add(Calendar.DAY_OF_YEAR, 90); // Check up to 90 days ahead
-                    if (futureCal.getTime().after(endDate)) {
-                        endDate = futureCal.getTime();
-                    }
-                    
-                    while (!checkCal.getTime().after(endDate)) {
-                        String dateKey = sdf.format(checkCal.getTime());
-                        CalendarDay cd = parseCalendarDay(dateKey);
-                        if (cd == null) {
-                            checkCal.add(Calendar.DAY_OF_YEAR, 1);
-                            continue;
+    private void processTaskStatusesMap(java.util.HashMap<String, String> taskStatuses, Date today) {
+        // Process dates and determine accessible dates
+        try {
+            Date start = sdf.parse(programStartDate);
+            if (start == null) return;
+            
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(start);
+            
+            // Calculate accessible dates: a date is accessible if all previous dates are completed or missed
+            Calendar checkCal = Calendar.getInstance();
+            checkCal.setTime(start);
+            Date endDate = today;
+            // Add some future dates to check
+            Calendar futureCal = Calendar.getInstance();
+            futureCal.setTime(today);
+            futureCal.add(Calendar.DAY_OF_YEAR, 90); // Check up to 90 days ahead
+            if (futureCal.getTime().after(endDate)) {
+                endDate = futureCal.getTime();
+            }
+            
+            while (!checkCal.getTime().after(endDate)) {
+                String dateKey = sdf.format(checkCal.getTime());
+                CalendarDay cd = parseCalendarDay(dateKey);
+                if (cd == null) {
+                    checkCal.add(Calendar.DAY_OF_YEAR, 1);
+                    continue;
+                }
+                
+                // Always allow start date (day 1) to be accessible
+                if (dateKey.equals(programStartDate)) {
+                    accessibleDates.add(cd);
+                    // Process status for display
+                    String status = taskStatuses.get(dateKey);
+                    if ("completed".equals(status)) {
+                        completedDates.add(cd);
+                        // When Day 1 is completed, make Day 2 accessible
+                        Calendar nextCal = Calendar.getInstance();
+                        nextCal.setTime(checkCal.getTime());
+                        nextCal.add(Calendar.DAY_OF_YEAR, 1);
+                        String nextDateKey = sdf.format(nextCal.getTime());
+                        CalendarDay nextDay = parseCalendarDay(nextDateKey);
+                        if (nextDay != null) {
+                            accessibleDates.add(nextDay);
                         }
-                        
-                        // Always allow start date (day 1) to be accessible
-                        if (dateKey.equals(programStartDate)) {
-                            accessibleDates.add(cd);
-                            // Process status for display
-                            String status = taskStatuses.get(dateKey);
-                            if ("completed".equals(status)) {
-                                completedDates.add(cd);
-                                // When Day 1 is completed, make Day 2 accessible
-                                Calendar nextCal = Calendar.getInstance();
-                                nextCal.setTime(checkCal.getTime());
-                                nextCal.add(Calendar.DAY_OF_YEAR, 1);
-                                String nextDateKey = sdf.format(nextCal.getTime());
-                                CalendarDay nextDay = parseCalendarDay(nextDateKey);
-                                if (nextDay != null) {
-                                    accessibleDates.add(nextDay);
-                                }
-                            } else if ("missed".equals(status)) {
-                                missedDates.add(cd);
-                                // When Day 1 is missed, make Day 2 accessible
-                                Calendar nextCal = Calendar.getInstance();
-                                nextCal.setTime(checkCal.getTime());
-                                nextCal.add(Calendar.DAY_OF_YEAR, 1);
-                                String nextDateKey = sdf.format(nextCal.getTime());
-                                CalendarDay nextDay = parseCalendarDay(nextDateKey);
-                                if (nextDay != null) {
-                                    accessibleDates.add(nextDay);
-                                }
-                            } else if ("skipped".equals(status)) {
-                                skippedDates.add(cd);
-                                Calendar nextCal = Calendar.getInstance();
-                                nextCal.setTime(checkCal.getTime());
-                                nextCal.add(Calendar.DAY_OF_YEAR, 1);
-                                String nextDateKey = sdf.format(nextCal.getTime());
-                                CalendarDay nextDay = parseCalendarDay(nextDateKey);
-                                if (nextDay != null) {
-                                    accessibleDates.add(nextDay);
-                                }
-                            } else if ("pending".equals(status)) {
-                                Date taskDate = sdf.parse(dateKey);
-                                if (taskDate != null && taskDate.before(today)) {
-                                    // Mark as missed if past due
-                                    logsRef.child(dateKey).setValue("missed");
-                                    missedDates.add(cd);
-                                }
+                    } else if ("missed".equals(status)) {
+                        missedDates.add(cd);
+                        // When Day 1 is missed, make Day 2 accessible
+                        Calendar nextCal = Calendar.getInstance();
+                        nextCal.setTime(checkCal.getTime());
+                        nextCal.add(Calendar.DAY_OF_YEAR, 1);
+                        String nextDateKey = sdf.format(nextCal.getTime());
+                        CalendarDay nextDay = parseCalendarDay(nextDateKey);
+                        if (nextDay != null) {
+                            accessibleDates.add(nextDay);
+                        }
+                    } else if ("skipped".equals(status)) {
+                        skippedDates.add(cd);
+                        Calendar nextCal = Calendar.getInstance();
+                        nextCal.setTime(checkCal.getTime());
+                        nextCal.add(Calendar.DAY_OF_YEAR, 1);
+                        String nextDateKey = sdf.format(nextCal.getTime());
+                        CalendarDay nextDay = parseCalendarDay(nextDateKey);
+                        if (nextDay != null) {
+                            accessibleDates.add(nextDay);
+                        }
+                    } else if ("pending".equals(status)) {
+                        Date taskDate = sdf.parse(dateKey);
+                        if (taskDate != null && taskDate.before(today)) {
+                            // Mark as missed if past due (only if online)
+                            if (logsRef != null && LocalDataManager.isOnline(this)) {
+                                logsRef.child(dateKey).setValue("missed");
                             }
-                            checkCal.add(Calendar.DAY_OF_YEAR, 1);
-                            continue; // Skip to next date
+                            missedDates.add(cd);
                         }
-                        
-                        // Check if this date is accessible
+                    }
+                    checkCal.add(Calendar.DAY_OF_YEAR, 1);
+                    continue; // Skip to next date
+                }
+                
+                // Check if this date is accessible
                         // A date is accessible if ALL previous dates are completed or missed
                         boolean isAccessible = true;
                         Calendar prevCal = Calendar.getInstance();
@@ -820,11 +906,6 @@ public class Workprogram extends AppCompatActivity {
                 calendarView.addDecorator(new CompletedDecorator(new HashSet<>(completedDates), Workprogram.this));
                 calendarView.addDecorator(new MissedDecorator(new HashSet<>(missedDates), Workprogram.this));
                 calendarView.addDecorator(new SkippedDecorator(new HashSet<>(skippedDates), Workprogram.this));
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) { }
-        });
     }
 
 
@@ -853,50 +934,28 @@ public class Workprogram extends AppCompatActivity {
         return true; // no back button menu
     }
 
-    @Override public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        if (toggle.onOptionsItemSelected(item)) return true;
-        return super.onOptionsItemSelected(item);
-    }
-
-    private boolean handleNavigationItem(int id) {
-        if (id == R.id.nav_home) {
-            startActivity(new Intent(this, MainActivity.class));
-            return true;
-        } else if (id == R.id.nav_profile) {
-            Toast.makeText(this, "Profile coming soon", Toast.LENGTH_SHORT).show();
-            return true;
-        } else if (id == R.id.nav_history) {
-            startActivity(new Intent(this, DetectionHistoryActivity.class));
-            return true;
-        } else if (id == R.id.nav_balance) {
-            startActivity(new Intent(this, CostSelection.class));
-            return true;
-        } else if (id == R.id.nav_analytics) {
-            startActivity(new Intent(this, AnalyticsActivity.class));
-            return true;
-        } else if (id == R.id.nav_settings) {
-            Toast.makeText(this, "Settings coming soon", Toast.LENGTH_SHORT).show();
-            return true;
-        } else if (id == R.id.nav_logout) {
-            FirebaseAuth.getInstance().signOut();
-            Intent intent = new Intent(this, Login.class);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(intent);
-            finish();
-            return true;
-        }
-        return false;
-    }
 
     /**
      * Updates the cultivar information in the header card
      */
     private void updateCultivarInfo(String cultivar, String startDate) {
+        // Format date according to user preference for display
+        String displayDate = startDate;
+        try {
+            Date dateObj = sdf.parse(startDate);
+            SimpleDateFormat displayFormat = SettingsPreferences.getDateFormatInstance(this);
+            displayDate = displayFormat.format(dateObj);
+        } catch (ParseException e) {
+            // Keep original format if parsing fails
+        }
         if (cultivarNameText != null) {
             cultivarNameText.setText(cultivar);
         }
         if (startDateText != null) {
-            startDateText.setText("Start Date: " + startDate);
+            startDateText.setText("Start Date: " + displayDate);
+        }
+        if (headerStartDate != null) {
+            headerStartDate.setText("Start Date: " + displayDate);
         }
         if (cultivarImage != null) {
             // Set cultivar-specific image (for now using default, can be extended)
@@ -916,6 +975,20 @@ public class Workprogram extends AppCompatActivity {
         // if (cultivar.contains("HOPE")) return R.mipmap.hope_tomato;
         // etc.
         return R.mipmap.ic_logo;
+    }
+
+    /**
+     * Initializes weather data collection for a newly created work program.
+     * Fetches current weather data from Open-Meteo API and stores it.
+     * Uses the location from SharedPreferences (same as MainActivity).
+     */
+    private void initializeWeatherDataCollection(String programId, String plantingDate, String cultivar) {
+        // Fetch and collect current weather data for this program
+        // This will create the weather data entry with actual current weather
+        WeatherDataCollector.collectWeatherForProgram(this, programId, plantingDate);
+        
+        // Note: Weather data will be updated periodically as the program progresses.
+        // The initial fetch happens here, and can be refreshed later.
     }
 
     public static class WorkProgramModel {

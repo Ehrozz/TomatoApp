@@ -37,6 +37,9 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.ValueEventListener;
 
+import com.android.tomatoapp.notifications.GeneralUpdateScheduler;
+import com.android.tomatoapp.notifications.NotificationChannels;
+import com.android.tomatoapp.notifications.NotificationPermissionHelper;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import android.location.Location;
@@ -52,7 +55,7 @@ import java.io.InputStreamReader;
 import org.json.JSONObject;
 import org.json.JSONArray;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends BaseDrawerActivity {
 
     FirebaseAuth mAuth;
     FirebaseUser user;
@@ -60,9 +63,6 @@ public class MainActivity extends AppCompatActivity {
     CardView workprogramselectionCard;
     CardView IPMCard;
     CardView projectedIncomeCard;
-    DrawerLayout drawerLayout;
-    NavigationView navigationView;
-    ActionBarDrawerToggle toggle;
 
     // Weather UI
     private TextView weatherCondition;
@@ -94,6 +94,10 @@ public class MainActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
 
+        NotificationChannels.ensureCreated(this);
+        NotificationPermissionHelper.ensurePermission(this);
+        GeneralUpdateScheduler.ensureDailyTipScheduled(this);
+
         mAuth = FirebaseAuth.getInstance();
         textView = findViewById(R.id.TomatoApp);
         user = mAuth.getCurrentUser();
@@ -101,8 +105,6 @@ public class MainActivity extends AppCompatActivity {
         IPMCard = findViewById(R.id.ipmCard);
         projectedIncomeCard = findViewById(R.id.projectedIncomeCard);
 
-        drawerLayout = findViewById(R.id.drawer_layout);
-        navigationView = findViewById(R.id.navigation_view);
 
         // Weather views
         weatherCondition = findViewById(R.id.weatherCondition);
@@ -128,6 +130,17 @@ public class MainActivity extends AppCompatActivity {
         if (user != null) {
             initializeFinancialOverview();
             initializeCalendar();
+            
+            // Sync all data from Firebase to local database
+            LocalDataManager manager = LocalDataManager.getInstance(this);
+            manager.syncWorkProgramsFromFirebase(user.getUid());
+            manager.syncCalculationsFromFirebase(user.getUid());
+            manager.syncDetectionHistoryFromFirebase(this, user.getUid());
+            manager.syncSettingsToLocal(this, user.getUid());
+            
+            // Update weather data for all active work programs (runs in background)
+            // This ensures weather data stays current for research purposes
+            WeatherDataCollector.updateWeatherForAllActivePrograms(this);
         }
 
         if (weatherCard != null) {
@@ -135,20 +148,26 @@ public class MainActivity extends AppCompatActivity {
             weatherCard.setOnLongClickListener(v -> { openPhilippinesLocationPicker(); return true; });
         }
 
-        workprogramselectionCard.setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, WorkProgramSelection.class);
-            startActivity(intent);
-        });
+        if (workprogramselectionCard != null) {
+            workprogramselectionCard.setOnClickListener(v -> {
+                Intent intent = new Intent(MainActivity.this, WorkProgramSelection.class);
+                startActivity(intent);
+            });
+        }
 
-        IPMCard.setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, IPM.class);
-            startActivity(intent);
-        });
+        if (IPMCard != null) {
+            IPMCard.setOnClickListener(v -> {
+                Intent intent = new Intent(MainActivity.this, IPM.class);
+                startActivity(intent);
+            });
+        }
 
-        projectedIncomeCard.setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, CostSelection.class);
-            startActivity(intent);
-        });
+        if (projectedIncomeCard != null) {
+            projectedIncomeCard.setOnClickListener(v -> {
+                Intent intent = new Intent(MainActivity.this, CostSelection.class);
+                startActivity(intent);
+            });
+        }
 
         if (user == null) {
             Intent intent = new Intent(getApplicationContext(), Login.class);
@@ -161,6 +180,12 @@ public class MainActivity extends AppCompatActivity {
             if (isFirstLogin) {
                 // First-time login → show "Welcome"
                 textView.setText("Welcome " + user.getEmail());
+
+                // Check if terms have been accepted for this user
+                if (!TermsDialog.areTermsAccepted(this, user.getUid())) {
+                    // Show terms dialog on first login
+                    showTermsDialogOnFirstLogin(user.getUid());
+                }
 
                 // Mark as not first login anymore
                 SharedPreferences.Editor editor = prefs.edit();
@@ -185,47 +210,16 @@ public class MainActivity extends AppCompatActivity {
 
 
         // Right-side drawer toggle
-        toggle = new ActionBarDrawerToggle(this, drawerLayout, R.string.open, R.string.close);
-        drawerLayout.addDrawerListener(toggle);
-        toggle.syncState();
+        setupDrawer();
 
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            if (toggle != null) {
             toggle.getDrawerArrowDrawable().setDirection(
                     androidx.appcompat.graphics.drawable.DrawerArrowDrawable.ARROW_DIRECTION_END
             );
             getSupportActionBar().setHomeAsUpIndicator(toggle.getDrawerArrowDrawable());
         }
-
-        navigationView.setNavigationItemSelectedListener(item -> {
-            int id = item.getItemId();
-            if (id == R.id.nav_home) {
-                // Already on home, just close drawer
-            } else if (id == R.id.nav_profile) {
-                // Handle Profile - can add profile activity later
-                Toast.makeText(this, "Profile coming soon", Toast.LENGTH_SHORT).show();
-            } else if (id == R.id.nav_history) {
-                Intent intent = new Intent(MainActivity.this, DetectionHistoryActivity.class);
-                startActivity(intent);
-            } else if (id == R.id.nav_balance) {
-                // Navigate to Financial/Projected Income
-                Intent intent = new Intent(MainActivity.this, CostSelection.class);
-                startActivity(intent);
-            } else if (id == R.id.nav_analytics) {
-                // Navigate to Cultivar Analytics
-                Intent intent = new Intent(MainActivity.this, AnalyticsActivity.class);
-                startActivity(intent);
-            } else if (id == R.id.nav_settings) {
-                // Handle Settings - can add settings activity later
-                Toast.makeText(this, "Settings coming soon", Toast.LENGTH_SHORT).show();
-            } else if (id == R.id.nav_logout) {
-                FirebaseAuth.getInstance().signOut();
-                startActivity(new Intent(getApplicationContext(), Login.class));
-                finish();
-            }
-            drawerLayout.closeDrawers();
-            return true;
-        });
+        }
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -344,6 +338,18 @@ public class MainActivity extends AppCompatActivity {
                 int wcode = current.optInt("weather_code", -1);
 
                 String condition = mapWeatherCode(wcode);
+                
+                // Get weather unit setting
+                String weatherUnit = SettingsPreferences.getWeatherUnit(MainActivity.this);
+                boolean useFahrenheit = weatherUnit.equals(SettingsPreferences.WEATHER_UNIT_FAHRENHEIT);
+                
+                // Convert temperature if needed
+                double displayTemp = tempC;
+                if (useFahrenheit && !Double.isNaN(tempC)) {
+                    displayTemp = (tempC * 9.0 / 5.0) + 32.0;
+                }
+                String tempUnit = useFahrenheit ? "°F" : "°C";
+                
                 // Daily min/max
                 String extra = "";
                 try {
@@ -352,14 +358,20 @@ public class MainActivity extends AppCompatActivity {
                     JSONArray tmin = daily.optJSONArray("temperature_2m_min");
                     JSONArray pr = daily.optJSONArray("precipitation_probability_max");
                     if (tmax != null && tmax.length() > 0 && tmin != null && tmin.length() > 0) {
-                        int mx = (int) Math.round(tmax.optDouble(0));
-                        int mn = (int) Math.round(tmin.optDouble(0));
+                        double mxC = tmax.optDouble(0);
+                        double mnC = tmin.optDouble(0);
+                        if (useFahrenheit) {
+                            mxC = (mxC * 9.0 / 5.0) + 32.0;
+                            mnC = (mnC * 9.0 / 5.0) + 32.0;
+                        }
+                        int mx = (int) Math.round(mxC);
+                        int mn = (int) Math.round(mnC);
                         String prp = (pr != null && pr.length() > 0) ? (" · Rain " + pr.optInt(0) + "%") : "";
                         extra = " (" + mn + "°/" + mx + "°" + ")" + prp;
                     }
                 } catch (Exception ignored) {}
 
-                String tempText = (Double.isNaN(tempC) ? "--" : Math.round(tempC) + "°C") + extra;
+                String tempText = (Double.isNaN(displayTemp) ? "--" : Math.round(displayTemp) + tempUnit) + extra;
 
                 runOnUiThread(() -> {
                     if (weatherCondition != null) weatherCondition.setText(condition);
@@ -600,24 +612,60 @@ public class MainActivity extends AppCompatActivity {
     private void showUserAgreementDialog(SharedPreferences prefs) {
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_user_agreement, null);
 
-        CheckBox chkAgree = dialogView.findViewById(R.id.chkAgree);
-        Button btnDone = dialogView.findViewById(R.id.btnDone);
+        com.google.android.material.checkbox.MaterialCheckBox chkAgree = dialogView.findViewById(R.id.chkAgree);
+        com.google.android.material.button.MaterialButton btnAccept = dialogView.findViewById(R.id.btnAccept);
+
+        if (chkAgree == null || btnAccept == null) {
+            // If views are not found, the dialog layout might have changed
+            return;
+        }
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("User Agreement")
                 .setView(dialogView)
                 .setCancelable(false) // must accept
                 .create();
 
         chkAgree.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            btnDone.setEnabled(isChecked);
+            btnAccept.setEnabled(isChecked);
         });
 
-        btnDone.setOnClickListener(v -> {
-            prefs.edit().putBoolean("UserAgreementAccepted", true).apply();
-            dialog.dismiss(); // allow user to continue
+        btnAccept.setOnClickListener(v -> {
+            if (chkAgree.isChecked()) {
+                prefs.edit().putBoolean("UserAgreementAccepted", true).apply();
+                dialog.dismiss(); // allow user to continue
+            }
         });
 
+        dialog.show();
+    }
+    
+    // Show Terms Dialog on First Login
+    private void showTermsDialogOnFirstLogin(String userId) {
+        TermsDialog dialog = new TermsDialog(this, userId, new TermsDialog.OnTermsAcceptedListener() {
+            @Override
+            public void onTermsAccepted() {
+                // Terms accepted, user can continue using the app
+                Toast.makeText(MainActivity.this, getString(R.string.success_login), Toast.LENGTH_SHORT).show();
+                
+                // Show tutorial after terms acceptance
+                if (TutorialManager.shouldShowTutorial(MainActivity.this, userId)) {
+                    // Use post to ensure terms dialog is fully dismissed first
+                    findViewById(android.R.id.content).post(() -> {
+                        TutorialManager.startTutorial(MainActivity.this, userId);
+                    });
+                }
+            }
+            
+            @Override
+            public void onTermsDeclined() {
+                // User must accept terms - sign them out
+                Toast.makeText(MainActivity.this, getString(R.string.terms_must_accept), Toast.LENGTH_LONG).show();
+                FirebaseAuth.getInstance().signOut();
+                Intent intent = new Intent(getApplicationContext(), Login.class);
+                startActivity(intent);
+                finish();
+            }
+        });
         dialog.show();
     }
 
@@ -795,5 +843,16 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+    }
+    
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Save all data before app closes
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            LocalDataManager manager = LocalDataManager.getInstance(this);
+            manager.syncSettingsToLocal(this, currentUser.getUid());
+        }
     }
 }
