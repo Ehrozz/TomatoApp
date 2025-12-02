@@ -23,16 +23,29 @@
         android:gravity="center_vertical">
 
         <!-- Circular Image/Icon -->
-        <ImageView
-            android:id="@+id/diseaseImage"
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="64dp"
             android:layout_height="64dp"
             android:layout_marginEnd="16dp"
-            android:src="@mipmap/ic_logo"
-            android:scaleType="centerCrop"
-            android:contentDescription="Disease image"
-            android:clipToOutline="true"
-            android:background="@drawable/circular_image_background" />
+            app:cardBackgroundColor="@color/soft_cream"
+            app:cardCornerRadius="32dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center">
+
+                <ImageView
+                    android:id="@+id/diseaseImage"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@mipmap/ic_logo"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="Disease image" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <!-- Text Content -->
         <LinearLayout

@@ -22,7 +22,7 @@ import java.util.ArrayList;
 public class DetectionResults extends BaseDrawerActivity {
 
 
-    private TextView scoreText, finding1, finding2, finding3;
+    private TextView identifyViewText, scoreText, finding1, finding2, finding3;
     private TextView detectionContextInfo;
     private TextView detectionDescription, detectionSymptoms, detectionCure, detectionAccuracy;
     private TextView badgeNumber;
@@ -35,6 +35,7 @@ public class DetectionResults extends BaseDrawerActivity {
         setContentView(R.layout.activity_detection_results);
 
         // Initialize new UI elements
+        identifyViewText = findViewById(R.id.identifyViewText);
         detectionContextInfo = findViewById(R.id.detectionContextInfo);
         scoreText = findViewById(R.id.scoreText);
         finding1 = findViewById(R.id.finding1);
@@ -62,6 +63,16 @@ public class DetectionResults extends BaseDrawerActivity {
                 badgeNumber.setText(String.valueOf(totalDetections));
             } else {
                 badgeNumber.setText("1");
+            }
+
+            // Set identify view text (could include timestamp or ID)
+            String identifyText = intent.getStringExtra("identifyView");
+            if (identifyText != null && !identifyText.isEmpty()) {
+                identifyViewText.setText(identifyText);
+            } else {
+                // Generate a simple ID based on timestamp
+                long timestamp = System.currentTimeMillis();
+                identifyViewText.setText("Identify View, " + (timestamp % 10000));
             }
 
             String detectionCultivar = intent.getStringExtra("detectionCultivar");

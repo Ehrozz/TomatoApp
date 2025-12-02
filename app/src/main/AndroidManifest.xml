@@ -70,22 +70,10 @@
             android:name=".CameraInterface"
             android:exported="false" />
         <activity
-            android:name=".SimpleCaptureActivity"
-            android:exported="false" />
-        <activity
             android:name=".IPM"
             android:exported="false" />
         <activity
             android:name=".DailyTask"
-            android:exported="false" />
-        <activity
-            android:name=".DailyExpensesActivity"
-            android:exported="false" />
-        <activity
-            android:name=".CurrentExpensesActivity"
-            android:exported="false" />
-        <activity
-            android:name=".DailyExpensesHistoryActivity"
             android:exported="false" />
         <activity
             android:name=".Workprogram"
@@ -131,10 +119,6 @@
             android:name=".UserManualActivity"
             android:exported="false"
             android:label="User Manual" />
-        <activity
-            android:name=".NotificationListActivity"
-            android:exported="false"
-            android:label="Notifications" />
 
         <receiver
             android:name=".notifications.NotificationReceiver"

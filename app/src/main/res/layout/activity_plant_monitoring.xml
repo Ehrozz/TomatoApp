@@ -164,6 +164,15 @@
 
         <!-- Save Button -->
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnScanDiseases"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:text="@string/monitor_scan_button"
+            android:textAllCaps="false"
+            android:icon="@android:drawable/ic_menu_camera" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSaveMonitoring"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

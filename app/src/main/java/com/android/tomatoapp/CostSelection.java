@@ -102,7 +102,7 @@ public class CostSelection extends BaseDrawerActivity {
                         String startDate = child.child("startingDate").getValue(String.class);
 
                         if (programId != null && cultivar != null && startDate != null) {
-                            cultivarList.add(new Cultivar(programId, cultivar, startDate, CultivarImageHelper.getCultivarImageResource(cultivar)));
+                            cultivarList.add(new Cultivar(programId, cultivar, startDate, R.mipmap.ic_logo));
                         }
                     }
                     
@@ -144,7 +144,7 @@ public class CostSelection extends BaseDrawerActivity {
                         String startDate = child.child("startingDate").getValue(String.class);
 
                         if (programId != null && cultivar != null && startDate != null) {
-                            cultivarList.add(new Cultivar(programId, cultivar, startDate, CultivarImageHelper.getCultivarImageResource(cultivar)));
+                            cultivarList.add(new Cultivar(programId, cultivar, startDate, R.mipmap.ic_logo));
                         }
                     }
                     updateUI();
@@ -169,7 +169,7 @@ public class CostSelection extends BaseDrawerActivity {
                 cultivarList.clear();
                 for (WorkProgramEntity entity : entities) {
                     if (entity.cultivarName != null && entity.startingDate != null) {
-                        cultivarList.add(new Cultivar(entity.id, entity.cultivarName, entity.startingDate, CultivarImageHelper.getCultivarImageResource(entity.cultivarName)));
+                        cultivarList.add(new Cultivar(entity.id, entity.cultivarName, entity.startingDate, R.mipmap.ic_logo));
                     }
                 }
                 updateUI();
@@ -530,18 +530,6 @@ public class CostSelection extends BaseDrawerActivity {
             // Format date as "Started: YYYY-MM-DD"
             holder.date.setText(String.format("Started: %s", item.date));
             holder.image.setImageResource(item.imageRes);
-            
-            // Ensure circular clipping is applied after layout
-            holder.image.post(() -> {
-                holder.image.setClipToOutline(true);
-                holder.image.setOutlineProvider(new android.view.ViewOutlineProvider() {
-                    @Override
-                    public void getOutline(android.view.View view, android.graphics.Outline outline) {
-                        int size = Math.min(view.getWidth(), view.getHeight());
-                        outline.setOval(0, 0, size, size);
-                    }
-                });
-            });
 
             // 🍅 Rotate through tomato-themed colors with better contrast
             int[] bgColors = {
@@ -615,8 +603,6 @@ public class CostSelection extends BaseDrawerActivity {
                 statusText = itemView.findViewById(R.id.statusText);
                 statusIndicator = itemView.findViewById(R.id.statusIndicator);
                 deleteButton = itemView.findViewById(R.id.deleteButton);
-                
-                // Circular clipping will be applied in onBindViewHolder after layout
             }
         }
     }

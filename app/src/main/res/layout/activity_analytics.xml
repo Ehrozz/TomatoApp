@@ -17,6 +17,10 @@
     android:padding="16dp"
         android:fitsSystemWindows="true">
 
+        <!-- Spacer for Action Bar -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize" />
 
         <!-- Header Card with Gradient Background -->
         <com.google.android.material.card.MaterialCardView

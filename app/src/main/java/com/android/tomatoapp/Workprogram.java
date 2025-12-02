@@ -68,7 +68,6 @@ public class Workprogram extends BaseDrawerActivity {
     private TextView headerCultivarName;
     private TextView headerStartDate;
     private TextView taskWarningBanner;
-    private com.google.android.material.button.MaterialButton btnCurrentExpenses;
 
     private String selectedCultivar = "";
     private String selectedDate = "";
@@ -158,7 +157,6 @@ public class Workprogram extends BaseDrawerActivity {
         headerCultivarName = findViewById(R.id.headerCultivarName);
         headerStartDate = findViewById(R.id.headerStartDate);
         taskWarningBanner = findViewById(R.id.taskWarningBanner);
-        btnCurrentExpenses = findViewById(R.id.btnCurrentExpenses);
 
         // Check if user is logged in
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -184,9 +182,6 @@ public class Workprogram extends BaseDrawerActivity {
             cultivarCard.setVisibility(CardView.GONE);
             headerCard.setVisibility(View.VISIBLE);
             calendarHeader.setVisibility(View.GONE);
-            if (btnCurrentExpenses != null) {
-                btnCurrentExpenses.setVisibility(View.VISIBLE);
-            }
             
             selectedCultivar = cultivar;
             programStartDate = startDate;
@@ -194,17 +189,6 @@ public class Workprogram extends BaseDrawerActivity {
             
             // Update header card with cultivar info
             updateCultivarInfo(cultivar, startDate);
-            
-            // Set up Current Expenses button click listener
-            if (btnCurrentExpenses != null) {
-                btnCurrentExpenses.setOnClickListener(view -> {
-                    Intent expensesIntent = new Intent(Workprogram.this, CurrentExpensesActivity.class);
-                    expensesIntent.putExtra("programId", programId);
-                    expensesIntent.putExtra("cultivar", cultivar);
-                    expensesIntent.putExtra("startDate", startDate);
-                    startActivity(expensesIntent);
-                });
-            }
 
             logsRef = FirebaseDatabase.getInstance()
                     .getReference("users")
@@ -222,9 +206,6 @@ public class Workprogram extends BaseDrawerActivity {
             cultivarCard.setVisibility(CardView.VISIBLE);
             headerCard.setVisibility(View.GONE);
             calendarHeader.setVisibility(View.GONE);
-            if (btnCurrentExpenses != null) {
-                btnCurrentExpenses.setVisibility(View.GONE);
-            }
 
             String[] cultivarNames = new String[cultivarsData.length];
             for (int i = 0; i < cultivarsData.length; i++) {
@@ -344,16 +325,6 @@ public class Workprogram extends BaseDrawerActivity {
                     // Show header card with cultivar info
                     headerCard.setVisibility(View.VISIBLE);
                     calendarHeader.setVisibility(View.GONE);
-                    if (btnCurrentExpenses != null) {
-                        btnCurrentExpenses.setVisibility(View.VISIBLE);
-                        btnCurrentExpenses.setOnClickListener(view -> {
-                            Intent expensesIntent = new Intent(Workprogram.this, CurrentExpensesActivity.class);
-                            expensesIntent.putExtra("programId", programId);
-                            expensesIntent.putExtra("cultivar", selectedCultivar);
-                            expensesIntent.putExtra("startDate", selectedDate);
-                            startActivity(expensesIntent);
-                        });
-                    }
                     updateCultivarInfo(selectedCultivar, selectedDate);
 
                 }).addOnFailureListener(e -> Toast.makeText(this, "Failed to save: " + e.getMessage(), Toast.LENGTH_LONG).show());
@@ -989,22 +960,21 @@ public class Workprogram extends BaseDrawerActivity {
         if (cultivarImage != null) {
             // Set cultivar-specific image (for now using default, can be extended)
             cultivarImage.setImageResource(getCultivarImageResource(cultivar));
-            // Ensure circular clipping
-            cultivarImage.setClipToOutline(true);
-        }
-        if (headerCultivarImage != null) {
-            headerCultivarImage.setImageResource(getCultivarImageResource(cultivar));
-            // Ensure circular clipping
-            headerCultivarImage.setClipToOutline(true);
         }
     }
 
     /**
      * Gets the image resource for a specific cultivar
-     * Uses CultivarImageHelper to map cultivar names to their images
+     * Currently returns default logo, but can be extended to map specific cultivars to images
      */
     private int getCultivarImageResource(String cultivar) {
-        return CultivarImageHelper.getCultivarImageResource(cultivar);
+        // For now, use default logo for all cultivars
+        // This can be extended to map specific cultivars to specific images
+        // Example:
+        // if (cultivar.contains("Victory")) return R.mipmap.victory_tomato;
+        // if (cultivar.contains("HOPE")) return R.mipmap.hope_tomato;
+        // etc.
+        return R.mipmap.ic_logo;
     }
 
     /**

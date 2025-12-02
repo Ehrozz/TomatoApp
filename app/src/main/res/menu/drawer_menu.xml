@@ -18,6 +18,10 @@
         android:title="Season Comparison"
         android:icon="@drawable/ic_season_comparison" />
     <item
+        android:id="@+id/nav_season_comparison"
+        android:title="Season Comparison"
+        android:icon="@android:drawable/ic_menu_compass" />
+    <item
         android:id="@+id/nav_settings"
         android:title="Settings"
         android:icon="@drawable/ic_settings" />
@@ -25,6 +29,10 @@
         android:id="@+id/nav_user_manual"
         android:title="User Manual"
         android:icon="@drawable/ic_book" />
+    <item
+        android:id="@+id/nav_user_manual"
+        android:title="User Manual"
+        android:icon="@android:drawable/ic_menu_help" />
     <item
         android:id="@+id/nav_logout"
         android:title="Logout"

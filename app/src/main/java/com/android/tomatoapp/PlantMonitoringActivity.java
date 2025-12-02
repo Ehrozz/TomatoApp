@@ -1,22 +1,12 @@
 package com.android.tomatoapp;
 
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.net.Uri;
 import android.os.Bundle;
-import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
-import androidx.core.content.FileProvider;
-
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.InputStream;
 
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
@@ -36,18 +26,11 @@ public class PlantMonitoringActivity extends AppCompatActivity {
     public static final String EXTRA_SELECTED_DATE = "selectedDate";
 
     private ImageView referenceImage;
-    private ImageView capturedImageView;
-    private com.google.android.material.card.MaterialCardView capturedImageCard;
     private TextView referencePhaseLabel;
     private TextView referenceDescription;
     private MaterialButton btnSave;
     private MaterialButton btnScan;
-    private MaterialButton btnCapture;
-    private MaterialButton btnDeleteImage;
     private TextInputEditText inputNotes;
-    
-    private static final int REQUEST_CAPTURE_IMAGE = 200;
-    private String capturedImageUri;
 
     private PlantMonitoringRepository repository;
     private ReferenceImageProvider.ReferenceImage referenceInfo;
@@ -79,11 +62,7 @@ public class PlantMonitoringActivity extends AppCompatActivity {
         referenceDescription = findViewById(R.id.referenceDescription);
         btnSave = findViewById(R.id.btnSaveMonitoring);
         btnScan = findViewById(R.id.btnScanDiseases);
-        btnCapture = findViewById(R.id.btnCapture);
-        btnDeleteImage = findViewById(R.id.btnDeleteImage);
         inputNotes = findViewById(R.id.inputNotes);
-        capturedImageView = findViewById(R.id.capturedImageView);
-        capturedImageCard = findViewById(R.id.capturedImageCard);
     }
 
     private void extractExtras() {
@@ -107,17 +86,6 @@ public class PlantMonitoringActivity extends AppCompatActivity {
         if (btnScan != null) {
             btnScan.setOnClickListener(v -> launchDiseaseScanner());
         }
-        if (btnCapture != null) {
-            btnCapture.setOnClickListener(v -> launchCapture());
-        }
-        if (btnDeleteImage != null) {
-            btnDeleteImage.setOnClickListener(v -> deleteCapturedImage());
-        }
-    }
-    
-    private void launchCapture() {
-        Intent intent = new Intent(this, SimpleCaptureActivity.class);
-        startActivityForResult(intent, REQUEST_CAPTURE_IMAGE);
     }
 
     private void saveEntry() {
@@ -143,7 +111,7 @@ public class PlantMonitoringActivity extends AppCompatActivity {
                 referenceInfo.warningHint,
                 notes,
                 null,
-                capturedImageUri
+                null
         );
 
         repository.saveEntry(entity);
@@ -176,90 +144,6 @@ public class PlantMonitoringActivity extends AppCompatActivity {
         if (editText == null) return "";
         CharSequence text = editText.getText();
         return text != null ? text.toString().trim() : "";
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_CAPTURE_IMAGE && resultCode == RESULT_OK && data != null) {
-            String imageUriString = data.getStringExtra(SimpleCaptureActivity.EXTRA_CAPTURED_IMAGE_URI);
-            if (imageUriString != null) {
-                capturedImageUri = imageUriString;
-                displayCapturedImage(imageUriString);
-                Toast.makeText(this, "Image captured successfully", Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
-    
-    private void displayCapturedImage(String imageUriString) {
-        if (capturedImageView == null || capturedImageCard == null) return;
-        
-        try {
-            Uri imageUri = Uri.parse(imageUriString);
-            InputStream inputStream = getContentResolver().openInputStream(imageUri);
-            if (inputStream != null) {
-                Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-                capturedImageView.setImageBitmap(bitmap);
-                capturedImageCard.setVisibility(View.VISIBLE);
-                inputStream.close();
-                return;
-            }
-        } catch (FileNotFoundException e) {
-            // Try as file path
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        
-        // Try loading as file path
-        try {
-            File imageFile = new File(imageUriString);
-            if (imageFile.exists()) {
-                Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath());
-                capturedImageView.setImageBitmap(bitmap);
-                capturedImageCard.setVisibility(View.VISIBLE);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
-        }
-    }
-    
-    private void deleteCapturedImage() {
-        if (capturedImageUri == null || capturedImageUri.isEmpty()) {
-            return;
-        }
-        
-        // Show confirmation dialog
-        new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("Delete Image")
-                .setMessage("Are you sure you want to delete this captured image?")
-                .setPositiveButton("Delete", (dialog, which) -> {
-                    // Delete the image file
-                    try {
-                        Uri imageUri = Uri.parse(capturedImageUri);
-                        if (imageUri.getScheme() != null && imageUri.getScheme().startsWith("content")) {
-                            // Try to delete via ContentResolver
-                            getContentResolver().delete(imageUri, null, null);
-                        } else {
-                            // Try as file path
-                            File imageFile = new File(capturedImageUri);
-                            if (imageFile.exists()) {
-                                imageFile.delete();
-                            }
-                        }
-                        
-                        // Clear the image and hide the card
-                        capturedImageUri = null;
-                        capturedImageView.setImageDrawable(null);
-                        capturedImageCard.setVisibility(View.GONE);
-                        Toast.makeText(this, "Image deleted", Toast.LENGTH_SHORT).show();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        Toast.makeText(this, "Failed to delete image", Toast.LENGTH_SHORT).show();
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
     }
 
     @Override
