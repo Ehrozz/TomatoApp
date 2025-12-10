@@ -15,6 +15,7 @@ import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+import com.google.android.material.button.MaterialButton;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -68,6 +69,7 @@ public class Workprogram extends BaseDrawerActivity {
     private TextView headerCultivarName;
     private TextView headerStartDate;
     private TextView taskWarningBanner;
+    private MaterialButton btnCurrentExpenses;
 
     private String selectedCultivar = "";
     private String selectedDate = "";
@@ -157,6 +159,7 @@ public class Workprogram extends BaseDrawerActivity {
         headerCultivarName = findViewById(R.id.headerCultivarName);
         headerStartDate = findViewById(R.id.headerStartDate);
         taskWarningBanner = findViewById(R.id.taskWarningBanner);
+        btnCurrentExpenses = findViewById(R.id.btnCurrentExpenses);
 
         // Check if user is logged in
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -186,6 +189,12 @@ public class Workprogram extends BaseDrawerActivity {
             selectedCultivar = cultivar;
             programStartDate = startDate;
             programId = passedProgramId;
+            
+            // Show Current Expenses button
+            if (btnCurrentExpenses != null) {
+                btnCurrentExpenses.setVisibility(View.VISIBLE);
+                btnCurrentExpenses.setOnClickListener(v -> openCurrentExpenses());
+            }
             
             // Update header card with cultivar info
             updateCultivarInfo(cultivar, startDate);
@@ -326,6 +335,12 @@ public class Workprogram extends BaseDrawerActivity {
                     headerCard.setVisibility(View.VISIBLE);
                     calendarHeader.setVisibility(View.GONE);
                     updateCultivarInfo(selectedCultivar, selectedDate);
+                    
+                    // Show Current Expenses button
+                    if (btnCurrentExpenses != null) {
+                        btnCurrentExpenses.setVisibility(View.VISIBLE);
+                        btnCurrentExpenses.setOnClickListener(view -> openCurrentExpenses());
+                    }
 
                 }).addOnFailureListener(e -> Toast.makeText(this, "Failed to save: " + e.getMessage(), Toast.LENGTH_LONG).show());
 
@@ -620,6 +635,18 @@ public class Workprogram extends BaseDrawerActivity {
         startActivity(taskIntent);
     }
 
+    private void openCurrentExpenses() {
+        if (programId == null || selectedCultivar == null || programStartDate == null) {
+            Toast.makeText(this, "Missing required information", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        Intent intent = new Intent(Workprogram.this, CurrentExpensesActivity.class);
+        intent.putExtra("programId", programId);
+        intent.putExtra("cultivar", selectedCultivar);
+        intent.putExtra("startDate", programStartDate);
+        startActivity(intent);
+    }
 
     private void attachLogsListener() {
         if (logsRef == null) return;
@@ -958,23 +985,32 @@ public class Workprogram extends BaseDrawerActivity {
             headerStartDate.setText("Start Date: " + displayDate);
         }
         if (cultivarImage != null) {
-            // Set cultivar-specific image (for now using default, can be extended)
-            cultivarImage.setImageResource(getCultivarImageResource(cultivar));
+            // Set cultivar-specific image using CultivarImageHelper
+            cultivarImage.setImageResource(CultivarImageHelper.getCultivarImageResource(cultivar));
+            // Make image circular
+            cultivarImage.setClipToOutline(true);
+            cultivarImage.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                @Override
+                public void getOutline(android.view.View view, android.graphics.Outline outline) {
+                    outline.setOval(0, 0, view.getWidth(), view.getHeight());
+                }
+            });
         }
-    }
-
-    /**
-     * Gets the image resource for a specific cultivar
-     * Currently returns default logo, but can be extended to map specific cultivars to images
-     */
-    private int getCultivarImageResource(String cultivar) {
-        // For now, use default logo for all cultivars
-        // This can be extended to map specific cultivars to specific images
-        // Example:
-        // if (cultivar.contains("Victory")) return R.mipmap.victory_tomato;
-        // if (cultivar.contains("HOPE")) return R.mipmap.hope_tomato;
-        // etc.
-        return R.mipmap.ic_logo;
+        if (headerCultivarImage != null) {
+            // Set header cultivar image using CultivarImageHelper
+            headerCultivarImage.setImageResource(CultivarImageHelper.getCultivarImageResource(cultivar));
+            // Make image circular
+            headerCultivarImage.setClipToOutline(true);
+            headerCultivarImage.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                @Override
+                public void getOutline(android.view.View view, android.graphics.Outline outline) {
+                    outline.setOval(0, 0, view.getWidth(), view.getHeight());
+                }
+            });
+        }
+        if (headerCultivarName != null) {
+            headerCultivarName.setText(cultivar);
+        }
     }
 
     /**

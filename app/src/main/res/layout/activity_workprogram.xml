@@ -348,7 +348,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="View Current Expenses"
+                    android:text="Current Expenses"
                     android:textColor="@color/white"
                     android:backgroundTint="@color/warm_orange"
                     android:textSize="16sp"

@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="8dp"
+    android:background="?android:attr/selectableItemBackground"
+    android:minWidth="1000dp">
+
+    <TextView
+        android:id="@+id/dateText"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:text="Date"
+        android:textColor="@color/text_primary"
+        android:textSize="11sp"
+        android:padding="4dp" />
+
+    <TextView
+        android:id="@+id/activityText"
+        android:layout_width="120dp"
+        android:layout_height="wrap_content"
+        android:text="Activity"
+        android:textColor="@color/text_primary"
+        android:textSize="11sp"
+        android:padding="4dp" />
+
+    <TextView
+        android:id="@+id/categoryText"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:text="Category"
+        android:textColor="@color/text_primary"
+        android:textSize="11sp"
+        android:padding="4dp" />
+
+    <TextView
+        android:id="@+id/laborCostText"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:text="₱0"
+        android:textColor="@color/text_primary"
+        android:textSize="11sp"
+        android:padding="4dp"
+        android:gravity="end" />
+
+    <TextView
+        android:id="@+id/workersText"
+        android:layout_width="80dp"
+        android:layout_height="wrap_content"
+        android:text="0"
+        android:textColor="@color/text_primary"
+        android:textSize="11sp"
+        android:padding="4dp"
+        android:gravity="center" />
+
+    <TextView
+        android:id="@+id/materialCostText"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:text="₱0"
+        android:textColor="@color/text_primary"
+        android:textSize="11sp"
+        android:padding="4dp"
+        android:gravity="end" />
+
+    <TextView
+        android:id="@+id/equipmentCostText"
+        android:layout_width="110dp"
+        android:layout_height="wrap_content"
+        android:text="₱0"
+        android:textColor="@color/text_primary"
+        android:textSize="11sp"
+        android:padding="4dp"
+        android:gravity="end" />
+
+    <TextView
+        android:id="@+id/miscCostText"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:text="₱0"
+        android:textColor="@color/text_primary"
+        android:textSize="11sp"
+        android:padding="4dp"
+        android:gravity="end" />
+
+    <TextView
+        android:id="@+id/notesText"
+        android:layout_width="150dp"
+        android:layout_height="wrap_content"
+        android:text="Notes"
+        android:textColor="@color/text_primary"
+        android:textSize="11sp"
+        android:padding="4dp" />
+
+    <TextView
+        android:id="@+id/totalText"
+        android:layout_width="120dp"
+        android:layout_height="wrap_content"
+        android:text="₱0"
+        android:textColor="@color/fresh_green"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:padding="4dp"
+        android:gravity="end" />
+</LinearLayout>

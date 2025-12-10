@@ -53,9 +53,16 @@ public class WorkProgramEntity {
     public String harvestDate; // Date when harvest was completed
 
     /**
+     * Default constructor required for Room.
+     */
+    public WorkProgramEntity() {
+        this.id = "";
+    }
+
+    /**
      * Constructor without research fields (for backward compatibility).
      * Research fields will be auto-initialized.
-     * @Ignore annotation tells Room to use the full constructor instead.
+     * @Ignore annotation tells Room to use the no-arg constructor instead.
      */
     @Ignore
     public WorkProgramEntity(@NonNull String id,
@@ -120,7 +127,9 @@ public class WorkProgramEntity {
     
     /**
      * Constructor with all fields including research fields.
+     * @Ignore annotation tells Room to use the no-arg constructor instead.
      */
+    @Ignore
     public WorkProgramEntity(@NonNull String id,
                              String userId,
                              String cultivarName,

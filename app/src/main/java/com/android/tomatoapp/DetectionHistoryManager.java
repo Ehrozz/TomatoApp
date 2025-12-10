@@ -30,7 +30,8 @@ public class DetectionHistoryManager {
                                   String pestDescription,
                                   String pestImageUri,
                                   String cultivar,
-                                  int phase) {
+                                  int phase,
+                                  String programId) {
 
         SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         String historyJson = prefs.getString(KEY_HISTORY, "[]");
@@ -52,6 +53,7 @@ public class DetectionHistoryManager {
             entry.put("timestamp", System.currentTimeMillis());
             entry.put("cultivar", cultivar);
             entry.put("phase", phase);
+            entry.put("programId", programId != null ? programId : "");
 
             historyArray.put(entry);
             prefs.edit().putString(KEY_HISTORY, historyArray.toString()).apply();
@@ -61,7 +63,7 @@ public class DetectionHistoryManager {
             if (currentUser != null) {
                 LocalDataManager.getInstance(context).saveDetectionHistory(
                         currentUser.getUid(),
-                        null, // programId - could be enhanced to link to work program
+                        programId,
                         imageUri,
                         title,
                         accuracy,

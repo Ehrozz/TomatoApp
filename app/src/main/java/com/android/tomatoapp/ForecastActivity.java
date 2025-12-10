@@ -189,7 +189,7 @@ public class ForecastActivity extends AppCompatActivity {
         String details;
         int iconRes;
     }
-    
+
     private void displayForecast(List<Row> rows) {
         if (forecastContainer == null) return;
         

@@ -61,6 +61,7 @@ public class CameraInterface extends AppCompatActivity {
     public static final String EXTRA_LINKED_PROGRAM_ID = "extra_linked_program_id";
     public static final String EXTRA_LINKED_CULTIVAR = "extra_linked_cultivar";
     public static final String EXTRA_LINKED_PHASE = "extra_linked_phase";
+    public static final String EXTRA_DETECTION_TYPE = "extra_detection_type";
 
     private PreviewView previewView;
     private ImageCapture imageCapture;
@@ -90,7 +91,8 @@ public class CameraInterface extends AppCompatActivity {
     // Model types
     private enum ModelType {
         FRUITS,
-        LEAVES
+        LEAVES,
+        PEST
     }
     private ModelType currentModelType = ModelType.FRUITS;
 
@@ -208,6 +210,29 @@ public class CameraInterface extends AppCompatActivity {
             linkedProgramId = launchIntent.getStringExtra(EXTRA_LINKED_PROGRAM_ID);
             linkedCultivarName = launchIntent.getStringExtra(EXTRA_LINKED_CULTIVAR);
             linkedPhase = launchIntent.getIntExtra(EXTRA_LINKED_PHASE, -1);
+            
+            // Read detection type from Intent
+            String detectionTypeStr = launchIntent.getStringExtra(EXTRA_DETECTION_TYPE);
+            if (detectionTypeStr != null) {
+                try {
+                    DetectionTypeDialog.DetectionType detectionType = DetectionTypeDialog.DetectionType.valueOf(detectionTypeStr);
+                    switch (detectionType) {
+                        case FRUIT:
+                            currentModelType = ModelType.FRUITS;
+                            break;
+                        case LEAVES:
+                            currentModelType = ModelType.LEAVES;
+                            break;
+                        case PEST:
+                            currentModelType = ModelType.PEST;
+                            break;
+                    }
+                } catch (IllegalArgumentException e) {
+                    // Invalid detection type, use default
+                    currentModelType = ModelType.FRUITS;
+                }
+            }
+            
             if (!TextUtils.isEmpty(linkedCultivarName)) {
                 selectedCultivarLabel = linkedCultivarName;
             }
@@ -228,24 +253,11 @@ public class CameraInterface extends AppCompatActivity {
         com.google.android.material.floatingactionbutton.FloatingActionButton openGalleryBtn = findViewById(R.id.openGalleryButton);
         openGalleryBtn.setOnClickListener(v -> openGallery());
         
-        // Model selector button (now MaterialCardView)
+        // Model selector button (now MaterialCardView) - hide it since selection happens before
         modelSelectorBtn = findViewById(R.id.modelSelectorBtn);
-        
-        // Model selector button - toggle between Fruits and Leaves models
-        modelSelectorBtn.setOnClickListener(v -> {
-            if (currentModelType == ModelType.FRUITS) {
-                currentModelType = ModelType.LEAVES;
-                // Update icon or visual indicator if needed
-                Toast.makeText(this, "Switched to Leaves model", Toast.LENGTH_SHORT).show();
-            } else {
-                currentModelType = ModelType.FRUITS;
-                Toast.makeText(this, "Switched to Fruits model", Toast.LENGTH_SHORT).show();
-            }
-            // Reload model and labels when switching
-            tflite = null;
-            loadedModelType = null;
-            loadLabels();
-        });
+        if (modelSelectorBtn != null) {
+            modelSelectorBtn.setVisibility(View.GONE);
+        }
         
         // Back button
         ImageButton backButton = findViewById(R.id.backButton);
@@ -367,7 +379,8 @@ public class CameraInterface extends AppCompatActivity {
                                 detectionResults.get("pestDescription"),
                                 detectionResults.getOrDefault("pestImageUri", ""),  // add pest image if available
                                 selectedCultivarLabel,
-                                selectedPhase
+                                selectedPhase,
+                                linkedProgramId
                         );
                         persistDetectionForProgram(detectionResults, photoUri);
 
@@ -444,7 +457,8 @@ public class CameraInterface extends AppCompatActivity {
                     detectionResults.get("pestDescription"),
                     detectionResults.getOrDefault("pestImageUri", ""),
                     selectedCultivarLabel,
-                    selectedPhase
+                    selectedPhase,
+                    linkedProgramId
             );
             persistDetectionForProgram(detectionResults, selectedImage);
 
@@ -504,7 +518,14 @@ public class CameraInterface extends AppCompatActivity {
                     tflite.close();
                     tflite = null;
                 }
-                String modelName = currentModelType == ModelType.FRUITS ? "model_fruits.tflite" : "model_leaves.tflite";
+                String modelName;
+                if (currentModelType == ModelType.FRUITS) {
+                    modelName = "model_fruits.tflite";
+                } else if (currentModelType == ModelType.LEAVES) {
+                    modelName = "model_leaves.tflite";
+                } else {
+                    modelName = "model_pest.tflite";
+                }
                 tflite = new Interpreter(loadModelFile(modelName));
                 loadedModelType = currentModelType;
             }
@@ -739,7 +760,14 @@ public class CameraInterface extends AppCompatActivity {
 
     private void loadLabels() {
         labels = new ArrayList<>();
-        String labelsFile = currentModelType == ModelType.FRUITS ? "fruit_labels.txt" : "leaves_labels.txt";
+        String labelsFile;
+        if (currentModelType == ModelType.FRUITS) {
+            labelsFile = "fruit_labels.txt";
+        } else if (currentModelType == ModelType.LEAVES) {
+            labelsFile = "leaves_labels.txt";
+        } else {
+            labelsFile = "pest_labels.txt";
+        }
         try (InputStream is = getAssets().open(labelsFile)) {
             byte[] buffer = new byte[is.available()];
             is.read(buffer);

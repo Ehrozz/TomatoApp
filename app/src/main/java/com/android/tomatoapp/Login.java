@@ -68,9 +68,15 @@ public class Login extends AppCompatActivity {
         }
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser != null) {
-            Intent intent = new Intent(getApplicationContext(), MainActivity.class);
-            startActivity(intent);
-            finish();
+            // Check if terms are accepted before redirecting
+            if (!TermsDialog.areTermsAccepted(this, currentUser.getUid())) {
+                // Show terms dialog before allowing access
+                showTermsDialogBeforeLogin(currentUser.getUid());
+            } else {
+                Intent intent = new Intent(getApplicationContext(), MainActivity.class);
+                startActivity(intent);
+                finish();
+            }
         }
     }
     
@@ -224,12 +230,23 @@ public class Login extends AppCompatActivity {
                     }
                     if (task.isSuccessful()) {
                         FirebaseUser user = mAuth.getCurrentUser();
-                        if (user != null && user.getEmail() != null) {
-                            Toast.makeText(this, getString(R.string.welcome_user, user.getEmail()), Toast.LENGTH_SHORT).show();
+                        if (user != null) {
+                            // Check if terms are accepted before proceeding
+                            if (!TermsDialog.areTermsAccepted(this, user.getUid())) {
+                                showTermsDialogBeforeLogin(user.getUid());
+                            } else {
+                                if (user.getEmail() != null) {
+                                    Toast.makeText(this, getString(R.string.welcome_user, user.getEmail()), Toast.LENGTH_SHORT).show();
+                                }
+                                Intent intent = new Intent(getApplicationContext(), MainActivity.class);
+                                startActivity(intent);
+                                finish();
+                            }
+                        } else {
+                            Intent intent = new Intent(getApplicationContext(), MainActivity.class);
+                            startActivity(intent);
+                            finish();
                         }
-                        Intent intent = new Intent(getApplicationContext(), MainActivity.class);
-                        startActivity(intent);
-                        finish();
                     } else {
                         String errorMessage = FirebaseErrorHandler.getErrorMessage(this, task.getException());
                         Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show();
@@ -244,16 +261,48 @@ public class Login extends AppCompatActivity {
                         progressBar.setVisibility(View.GONE);
                         setLoginEnabled(true);
                         if (task.isSuccessful()) {
-                            Toast.makeText(Login.this, getString(R.string.success_login), Toast.LENGTH_SHORT).show();
-                            Intent intent = new Intent(getApplicationContext(), MainActivity.class);
-                            startActivity(intent);
-                            finish();
+                            FirebaseUser user = mAuth.getCurrentUser();
+                            if (user != null) {
+                                // Check if terms are accepted before proceeding
+                                if (!TermsDialog.areTermsAccepted(Login.this, user.getUid())) {
+                                    showTermsDialogBeforeLogin(user.getUid());
+                                } else {
+                                    proceedToMainActivity();
+                                }
+                            } else {
+                                proceedToMainActivity();
+                            }
                         } else {
                             String errorMessage = FirebaseErrorHandler.getErrorMessage(Login.this, task.getException());
                             Toast.makeText(Login.this, errorMessage, Toast.LENGTH_SHORT).show();
                         }
                     }
                 });
+    }
+    
+    private void proceedToMainActivity() {
+        Toast.makeText(Login.this, getString(R.string.success_login), Toast.LENGTH_SHORT).show();
+        Intent intent = new Intent(getApplicationContext(), MainActivity.class);
+        startActivity(intent);
+        finish();
+    }
+    
+    private void showTermsDialogBeforeLogin(String userId) {
+        TermsDialog dialog = new TermsDialog(this, userId, new TermsDialog.OnTermsAcceptedListener() {
+            @Override
+            public void onTermsAccepted() {
+                // Terms accepted, proceed to main activity
+                proceedToMainActivity();
+            }
+            
+            @Override
+            public void onTermsDeclined() {
+                // User must accept terms - sign them out
+                mAuth.signOut();
+                Toast.makeText(Login.this, getString(R.string.terms_must_accept), Toast.LENGTH_LONG).show();
+            }
+        });
+        dialog.show();
     }
 
     private void resolveEmailForIdentifier(String identifier, EmailResolutionCallback callback) {

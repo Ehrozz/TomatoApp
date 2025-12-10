@@ -49,6 +49,10 @@
             android:name=".CostSelection"
             android:exported="false" />
         <activity
+            android:name=".CurrentExpensesActivity"
+            android:exported="false"
+            android:label="Current Expenses" />
+        <activity
             android:name=".DetectionHistoryActivity"
             android:exported="false" />
         <activity
@@ -75,6 +79,10 @@
         <activity
             android:name=".DailyTask"
             android:exported="false" />
+        <activity
+            android:name=".DailyExpensesActivity"
+            android:exported="false"
+            android:label="Daily Expenses" />
         <activity
             android:name=".Workprogram"
             android:exported="false" />

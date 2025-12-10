@@ -1,15 +1,19 @@
 package com.android.tomatoapp;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -23,36 +27,49 @@ import com.google.firebase.database.FirebaseDatabase;
 
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.ValueEventListener;
+
 public class Calculator extends AppCompatActivity {
 
     EditText etHectare, etAWF, etAFP, etMarketValue;
-    EditText etFertilizer, etManpower, etPesticide, etSeedlings, etOtherExpenses;
-    TextView tvCultivarName, tvDateSaved, tvNP, tvTHGrams, tvTHKg;
+    TextView tvCultivarName, tvDateSaved, tvNP, tvSubTotalHarvest;
+    Spinner spinnerHarvestUnit;
+    TextView tvHarvestPredictionYieldPerHa, tvHarvestPredictionTotalYield, tvHarvestPredictionDate;
     TextView tvNetIncomeCard, tvSummarySubtitle, tvCompletionRate, tvAdjustedNetIncome, tvAdjustedSubtitle, tvAdjustedExpenses, tvCompletionWarning;
-    TextView tvCompleteKg, tvCompleteCost, tvUreaKg, tvUreaCost, tvMOPKg, tvMOPCost, tvTotalFertilizerCost;
     TextView tvTotalExpenses;
-    TextView btnSummaryDetails;
-    TextView tvPesticideTotal, tvPesticidePreventive, tvPesticideCurative, tvPesticideOther;
-    CheckBox cbComplete, cbUrea, cbMOP;
-    LinearLayout fertilizerContent, pesticideContent;
-    ImageView ivFertilizerToggle, ivPesticideToggle;
+    com.google.android.material.button.MaterialButton btnDailyExpensesHistory;
+    // Expense category cards
+    TextView tvLaborTotalCost, tvLaborTotalWorkers;
+    TextView tvMaterialTotalCost;
+    TextView tvEquipmentTotalCost, tvEquipmentTotalUsage;
+    TextView tvMiscellaneousTotalCost;
+    // Expenses card aggregated totals
+    TextView tvExpensesLaborTotal, tvExpensesEquipmentTotal, tvExpensesMaterialTotal, tvExpensesMiscellaneousTotal;
+    LinearLayout laborItemsContainer, materialItemsContainer, equipmentItemsContainer, miscItemsContainer;
 
     double hectare = 0, AWF = 0, AFP = 0, baseNP = 0, currentNP = 0, marketValue = 0;
-    double fertilizerCost = 0, manpower = 0, pesticide = 0, seedlings = 0, otherExpenses = 0;
+    double manpower = 0;
     double grossIncome = 0, totalExpenses = 0, netIncome = 0;
-    // Individual fertilizer costs (stored to calculate based on checkbox selection)
-    double completeCostTotal = 0, ureaCostTotal = 0, mopCostTotal = 0;
+    double totalHarvestGrams = 0, totalHarvestKg = 0; // Store harvest values for unit conversion
+    int maturityDays = 0; // Maturity days for harvest prediction
     String growthHabit = "";
     DecimalFormat df = new DecimalFormat("#,###");
     DecimalFormat df2 = new DecimalFormat("#,###.##");
     
     // Firebase
     private DatabaseReference calculationsRef;
+    private DatabaseReference dailyExpensesRef;
     private FirebaseUser currentUser;
     private double lastSavedGrossIncome = 0;
     private double lastSavedTotalExpenses = 0;
@@ -61,10 +78,48 @@ public class Calculator extends AppCompatActivity {
     private String dateSaved;    // For analytics/work program record (starting date)
     private WorkProgramDataHelper.CompletionStats completionStats;
     
-    // Fertilizer prices (PHP per kg)
-    private static final double PRICE_COMPLETE = 32.20; // PHP 32.20 / kg
-    private static final double PRICE_UREA = 32.40;     // PHP 32.40 / kg
-    private static final double PRICE_MOP = 40.70;       // PHP 40.70 / kg
+    // Daily expenses aggregation
+    private double aggregatedLaborCost = 0;
+    private double aggregatedMaterialCost = 0;
+    private double aggregatedEquipmentCost = 0;
+    private double aggregatedMiscCost = 0;
+    private double aggregatedEquipmentUsageHours = 0; // Track total equipment usage in hours
+    private int aggregatedLaborWorkerCount = 0; // Track total number of workers
+    private List<Double> dailyExpenseTotals = new ArrayList<>(); // For min/max/avg calculation
+    
+    // Individual expense items for display
+    private List<LaborItem> laborItems = new ArrayList<>();
+    private List<MaterialItem> materialItems = new ArrayList<>();
+    private List<EquipmentItem> equipmentItems = new ArrayList<>();
+    private List<MiscItem> miscItems = new ArrayList<>();
+    
+    // Helper classes for expense items
+    private static class LaborItem {
+        String activityName;
+        double dailyWage;
+        int numWorkers;
+        double totalCost;
+    }
+    
+    private static class MaterialItem {
+        String materialName;
+        double quantity;
+        String quantityUnit;
+        double totalCost;
+    }
+    
+    private static class EquipmentItem {
+        String equipmentName;
+        double usageValue;
+        String usageUnit;
+        double cost;
+        double totalCost;
+    }
+    
+    private static class MiscItem {
+        String expenseName;
+        double cost;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,70 +136,42 @@ public class Calculator extends AppCompatActivity {
         etAFP = findViewById(R.id.etAFP);
         etMarketValue = findViewById(R.id.etMarketValue);
         
-        // Expense inputs
-        etFertilizer = findViewById(R.id.etFertilizer);
-        etManpower = findViewById(R.id.etManpower);
-        etPesticide = findViewById(R.id.etPesticide);
-        etSeedlings = findViewById(R.id.etSeedlings);
-        etOtherExpenses = findViewById(R.id.etOtherExpenses);
-
         tvCultivarName = findViewById(R.id.tvCultivarName);
         tvDateSaved = findViewById(R.id.tvDateSaved);
         tvNP = findViewById(R.id.tvNP);
-        tvTHGrams = findViewById(R.id.tvTHGrams);
-        tvTHKg = findViewById(R.id.tvTHKg);
+        tvSubTotalHarvest = findViewById(R.id.tvSubTotalHarvest);
+        spinnerHarvestUnit = findViewById(R.id.spinnerHarvestUnit);
+        tvHarvestPredictionYieldPerHa = findViewById(R.id.tvHarvestPredictionYieldPerHa);
+        tvHarvestPredictionTotalYield = findViewById(R.id.tvHarvestPredictionTotalYield);
+        tvHarvestPredictionDate = findViewById(R.id.tvHarvestPredictionDate);
         tvNetIncomeCard = findViewById(R.id.tvNetIncomeCard);
         tvSummarySubtitle = findViewById(R.id.tvSummarySubtitle);
         tvCompletionRate = findViewById(R.id.tvCompletionRate);
         tvAdjustedNetIncome = findViewById(R.id.tvAdjustedNetIncome);
         tvAdjustedSubtitle = findViewById(R.id.tvAdjustedSubtitle);
         tvCompletionWarning = findViewById(R.id.tvCompletionWarning);
-        btnSummaryDetails = findViewById(R.id.btnSummaryDetails);
+        btnDailyExpensesHistory = findViewById(R.id.btnDailyExpensesHistory);
         tvAdjustedExpenses = findViewById(R.id.tvAdjustedExpenses);
         
-        // Fertilizer TextViews
-        tvCompleteKg = findViewById(R.id.tvCompleteKg);
-        tvCompleteCost = findViewById(R.id.tvCompleteCost);
-        tvUreaKg = findViewById(R.id.tvUreaKg);
-        tvUreaCost = findViewById(R.id.tvUreaCost);
-        tvMOPKg = findViewById(R.id.tvMOPKg);
-        tvMOPCost = findViewById(R.id.tvMOPCost);
-        tvTotalFertilizerCost = findViewById(R.id.tvTotalFertilizerCost);
+        // Expense category cards
+        tvLaborTotalCost = findViewById(R.id.tvLaborTotalCost);
+        tvLaborTotalWorkers = findViewById(R.id.tvLaborTotalWorkers);
+        tvMaterialTotalCost = findViewById(R.id.tvMaterialTotalCost);
+        tvEquipmentTotalCost = findViewById(R.id.tvEquipmentTotalCost);
+        tvEquipmentTotalUsage = findViewById(R.id.tvEquipmentTotalUsage);
+        tvMiscellaneousTotalCost = findViewById(R.id.tvMiscellaneousTotalCost);
         
-        // Fertilizer checkboxes
-        cbComplete = findViewById(R.id.cbComplete);
-        cbUrea = findViewById(R.id.cbUrea);
-        cbMOP = findViewById(R.id.cbMOP);
+        // Item containers for displaying individual expense items
+        laborItemsContainer = findViewById(R.id.laborItemsContainer);
+        materialItemsContainer = findViewById(R.id.materialItemsContainer);
+        equipmentItemsContainer = findViewById(R.id.equipmentItemsContainer);
+        miscItemsContainer = findViewById(R.id.miscItemsContainer);
         
-        // Pesticide breakdown views
-        tvPesticideTotal = findViewById(R.id.tvPesticideTotal);
-        tvPesticidePreventive = findViewById(R.id.tvPesticidePreventive);
-        tvPesticideCurative = findViewById(R.id.tvPesticideCurative);
-        tvPesticideOther = findViewById(R.id.tvPesticideOther);
-
-        // Collapsible sections
-        fertilizerContent = findViewById(R.id.fertilizerContent);
-        pesticideContent = findViewById(R.id.pesticideContent);
-        View fertilizerHeader = findViewById(R.id.fertilizerHeader);
-        View pesticideHeader = findViewById(R.id.pesticideHeader);
-        ivFertilizerToggle = findViewById(R.id.ivFertilizerToggle);
-        ivPesticideToggle = findViewById(R.id.ivPesticideToggle);
-
-        // Expense total TextView
-        tvTotalExpenses = findViewById(R.id.tvTotalExpenses);
-
-        // Summary card "Details" scrolls to breakdown
-        final ScrollView scrollView = findViewById(R.id.main);
-        final View breakdownTitle = findViewById(R.id.tvBreakdownTitle);
-        if (btnSummaryDetails != null && scrollView != null && breakdownTitle != null) {
-            btnSummaryDetails.setOnClickListener(v -> {
-                scrollView.post(() -> scrollView.smoothScrollTo(0, breakdownTitle.getTop()));
-            });
-        }
-
-        // Setup collapsible sections (fertilizer & pesticide only)
-        setupSectionToggle(fertilizerHeader, fertilizerContent, ivFertilizerToggle);
-        setupSectionToggle(pesticideHeader, pesticideContent, ivPesticideToggle);
+        // Expenses card aggregated totals
+        tvExpensesLaborTotal = findViewById(R.id.tvExpensesLaborTotal);
+        tvExpensesEquipmentTotal = findViewById(R.id.tvExpensesEquipmentTotal);
+        tvExpensesMaterialTotal = findViewById(R.id.tvExpensesMaterialTotal);
+        tvExpensesMiscellaneousTotal = findViewById(R.id.tvExpensesMiscellaneousTotal);
 
         // Get values from intent
         cultivarName = getIntent().getStringExtra("cultivar_name");
@@ -159,6 +186,14 @@ public class Calculator extends AppCompatActivity {
         tvDateSaved.setText("Date Saved: " + (dateSaved != null ? dateSaved : "N/A"));
         tvNP.setText("Number of Plants Per Hectare (NP): " + df.format(baseNP));
         
+        // Get maturity days for harvest prediction
+        if (cultivarName != null) {
+            maturityDays = WorkProgramDataHelper.getMaturityDays(cultivarName);
+            if (maturityDays <= 0) {
+                maturityDays = 90; // Fallback default
+            }
+        }
+        
         // Initialize Firebase first (needed for fetching hectare)
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser != null) {
@@ -166,6 +201,18 @@ public class Calculator extends AppCompatActivity {
                     .getReference("users")
                     .child(currentUser.getUid())
                     .child("calculations");
+            
+            // Initialize daily expenses reference if programId is available
+            if (programId != null) {
+                dailyExpensesRef = FirebaseDatabase.getInstance()
+                        .getReference("users")
+                        .child(currentUser.getUid())
+                        .child("workPrograms")
+                        .child(programId)
+                        .child("dailyExpenses");
+                // Load daily expenses after UI is initialized
+                loadDailyExpenses();
+            }
         }
         
         // Prefill hectare if provided
@@ -192,28 +239,7 @@ public class Calculator extends AppCompatActivity {
         etAFP.addTextChangedListener(watcher);
         etMarketValue.addTextChangedListener(watcher);
         
-        // Make fertilizer field read-only (auto-filled) - don't add watcher since it's auto-filled
-        etFertilizer.setFocusable(false);
-        etFertilizer.setClickable(false);
-        etFertilizer.setEnabled(false);
-        
-        // Expense input watchers (excluding fertilizer which is auto-filled)
-        etManpower.addTextChangedListener(watcher);
-        etPesticide.addTextChangedListener(watcher);
-        etSeedlings.addTextChangedListener(watcher);
-        etOtherExpenses.addTextChangedListener(watcher);
-        
-        // Checkbox listeners to update fertilizer cost when selection changes
-        CompoundButton.OnCheckedChangeListener checkboxListener = (buttonView, isChecked) -> {
-            updateFertilizerCost();
-            computeExpenses();
-        };
-        cbComplete.setOnCheckedChangeListener(checkboxListener);
-        cbUrea.setOnCheckedChangeListener(checkboxListener);
-        cbMOP.setOnCheckedChangeListener(checkboxListener);
-        
         // Initial calculations
-        computeFertilizer();
         computeExpenses();
         
         // Auto-save when calculation is complete
@@ -221,6 +247,585 @@ public class Calculator extends AppCompatActivity {
 
         // Load completion stats for adjusted projections
         loadCompletionStats();
+        
+        // Wire up Daily Expenses History button
+        setupDailyExpensesHistoryButton();
+        
+        // Initialize expense category cards (show empty state if no data yet)
+        updateExpenseCategoryCards();
+        updateExpensesCardTotals();
+        
+        // Set default net income to zero
+        if (tvNetIncomeCard != null) {
+            tvNetIncomeCard.setText("₱0.00");
+        }
+        
+        // Setup harvest unit spinner
+        setupHarvestUnitSpinner();
+    }
+    
+    /**
+     * Sets up the harvest unit spinner with kg and grams options
+     */
+    private void setupHarvestUnitSpinner() {
+        if (spinnerHarvestUnit == null) return;
+        
+        String[] units = {"kg", "grams"};
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, units);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerHarvestUnit.setAdapter(adapter);
+        
+        // Set default to kg
+        spinnerHarvestUnit.setSelection(0);
+        
+        // Update display when unit changes
+        spinnerHarvestUnit.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                updateHarvestDisplay();
+            }
+            
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // Do nothing
+            }
+        });
+    }
+    
+    /**
+     * Updates the harvest display based on selected unit
+     */
+    private void updateHarvestDisplay() {
+        if (tvSubTotalHarvest == null || spinnerHarvestUnit == null) return;
+        
+        String selectedUnit = (String) spinnerHarvestUnit.getSelectedItem();
+        if (selectedUnit == null) selectedUnit = "kg";
+        
+        if (totalHarvestKg > 0 || totalHarvestGrams > 0) {
+            if (selectedUnit.equals("kg")) {
+                tvSubTotalHarvest.setText("₱" + df2.format(totalHarvestKg));
+            } else {
+                tvSubTotalHarvest.setText("₱" + df2.format(totalHarvestGrams));
+            }
+        } else {
+            tvSubTotalHarvest.setText("₱—");
+        }
+    }
+    
+    /**
+     * Sets up the Daily Expenses History button to navigate to DailyExpensesHistoryActivity
+     */
+    private void setupDailyExpensesHistoryButton() {
+        if (btnDailyExpensesHistory == null) return;
+        
+        // Hide button by default if programId is not available (new calculations)
+        if (programId == null || cultivarName == null || dateSaved == null) {
+            btnDailyExpensesHistory.setVisibility(View.GONE);
+            return;
+        }
+        
+        btnDailyExpensesHistory.setVisibility(View.VISIBLE);
+        
+        // Set up click listener with validation
+        btnDailyExpensesHistory.setOnClickListener(v -> {
+            // Double-check that all required data is available before navigating
+            if (programId == null || programId.isEmpty()) {
+                Toast.makeText(Calculator.this, "Daily expenses history is only available for saved work programs", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            if (cultivarName == null || dateSaved == null) {
+                Toast.makeText(Calculator.this, "Missing required information", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            try {
+                Intent intent = new Intent(Calculator.this, DailyExpensesHistoryActivity.class);
+                intent.putExtra("programId", programId);
+                intent.putExtra("cultivar", cultivarName);
+                intent.putExtra("startDate", dateSaved);
+                startActivity(intent);
+            } catch (Exception e) {
+                Toast.makeText(Calculator.this, "Unable to open daily expenses history", Toast.LENGTH_SHORT).show();
+                e.printStackTrace();
+            }
+        });
+    }
+    
+    /**
+     * Loads and aggregates daily expenses from Firebase
+     */
+    private void loadDailyExpenses() {
+        if (dailyExpensesRef == null || currentUser == null) return;
+        
+        dailyExpensesRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                // Reset aggregated values
+                aggregatedLaborCost = 0;
+                aggregatedMaterialCost = 0;
+                aggregatedEquipmentCost = 0;
+                aggregatedMiscCost = 0;
+                aggregatedEquipmentUsageHours = 0;
+                aggregatedLaborWorkerCount = 0;
+                dailyExpenseTotals.clear();
+                
+                // Clear individual items
+                laborItems.clear();
+                materialItems.clear();
+                equipmentItems.clear();
+                miscItems.clear();
+                
+                // Iterate through all dates with expenses
+                for (DataSnapshot dateSnapshot : snapshot.getChildren()) {
+                    double dailyTotal = 0;
+                    
+                    // Process labor expenses
+                    if (dateSnapshot.hasChild("labor")) {
+                        for (DataSnapshot laborSnapshot : dateSnapshot.child("labor").getChildren()) {
+                            Double totalCost = laborSnapshot.child("totalCost").getValue(Double.class);
+                            Integer numWorkers = laborSnapshot.child("numWorkers").getValue(Integer.class);
+                            Double dailyWage = laborSnapshot.child("dailyWage").getValue(Double.class);
+                            String notes = laborSnapshot.child("notes").getValue(String.class);
+                            
+                            if (totalCost != null) {
+                                aggregatedLaborCost += totalCost;
+                                dailyTotal += totalCost;
+                                
+                                // Store individual item
+                                LaborItem item = new LaborItem();
+                                item.activityName = (notes != null && !notes.isEmpty()) ? notes : "Labor";
+                                item.dailyWage = dailyWage != null ? dailyWage : 0.0;
+                                item.numWorkers = numWorkers != null ? numWorkers : 0;
+                                item.totalCost = totalCost;
+                                laborItems.add(item);
+                            }
+                            
+                            // Track worker count
+                            if (numWorkers != null && numWorkers > 0) {
+                                aggregatedLaborWorkerCount += numWorkers;
+                            }
+                        }
+                    }
+                    
+                    // Process material expenses
+                    if (dateSnapshot.hasChild("material")) {
+                        for (DataSnapshot materialSnapshot : dateSnapshot.child("material").getChildren()) {
+                            Double totalCost = materialSnapshot.child("totalCost").getValue(Double.class);
+                            String materialName = materialSnapshot.child("materialName").getValue(String.class);
+                            Double quantity = materialSnapshot.child("quantity").getValue(Double.class);
+                            String quantityUnit = materialSnapshot.child("quantityUnit").getValue(String.class);
+                            
+                            if (totalCost != null) {
+                                aggregatedMaterialCost += totalCost;
+                                dailyTotal += totalCost;
+                                
+                                // Store individual item
+                                MaterialItem item = new MaterialItem();
+                                item.materialName = materialName != null ? materialName : "Material";
+                                item.quantity = quantity != null ? quantity : 0.0;
+                                item.quantityUnit = quantityUnit != null ? quantityUnit : "";
+                                item.totalCost = totalCost;
+                                materialItems.add(item);
+                            }
+                        }
+                    }
+                    
+                    // Process equipment expenses (only non-owned equipment)
+                    if (dateSnapshot.hasChild("equipment")) {
+                        for (DataSnapshot equipmentSnapshot : dateSnapshot.child("equipment").getChildren()) {
+                            Boolean isOwned = equipmentSnapshot.child("isOwned").getValue(Boolean.class);
+                            Double totalCost = equipmentSnapshot.child("totalCost").getValue(Double.class);
+                            String equipmentName = equipmentSnapshot.child("equipmentName").getValue(String.class);
+                            Double usageValue = equipmentSnapshot.child("usageValue").getValue(Double.class);
+                            String usageUnit = equipmentSnapshot.child("usageUnit").getValue(String.class);
+                            Double cost = equipmentSnapshot.child("cost").getValue(Double.class);
+                            
+                            // Track total usage hours for all equipment (owned and non-owned)
+                            if (usageValue != null && usageUnit != null) {
+                                double hours = usageUnit.equals("hours") ? usageValue : (usageValue / 60.0);
+                                aggregatedEquipmentUsageHours += hours;
+                            }
+                            
+                            // Only count non-owned equipment expenses
+                            if (isOwned == null || !isOwned) {
+                                if (totalCost != null) {
+                                    aggregatedEquipmentCost += totalCost;
+                                    dailyTotal += totalCost;
+                                    
+                                    // Store individual item
+                                    EquipmentItem item = new EquipmentItem();
+                                    item.equipmentName = equipmentName != null ? equipmentName : "Equipment";
+                                    item.usageValue = usageValue != null ? usageValue : 0.0;
+                                    item.usageUnit = usageUnit != null ? usageUnit : "hours";
+                                    item.cost = cost != null ? cost : 0.0;
+                                    item.totalCost = totalCost;
+                                    equipmentItems.add(item);
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Process miscellaneous expenses
+                    if (dateSnapshot.hasChild("miscellaneous")) {
+                        for (DataSnapshot miscSnapshot : dateSnapshot.child("miscellaneous").getChildren()) {
+                            Double cost = miscSnapshot.child("cost").getValue(Double.class);
+                            String expenseName = miscSnapshot.child("expenseName").getValue(String.class);
+                            
+                            if (cost != null) {
+                                aggregatedMiscCost += cost;
+                                dailyTotal += cost;
+                                
+                                // Store individual item
+                                MiscItem item = new MiscItem();
+                                item.expenseName = expenseName != null ? expenseName : "Miscellaneous";
+                                item.cost = cost;
+                                miscItems.add(item);
+                            }
+                        }
+                    }
+                    
+                    // Store daily total for min/max/avg calculation
+                    if (dailyTotal > 0) {
+                        dailyExpenseTotals.add(dailyTotal);
+                    }
+                }
+                
+                // Display individual items
+                displayExpenseItems();
+                
+                // Auto-fill expense fields with aggregated values
+                populateExpenseFields();
+                
+                // Update cost range display if we have expense data
+                if (!dailyExpenseTotals.isEmpty()) {
+                    updateCostRangeDisplay();
+                }
+                
+                // Update expense category cards
+                updateExpenseCategoryCards();
+                
+                // Update Expenses card totals
+                updateExpensesCardTotals();
+            }
+            
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                // Silently fail - user can still enter expenses manually
+            }
+        });
+    }
+    
+    /**
+     * Displays individual expense items in their respective containers
+     */
+    private void displayExpenseItems() {
+        // Clear existing items
+        if (laborItemsContainer != null) laborItemsContainer.removeAllViews();
+        if (materialItemsContainer != null) materialItemsContainer.removeAllViews();
+        if (equipmentItemsContainer != null) equipmentItemsContainer.removeAllViews();
+        if (miscItemsContainer != null) miscItemsContainer.removeAllViews();
+        
+        // Display labor items
+        for (LaborItem item : laborItems) {
+            View itemView = createLaborItemView(item);
+            if (laborItemsContainer != null && itemView != null) {
+                laborItemsContainer.addView(itemView);
+            }
+        }
+        
+        // Display material items
+        for (MaterialItem item : materialItems) {
+            View itemView = createMaterialItemView(item);
+            if (materialItemsContainer != null && itemView != null) {
+                materialItemsContainer.addView(itemView);
+            }
+        }
+        
+        // Display equipment items
+        for (EquipmentItem item : equipmentItems) {
+            View itemView = createEquipmentItemView(item);
+            if (equipmentItemsContainer != null && itemView != null) {
+                equipmentItemsContainer.addView(itemView);
+            }
+        }
+        
+        // Display miscellaneous items
+        for (MiscItem item : miscItems) {
+            View itemView = createMiscItemView(item);
+            if (miscItemsContainer != null && itemView != null) {
+                miscItemsContainer.addView(itemView);
+            }
+        }
+    }
+    
+    /**
+     * Creates a view for a labor item
+     */
+    private View createLaborItemView(LaborItem item) {
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(0, 12, 0, 12);
+        
+        TextView activityName = new TextView(this);
+        activityName.setText(item.activityName);
+        activityName.setTextSize(16);
+        activityName.setTypeface(null, android.graphics.Typeface.BOLD);
+        activityName.setTextColor(getResources().getColor(android.R.color.black));
+        layout.addView(activityName);
+        
+        TextView details = new TextView(this);
+        String detailsText = String.format(Locale.getDefault(), 
+            "Daily Wage: ₱%,.2f\nNumber of Workers: %d\nTotal Cost: ₱%,.2f",
+            item.dailyWage, item.numWorkers, item.totalCost);
+        details.setText(detailsText);
+        details.setTextSize(14);
+        details.setTextColor(getResources().getColor(android.R.color.darker_gray));
+        details.setPadding(0, 4, 0, 0);
+        layout.addView(details);
+        
+        return layout;
+    }
+    
+    /**
+     * Creates a view for a material item
+     */
+    private View createMaterialItemView(MaterialItem item) {
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(0, 12, 0, 12);
+        
+        TextView materialName = new TextView(this);
+        materialName.setText(item.materialName);
+        materialName.setTextSize(16);
+        materialName.setTypeface(null, android.graphics.Typeface.BOLD);
+        materialName.setTextColor(getResources().getColor(android.R.color.black));
+        layout.addView(materialName);
+        
+        TextView details = new TextView(this);
+        String quantityText = "";
+        if (item.quantity > 0 && item.quantityUnit != null && !item.quantityUnit.isEmpty()) {
+            quantityText = String.format(Locale.getDefault(), "Quantity: %s %s\n", 
+                df2.format(item.quantity), item.quantityUnit);
+        }
+        String detailsText = quantityText + String.format(Locale.getDefault(), "Total Cost: ₱%,.2f", item.totalCost);
+        details.setText(detailsText);
+        details.setTextSize(14);
+        details.setTextColor(getResources().getColor(android.R.color.darker_gray));
+        details.setPadding(0, 4, 0, 0);
+        layout.addView(details);
+        
+        return layout;
+    }
+    
+    /**
+     * Creates a view for an equipment item
+     */
+    private View createEquipmentItemView(EquipmentItem item) {
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(0, 12, 0, 12);
+        
+        TextView equipmentName = new TextView(this);
+        equipmentName.setText(item.equipmentName);
+        equipmentName.setTextSize(16);
+        equipmentName.setTypeface(null, android.graphics.Typeface.BOLD);
+        equipmentName.setTextColor(getResources().getColor(android.R.color.black));
+        layout.addView(equipmentName);
+        
+        TextView details = new TextView(this);
+        String usageText = "";
+        if (item.usageValue > 0) {
+            usageText = String.format(Locale.getDefault(), "Usage: %s %s\n", 
+                df2.format(item.usageValue), item.usageUnit);
+        }
+        String costText = "";
+        if (item.cost > 0) {
+            costText = String.format(Locale.getDefault(), "Rental Cost: ₱%,.2f/%s\n", 
+                item.cost, item.usageUnit);
+        }
+        String detailsText = usageText + costText + String.format(Locale.getDefault(), "Total Cost: ₱%,.2f", item.totalCost);
+        details.setText(detailsText);
+        details.setTextSize(14);
+        details.setTextColor(getResources().getColor(android.R.color.darker_gray));
+        details.setPadding(0, 4, 0, 0);
+        layout.addView(details);
+        
+        return layout;
+    }
+    
+    /**
+     * Creates a view for a miscellaneous item
+     */
+    private View createMiscItemView(MiscItem item) {
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(0, 12, 0, 12);
+        
+        TextView expenseName = new TextView(this);
+        expenseName.setText(item.expenseName);
+        expenseName.setTextSize(16);
+        expenseName.setTypeface(null, android.graphics.Typeface.BOLD);
+        expenseName.setTextColor(getResources().getColor(android.R.color.black));
+        layout.addView(expenseName);
+        
+        TextView details = new TextView(this);
+        String detailsText = String.format(Locale.getDefault(), "Cost: ₱%,.2f", item.cost);
+        details.setText(detailsText);
+        details.setTextSize(14);
+        details.setTextColor(getResources().getColor(android.R.color.darker_gray));
+        details.setPadding(0, 4, 0, 0);
+        layout.addView(details);
+        
+        return layout;
+    }
+    
+    /**
+     * Auto-fills expense fields with aggregated daily expense values
+     */
+    private void populateExpenseFields() {
+        // Set manpower from aggregated labor cost
+        manpower = aggregatedLaborCost;
+        
+        // Trigger expense computation to update totals
+        computeExpenses();
+    }
+    
+    /**
+     * Updates expense category cards with aggregated expense data from daily expenses
+     */
+    private void updateExpenseCategoryCards() {
+        // Update Labor card
+        if (tvLaborTotalCost != null) {
+            tvLaborTotalCost.setText(String.format(Locale.getDefault(), "Labor Total Cost: ₱%,.2f", aggregatedLaborCost));
+            if (tvLaborTotalWorkers != null) {
+                tvLaborTotalWorkers.setText(String.format(Locale.getDefault(), "Total Number of Workers: %d", aggregatedLaborWorkerCount));
+            }
+        }
+        
+        // Update Material card
+        if (tvMaterialTotalCost != null) {
+                tvMaterialTotalCost.setText(String.format(Locale.getDefault(), "Material Total Cost: ₱%,.2f", aggregatedMaterialCost));
+        }
+        
+        // Update Equipment/Tools card
+        if (tvEquipmentTotalCost != null) {
+                tvEquipmentTotalCost.setText(String.format(Locale.getDefault(), "Equipment/Tools Total Cost: ₱%,.2f", aggregatedEquipmentCost));
+                if (tvEquipmentTotalUsage != null) {
+                    tvEquipmentTotalUsage.setText(String.format(Locale.getDefault(), "Total Usage: %.2f hours", aggregatedEquipmentUsageHours));
+            }
+        }
+        
+        // Update Miscellaneous card
+        if (tvMiscellaneousTotalCost != null) {
+                tvMiscellaneousTotalCost.setText(String.format(Locale.getDefault(), "Miscellaneous Total Cost: ₱%,.2f", aggregatedMiscCost));
+        }
+    }
+    
+    /**
+     * Updates the Expenses card to show aggregated totals from daily expenses
+     */
+    private void updateExpensesCardTotals() {
+        // Update Labor Total in Expenses card
+        if (tvExpensesLaborTotal != null) {
+            tvExpensesLaborTotal.setText(String.format(Locale.getDefault(), "Labor Total Cost: ₱%,.2f", aggregatedLaborCost));
+        }
+        
+        // Update Equipment/Tools Total in Expenses card
+        if (tvExpensesEquipmentTotal != null) {
+            tvExpensesEquipmentTotal.setText(String.format(Locale.getDefault(), "Equipment/Tools Total Cost: ₱%,.2f", aggregatedEquipmentCost));
+        }
+        
+        // Update Material Total in Expenses card
+        if (tvExpensesMaterialTotal != null) {
+            tvExpensesMaterialTotal.setText(String.format(Locale.getDefault(), "Material Total Cost: ₱%,.2f", aggregatedMaterialCost));
+        }
+        
+        // Update Miscellaneous Total in Expenses card
+        if (tvExpensesMiscellaneousTotal != null) {
+            tvExpensesMiscellaneousTotal.setText(String.format(Locale.getDefault(), "Miscellaneous Total Cost: ₱%,.2f", aggregatedMiscCost));
+        }
+    }
+    
+    /**
+     * Updates Harvest Prediction card with calculated harvest predictions
+     */
+    private void updateHarvestPrediction(double totalHarvestKg, double hectareValue) {
+        if (hectareValue > 0 && totalHarvestKg > 0) {
+            // Calculate yield per hectare
+            double yieldPerHa = totalHarvestKg / hectareValue;
+            
+            if (tvHarvestPredictionYieldPerHa != null) {
+                tvHarvestPredictionYieldPerHa.setText(String.format(Locale.getDefault(), "%.2f kg/hectare", yieldPerHa));
+            }
+            
+            if (tvHarvestPredictionTotalYield != null) {
+                tvHarvestPredictionTotalYield.setText(String.format(Locale.getDefault(), "%.2f kg", totalHarvestKg));
+            }
+            
+            // Calculate predicted harvest date based on start date and maturity days
+            if (dateSaved != null && maturityDays > 0 && tvHarvestPredictionDate != null) {
+                try {
+                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+                    Date startDate = sdf.parse(dateSaved);
+                    if (startDate != null) {
+                        Calendar cal = Calendar.getInstance();
+                        cal.setTime(startDate);
+                        cal.add(Calendar.DAY_OF_YEAR, maturityDays);
+                        Date harvestDate = cal.getTime();
+                        String formattedDate = sdf.format(harvestDate);
+                        tvHarvestPredictionDate.setText(formattedDate);
+                    }
+                } catch (Exception e) {
+                    tvHarvestPredictionDate.setText("—");
+                }
+            } else if (tvHarvestPredictionDate != null) {
+                tvHarvestPredictionDate.setText("—");
+            }
+        } else {
+            if (tvHarvestPredictionYieldPerHa != null) {
+                tvHarvestPredictionYieldPerHa.setText("— kg/hectare");
+            }
+            if (tvHarvestPredictionTotalYield != null) {
+                tvHarvestPredictionTotalYield.setText("— kg");
+            }
+            if (tvHarvestPredictionDate != null) {
+                tvHarvestPredictionDate.setText("—");
+            }
+        }
+    }
+    
+    /**
+     * Updates cost range display showing min, max, average, and total expenses
+     */
+    private void updateCostRangeDisplay() {
+        if (dailyExpenseTotals.isEmpty()) return;
+        
+        // Calculate min, max, average, and total
+        double minExpense = Collections.min(dailyExpenseTotals);
+        double maxExpense = Collections.max(dailyExpenseTotals);
+        double avgExpense = 0.0;
+        double totalExpense = 0.0;
+        
+        for (Double expense : dailyExpenseTotals) {
+            totalExpense += expense;
+        }
+        avgExpense = totalExpense / dailyExpenseTotals.size();
+        
+        // Display cost range information - append to summary subtitle
+        // The cost range shows actual expense patterns from daily entries
+        String rangeText = String.format(Locale.getDefault(),
+                "\nDaily Expense Range: ₱%,.2f - ₱%,.2f | Avg: ₱%,.2f/day | Total Accumulated: ₱%,.2f",
+                minExpense, maxExpense, avgExpense, totalExpense);
+        
+        // Append to summary subtitle for visibility
+        if (tvSummarySubtitle != null) {
+            String currentText = tvSummarySubtitle.getText().toString();
+            // Only append if not already present (to avoid duplicates)
+            if (!currentText.contains("Daily Expense Range")) {
+                tvSummarySubtitle.setText(currentText + rangeText);
+            }
+        }
     }
     
     /**
@@ -362,23 +967,34 @@ public class Calculator extends AppCompatActivity {
             // 🔹 Compute totals only when all fields are filled
             if (hectare > 0 && AWF > 0 && AFP > 0 && marketValue > 0) {
                 double AWP = AWF * AFP;           // Average Weight per Plant
-                double TH = AWP * currentNP;      // Total Harvest (grams)
-                double THKg = TH / 1000;          // Total Harvest (kilograms)
-                grossIncome = THKg * marketValue; // ₱
+                totalHarvestGrams = AWP * currentNP;      // Total Harvest (grams)
+                totalHarvestKg = totalHarvestGrams / 1000;          // Total Harvest (kilograms)
+                grossIncome = totalHarvestKg * marketValue; // ₱
 
-                tvTHGrams.setText("Total Harvest (grams): " + df2.format(TH));
-                tvTHKg.setText("Total Harvest (kg): " + df2.format(THKg));
+                // Update harvest display based on selected unit
+                updateHarvestDisplay();
+                
+                // Update Harvest Prediction card
+                updateHarvestPrediction(totalHarvestKg, hectare);
             } else {
                 grossIncome = 0;
-                tvTHGrams.setText("Total Harvest (grams): —");
-                tvTHKg.setText("Total Harvest (kg): —");
+                totalHarvestGrams = 0;
+                totalHarvestKg = 0;
+                
+                // Update harvest display
+                updateHarvestDisplay();
+                
+                // Clear Harvest Prediction card
+                if (tvHarvestPredictionYieldPerHa != null) {
+                    tvHarvestPredictionYieldPerHa.setText("— kg/hectare");
+                }
+                if (tvHarvestPredictionTotalYield != null) {
+                    tvHarvestPredictionTotalYield.setText("— kg");
+                }
+                if (tvHarvestPredictionDate != null) {
+                    tvHarvestPredictionDate.setText("—");
+                }
             }
-            
-            // 🔹 Compute fertilizer requirements
-            computeFertilizer();
-
-            // 🔹 Update pesticide breakdown (temporary heuristic)
-            updatePesticideBreakdown();
             
             // 🔹 Compute expenses and net income
             computeExpenses();
@@ -387,122 +1003,43 @@ public class Calculator extends AppCompatActivity {
             if (grossIncome > 0 && totalExpenses >= 0) {
                 saveCalculation();
             }
+            
+            // Ensure net income defaults to zero if no calculation
+            if (grossIncome == 0 && totalExpenses == 0 && tvNetIncomeCard != null) {
+                tvNetIncomeCard.setText("₱0.00");
+            }
 
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
     
-    private void computeFertilizer() {
-        if (hectare <= 0 || baseNP <= 0) {
-            // Reset fertilizer displays
-            tvCompleteKg.setText("Complete (14-14-14) kg/ha: —");
-            tvCompleteCost.setText("Cost: —");
-            tvUreaKg.setText("Urea (46-0-0) kg/ha: —");
-            tvUreaCost.setText("Cost: —");
-            tvMOPKg.setText("MOP (0-0-60) kg/ha: —");
-            tvMOPCost.setText("Cost: —");
-            tvTotalFertilizerCost.setText("Total Fertilizer Cost (₱): —");
-            completeCostTotal = 0;
-            ureaCostTotal = 0;
-            mopCostTotal = 0;
-            fertilizerCost = 0;
-            etFertilizer.setText("");
-            return;
-        }
-        
-        // P = plants per hectare (baseNP)
-        double P = baseNP;
-        
-        // Calculate fertilizer requirements per hectare
-        // Complete (14-14-14): 10 g per plant × 1 application = 10 g/plant
-        double completeKgPerHa = (10.0 * 1.0 * P) / 1000.0;
-        
-        // Urea (46-0-0): 10 g per plant × (2/3) × 4 applications = 26.68 g/plant
-        double ureaKgPerHa = (10.0 * (2.0/3.0) * 4.0 * P) / 1000.0;
-        
-        // MOP (0-0-60): 10 g per plant × (1/3) × 4 applications = 13.32 g/plant
-        double mopKgPerHa = (10.0 * (1.0/3.0) * 4.0 * P) / 1000.0;
-        
-        // Calculate costs per hectare
-        double completeCostPerHa = completeKgPerHa * PRICE_COMPLETE;
-        double ureaCostPerHa = ureaKgPerHa * PRICE_UREA;
-        double mopCostPerHa = mopKgPerHa * PRICE_MOP;
-        double totalCostPerHa = completeCostPerHa + ureaCostPerHa + mopCostPerHa;
-        
-        // Scale by hectare
-        double completeKgTotal = completeKgPerHa * hectare;
-        double ureaKgTotal = ureaKgPerHa * hectare;
-        double mopKgTotal = mopKgPerHa * hectare;
-        // Store individual costs as instance variables
-        completeCostTotal = completeCostPerHa * hectare;
-        ureaCostTotal = ureaCostPerHa * hectare;
-        mopCostTotal = mopCostPerHa * hectare;
-        double totalCostTotal = completeCostTotal + ureaCostTotal + mopCostTotal;
-        
-        // Display results
-        tvCompleteKg.setText("Complete (14-14-14): " + df2.format(completeKgTotal) + " kg (" + df2.format(completeKgPerHa) + " kg/ha)");
-        tvCompleteCost.setText("Cost: ₱" + df2.format(completeCostTotal) + " (₱" + df2.format(completeCostPerHa) + "/ha)");
-        
-        tvUreaKg.setText("Urea (46-0-0): " + df2.format(ureaKgTotal) + " kg (" + df2.format(ureaKgPerHa) + " kg/ha)");
-        tvUreaCost.setText("Cost: ₱" + df2.format(ureaCostTotal) + " (₱" + df2.format(ureaCostPerHa) + "/ha)");
-        
-        tvMOPKg.setText("MOP (0-0-60): " + df2.format(mopKgTotal) + " kg (" + df2.format(mopKgPerHa) + " kg/ha)");
-        tvMOPCost.setText("Cost: ₱" + df2.format(mopCostTotal) + " (₱" + df2.format(mopCostPerHa) + "/ha)");
-        
-        tvTotalFertilizerCost.setText("Total Fertilizer Cost: ₱" + df2.format(totalCostTotal) + " (₱" + df2.format(totalCostPerHa) + "/ha)");
-        
-        // Update fertilizer cost based on checkbox selections
-        updateFertilizerCost();
-    }
-    
-    /**
-     * Updates the fertilizer cost field based on selected checkboxes
-     */
-    private void updateFertilizerCost() {
-        double selectedCost = 0;
-        
-        if (cbComplete != null && cbComplete.isChecked()) {
-            selectedCost += completeCostTotal;
-        }
-        if (cbUrea != null && cbUrea.isChecked()) {
-            selectedCost += ureaCostTotal;
-        }
-        if (cbMOP != null && cbMOP.isChecked()) {
-            selectedCost += mopCostTotal;
-        }
-        
-        fertilizerCost = selectedCost;
-        if (selectedCost > 0) {
-            etFertilizer.setText(df2.format(fertilizerCost));
-        } else {
-            etFertilizer.setText("");
-        }
-    }
-    
     private void computeExpenses() {
         try {
-            // Parse expense inputs
-            fertilizerCost = parse(etFertilizer);
-            manpower = parse(etManpower);
-            pesticide = parse(etPesticide);
-            seedlings = parse(etSeedlings);
-            otherExpenses = parse(etOtherExpenses);
+            // Use aggregated values from daily expenses
+            // manpower is already set from aggregatedLaborCost in populateExpenseFields()
+            double equipmentCost = aggregatedEquipmentCost;
+            double materialCost = aggregatedMaterialCost;
+            double miscCost = aggregatedMiscCost;
             
-            // Calculate total expenses
-            totalExpenses = fertilizerCost + manpower + pesticide + seedlings + otherExpenses;
+            // Calculate total expenses from all categories
+            totalExpenses = manpower + equipmentCost + materialCost + miscCost;
             
             // Calculate net income = Gross Income - Total Expenses
             netIncome = grossIncome - totalExpenses;
             
             // Display results
             if (tvTotalExpenses != null) {
-                tvTotalExpenses.setText("Total Expenses (₱): " + df2.format(totalExpenses));
+                tvTotalExpenses.setText("Total Expenses: ₱" + df2.format(totalExpenses));
             }
 
-            // Update card net income only
+            // Update card net income (default to zero if no calculation)
             if (tvNetIncomeCard != null) {
+                if (grossIncome > 0 || totalExpenses > 0) {
                 tvNetIncomeCard.setText("₱" + df2.format(netIncome));
+                } else {
+                    tvNetIncomeCard.setText("₱0.00");
+                }
             }
 
             applyAdjustedProjection();
@@ -510,7 +1047,7 @@ public class Calculator extends AppCompatActivity {
             e.printStackTrace();
             // Set default values on error
             if (tvTotalExpenses != null) {
-                tvTotalExpenses.setText("Total Expenses (₱): —");
+                tvTotalExpenses.setText("Total Expenses: ₱0.00");
             }
             if (tvNetIncomeCard != null) {
                 tvNetIncomeCard.setText("₱0.00");
@@ -519,7 +1056,7 @@ public class Calculator extends AppCompatActivity {
                 tvAdjustedNetIncome.setText("₱—");
             }
             if (tvAdjustedExpenses != null) {
-                tvAdjustedExpenses.setText("Adjusted Expenses (₱): —");
+                tvAdjustedExpenses.setText("Adjusted Expenses: ₱0.00");
             }
             if (tvCompletionWarning != null) {
                 tvCompletionWarning.setVisibility(View.GONE);
@@ -536,64 +1073,6 @@ public class Calculator extends AppCompatActivity {
         }
     }
 
-    /**
-     * Simple helper to toggle visibility of a collapsible section.
-     */
-    private void setupSectionToggle(final View header, final View content, final ImageView icon) {
-        if (header == null || content == null) return;
-        header.setOnClickListener(v -> {
-            if (content.getVisibility() == View.VISIBLE) {
-                content.setVisibility(View.GONE);
-                if (icon != null) icon.setRotation(180f);
-            } else {
-                content.setVisibility(View.VISIBLE);
-                if (icon != null) icon.setRotation(0f);
-            }
-        });
-    }
-
-    /**
-     * Temporary pesticide breakdown heuristic.
-     *
-     * For now we approximate pesticide cost as a fixed amount per hectare and
-     * split it into preventive / curative / other components. This should be
-     * replaced later with values derived from literature or local studies.
-     */
-    private void updatePesticideBreakdown() {
-        if (tvPesticideTotal == null || tvPesticidePreventive == null ||
-                tvPesticideCurative == null || tvPesticideOther == null) {
-            return;
-        }
-
-        if (hectare <= 0) {
-            tvPesticideTotal.setText("Suggested pesticide cost: —");
-            tvPesticidePreventive.setText("Preventive sprays: —");
-            tvPesticideCurative.setText("Curative sprays: —");
-            tvPesticideOther.setText("Other pesticide-related costs: —");
-            return;
-        }
-
-        // Placeholder: suggested pesticide cost per hectare (PHP)
-        double pesticidePerHa = 8000; // TODO: replace with literature-based value
-        double suggestedTotal = pesticidePerHa * hectare;
-
-        double preventive = suggestedTotal * 0.4;
-        double curative = suggestedTotal * 0.4;
-        double other = suggestedTotal * 0.2;
-
-        tvPesticideTotal.setText("Suggested pesticide cost: ₱" + df2.format(suggestedTotal));
-        tvPesticidePreventive.setText("Preventive sprays: ₱" + df2.format(preventive));
-        tvPesticideCurative.setText("Curative sprays: ₱" + df2.format(curative));
-        tvPesticideOther.setText("Other pesticide-related costs: ₱" + df2.format(other));
-
-        // Auto-fill pesticide expense only if user hasn't entered anything yet
-        if (etPesticide != null) {
-            String current = etPesticide.getText().toString().trim();
-            if (current.isEmpty()) {
-                etPesticide.setText(df2.format(suggestedTotal));
-            }
-        }
-    }
 
     private void updateCompletionWarning() {
         if (tvCompletionWarning == null) return;
@@ -715,7 +1194,7 @@ public class Calculator extends AppCompatActivity {
         if (tvAdjustedSubtitle != null) {
             tvAdjustedSubtitle.setText("Adjusted net income (based on completion)");
         }
-        tvAdjustedExpenses.setText("Adjusted Expenses (₱): " + df2.format(projection.adjustedExpenses));
+        tvAdjustedExpenses.setText("Adjusted Expenses: ₱" + df2.format(projection.adjustedExpenses));
         updateCompletionWarning();
     }
 }

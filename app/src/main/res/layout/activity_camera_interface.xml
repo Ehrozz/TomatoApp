@@ -127,32 +127,16 @@
         android:background="@drawable/bottom_nav_gradient"
         android:fitsSystemWindows="true">
 
-        <!-- Model Selector (Left - Orange circular icon) -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/modelSelectorBtn"
-            android:layout_width="56dp"
+        <!-- Spacer (Left) -->
+        <View
+            android:layout_width="0dp"
             android:layout_height="56dp"
-            android:layout_marginEnd="16dp"
-            app:cardBackgroundColor="@color/warm_orange"
-            app:cardCornerRadius="28dp"
-            app:cardElevation="4dp"
-            android:clickable="true"
-            android:focusable="true">
-
-            <ImageView
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:src="@android:drawable/ic_menu_view"
-                android:scaleType="centerInside"
-                android:padding="14dp"
-                app:tint="@color/white" />
-        </com.google.android.material.card.MaterialCardView>
+            android:layout_weight="1" />
 
         <!-- Scan Button (Center) -->
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center">
 
@@ -187,12 +171,38 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
+        <!-- Spacer (Right) -->
+        <View
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1" />
+
+        <!-- Model Selector (Hidden, kept for code compatibility) -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/modelSelectorBtn"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:visibility="gone"
+            app:cardBackgroundColor="@color/warm_orange"
+            app:cardCornerRadius="28dp"
+            app:cardElevation="4dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:src="@android:drawable/ic_menu_view"
+                android:scaleType="centerInside"
+                android:padding="14dp"
+                app:tint="@color/white" />
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- Menu Button (Right - Hamburger) -->
         <ImageButton
             android:id="@+id/menuButton"
             android:layout_width="56dp"
             android:layout_height="56dp"
-            android:layout_marginStart="16dp"
             android:src="@android:drawable/ic_menu_more"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Menu"

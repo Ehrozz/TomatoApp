@@ -42,6 +42,7 @@ public class DailyTask extends BaseDrawerActivity {
     private MaterialButton btnComplete;
     private MaterialButton btnSkip;
     private MaterialButton btnMonitor;
+    private MaterialButton btnDailyExpenses;
     private RecyclerView taskRecyclerView;
     private TaskAdapter taskAdapter;
     private List<TaskModel> taskList = new ArrayList<>();
@@ -72,6 +73,7 @@ public class DailyTask extends BaseDrawerActivity {
         btnComplete = findViewById(R.id.btnComplete);
         btnSkip = findViewById(R.id.btnSkipTasks);
         btnMonitor = findViewById(R.id.btnMonitorPlant);
+        btnDailyExpenses = findViewById(R.id.btnDailyExpenses);
         taskRecyclerView = findViewById(R.id.taskRecyclerView);
 
         // Get intent data
@@ -96,7 +98,17 @@ public class DailyTask extends BaseDrawerActivity {
         if (cultivar != null) {
             cultivarNameHeader.setText(cultivar);
             cultivarDescription.setText("Off-season planting tasks for optimal growth");
-            cultivarImageHeader.setImageResource(getCultivarImageResource(cultivar));
+            cultivarImageHeader.setImageResource(CultivarImageHelper.getCultivarImageResource(cultivar));
+            // Make image circular
+            cultivarImageHeader.post(() -> {
+                cultivarImageHeader.setClipToOutline(true);
+                cultivarImageHeader.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                    @Override
+                    public void getOutline(android.view.View view, android.graphics.Outline outline) {
+                        outline.setOval(0, 0, view.getWidth(), view.getHeight());
+                    }
+                });
+            });
         }
         if (date != null) {
             // Format date according to user preference
@@ -157,6 +169,10 @@ public class DailyTask extends BaseDrawerActivity {
         if (btnMonitor != null) {
             btnMonitor.setOnClickListener(v -> openMonitoring());
             btnMonitor.setEnabled(!isNewProgram);
+        }
+        if (btnDailyExpenses != null) {
+            btnDailyExpenses.setOnClickListener(v -> openDailyExpenses());
+            btnDailyExpenses.setEnabled(!isNewProgram);
         }
 
         setupDrawer();
@@ -301,10 +317,23 @@ public class DailyTask extends BaseDrawerActivity {
         startActivity(intent);
     }
 
-    private int getCultivarImageResource(String cultivar) {
-        // Use default logo for all cultivars (can be extended)
-        return R.mipmap.ic_logo;
+    private void openDailyExpenses() {
+        if (isNewProgram || programId == null) {
+            Toast.makeText(this, "Save the work program to log daily expenses.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (cultivar == null || date == null || startDate == null) {
+            Toast.makeText(this, "Missing required information.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Intent intent = new Intent(this, DailyExpensesActivity.class);
+        intent.putExtra("programId", programId);
+        intent.putExtra("cultivar", cultivar);
+        intent.putExtra("date", date);
+        intent.putExtra("programStartDate", startDate);
+        startActivity(intent);
     }
+
 
     private int calculateDayNumber(String startDate, String currentDate) {
         try {

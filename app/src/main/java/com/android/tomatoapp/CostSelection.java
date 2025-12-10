@@ -102,7 +102,7 @@ public class CostSelection extends BaseDrawerActivity {
                         String startDate = child.child("startingDate").getValue(String.class);
 
                         if (programId != null && cultivar != null && startDate != null) {
-                            cultivarList.add(new Cultivar(programId, cultivar, startDate, R.mipmap.ic_logo));
+                            cultivarList.add(new Cultivar(programId, cultivar, startDate, CultivarImageHelper.getCultivarImageResource(cultivar)));
                         }
                     }
                     
@@ -144,7 +144,7 @@ public class CostSelection extends BaseDrawerActivity {
                         String startDate = child.child("startingDate").getValue(String.class);
 
                         if (programId != null && cultivar != null && startDate != null) {
-                            cultivarList.add(new Cultivar(programId, cultivar, startDate, R.mipmap.ic_logo));
+                            cultivarList.add(new Cultivar(programId, cultivar, startDate, CultivarImageHelper.getCultivarImageResource(cultivar)));
                         }
                     }
                     updateUI();
@@ -169,7 +169,7 @@ public class CostSelection extends BaseDrawerActivity {
                 cultivarList.clear();
                 for (WorkProgramEntity entity : entities) {
                     if (entity.cultivarName != null && entity.startingDate != null) {
-                        cultivarList.add(new Cultivar(entity.id, entity.cultivarName, entity.startingDate, R.mipmap.ic_logo));
+                        cultivarList.add(new Cultivar(entity.id, entity.cultivarName, entity.startingDate, CultivarImageHelper.getCultivarImageResource(entity.cultivarName)));
                     }
                 }
                 updateUI();
@@ -530,6 +530,16 @@ public class CostSelection extends BaseDrawerActivity {
             // Format date as "Started: YYYY-MM-DD"
             holder.date.setText(String.format("Started: %s", item.date));
             holder.image.setImageResource(item.imageRes);
+            
+            // Make image circular
+            holder.image.setClipToOutline(true);
+            holder.image.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                @Override
+                public void getOutline(android.view.View view, android.graphics.Outline outline) {
+                    outline.setOval(0, 0, view.getWidth(), view.getHeight());
+                }
+            });
+            holder.image.setBackgroundResource(R.drawable.circular_image_border);
 
             // 🍅 Rotate through tomato-themed colors with better contrast
             int[] bgColors = {

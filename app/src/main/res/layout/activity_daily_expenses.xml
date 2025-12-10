@@ -1,0 +1,382 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/drawer_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/soft_cream"
+    tools:context=".DailyExpensesActivity">
+
+    <!-- Main Content -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:fitsSystemWindows="true">
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:id="@+id/mainContentLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <!-- Header Card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:cardBackgroundColor="@color/white"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="4dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="20dp">
+
+                        <TextView
+                            android:id="@+id/cultivarHeader"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Cultivar: "
+                            android:textColor="@color/text_primary"
+                            android:textSize="20sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/dateHeader"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="Date: "
+                            android:textColor="@color/text_secondary"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Total Expenses Display -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:cardBackgroundColor="@color/fresh_green"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="4dp">
+
+                    <TextView
+                        android:id="@+id/tvTotalExpenses"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Total: ₱0.00"
+                        android:textColor="@color/white"
+                        android:textSize="24sp"
+                        android:textStyle="bold"
+                        android:gravity="center"
+                        android:padding="20dp" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- 1. Hired Work (Labor) Card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:cardBackgroundColor="@color/white"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="4dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="20dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="1. Hired Work (Labor)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="16dp" />
+
+                        <LinearLayout
+                            android:id="@+id/laborItemsContainer"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical">
+
+                            <!-- Labor items will be added dynamically here -->
+                        </LinearLayout>
+
+                        <!-- Add Labor Item Button -->
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnAddLaborItem"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="+ Add Labor Item"
+                            android:textColor="@color/fresh_green"
+                            android:backgroundTint="@android:color/transparent"
+                            android:outlineProvider="none"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            app:strokeColor="@color/fresh_green"
+                            android:layout_marginTop="8dp"
+                            android:enabled="false" />
+
+                        <TextView
+                            android:id="@+id/tvLaborTotal"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Labor Sub-total: ₱0.00"
+                            android:textColor="@color/fresh_green"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:gravity="right"
+                            android:layout_marginTop="12dp"
+                            android:padding="8dp" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- 2. Material Card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:cardBackgroundColor="@color/white"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="4dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="20dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="2. Material"
+                            android:textColor="@color/text_primary"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="16dp" />
+
+                        <LinearLayout
+                            android:id="@+id/materialItemsContainer"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical">
+
+                            <!-- Material items will be added dynamically here -->
+                        </LinearLayout>
+
+                        <!-- Add Material Item Button -->
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnAddMaterialItem"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="+ Add Material Item"
+                            android:textColor="@color/fresh_green"
+                            android:backgroundTint="@android:color/transparent"
+                            android:outlineProvider="none"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            app:strokeColor="@color/fresh_green"
+                            android:layout_marginTop="8dp"
+                            android:enabled="false" />
+
+                        <TextView
+                            android:id="@+id/tvMaterialTotal"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Material Sub-total: ₱0.00"
+                            android:textColor="@color/fresh_green"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:gravity="right"
+                            android:layout_marginTop="12dp"
+                            android:padding="8dp" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- 3. Equipment / Tools Card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:cardBackgroundColor="@color/white"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="4dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="20dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="3. Equipment / Tools"
+                            android:textColor="@color/text_primary"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="16dp" />
+
+                        <LinearLayout
+                            android:id="@+id/equipmentItemsContainer"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical">
+
+                            <!-- Equipment items will be added dynamically here -->
+                        </LinearLayout>
+
+                        <!-- Add Equipment Item Button -->
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnAddEquipmentItem"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="+ Add Equipment Item"
+                            android:textColor="@color/fresh_green"
+                            android:backgroundTint="@android:color/transparent"
+                            android:outlineProvider="none"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            app:strokeColor="@color/fresh_green"
+                            android:layout_marginTop="8dp"
+                            android:enabled="false" />
+
+                        <TextView
+                            android:id="@+id/tvEquipmentTotal"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Equipment Sub-total: ₱0.00"
+                            android:textColor="@color/fresh_green"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:gravity="right"
+                            android:layout_marginTop="12dp"
+                            android:padding="8dp" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- 4. Miscellaneous Card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:cardBackgroundColor="@color/white"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="4dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="20dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="4. Miscellaneous"
+                            android:textColor="@color/text_primary"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="16dp" />
+
+                        <LinearLayout
+                            android:id="@+id/miscItemsContainer"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical">
+
+                            <!-- Miscellaneous items will be added dynamically here -->
+                        </LinearLayout>
+
+                        <!-- Add Miscellaneous Item Button -->
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnAddMiscItem"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="+ Add Miscellaneous Item"
+                            android:textColor="@color/fresh_green"
+                            android:backgroundTint="@android:color/transparent"
+                            android:outlineProvider="none"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            app:strokeColor="@color/fresh_green"
+                            android:layout_marginTop="8dp"
+                            android:enabled="false" />
+
+                        <TextView
+                            android:id="@+id/tvMiscTotal"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Miscellaneous Sub-total: ₱0.00"
+                            android:textColor="@color/fresh_green"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:gravity="right"
+                            android:layout_marginTop="12dp"
+                            android:padding="8dp" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Edit and Save Buttons -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginBottom="24dp">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnEdit"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="8dp"
+                        android:text="Edit"
+                        android:textColor="@color/white"
+                        android:backgroundTint="@color/warm_orange"
+                        android:textSize="16sp"
+                        android:padding="16dp"
+                        app:cornerRadius="12dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSave"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:text="Save"
+                        android:textColor="@color/white"
+                        android:backgroundTint="@color/fresh_green"
+                        android:textSize="16sp"
+                        android:padding="16dp"
+                        app:cornerRadius="12dp"
+                        android:enabled="false" />
+                </LinearLayout>
+            </LinearLayout>
+        </ScrollView>
+    </LinearLayout>
+
+    <!-- Navigation Drawer -->
+    <com.google.android.material.navigation.NavigationView
+        android:id="@+id/navigation_view"
+        android:layout_width="280dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        app:menu="@menu/drawer_menu"
+        app:headerLayout="@layout/nav_drawer_sidebar"
+        app:itemIconTint="@color/white"
+        app:itemTextColor="@color/white"
+        android:background="@color/sidebar_dark_green" />
+
+</androidx.drawerlayout.widget.DrawerLayout>
