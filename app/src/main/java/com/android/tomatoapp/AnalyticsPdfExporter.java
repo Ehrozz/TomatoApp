@@ -93,22 +93,29 @@ public class AnalyticsPdfExporter {
         canvas.drawText(summary, MARGIN, yPosition, headerPaint);
         yPosition += LINE_HEIGHT * 2;
 
-        // Table header
-        String[] headers = {"Cultivar", "Area (hectare)", "Start Date", "Phases", "Income", "Expenses", "Profit"};
-        float[] columnWidths = {80, 60, 80, 120, 80, 80, 80};
+        // Table header with proper formatting
+        String[] headers = {"Cultivar", "Area (ha)", "Start Date", "Income (₱)", "Expenses (₱)", "Profit (₱)"};
+        float[] columnWidths = {100, 70, 90, 100, 100, 100};
         float xPos = MARGIN;
         
+        // Draw header background
+        Paint headerBgPaint = new Paint();
+        headerBgPaint.setColor(0xFFE0E0E0);
+        canvas.drawRect(MARGIN, yPosition - LINE_HEIGHT, PAGE_WIDTH - MARGIN, yPosition + 5, headerBgPaint);
+        
         for (int i = 0; i < headers.length; i++) {
-            canvas.drawText(headers[i], xPos, yPosition, headerPaint);
+            canvas.drawText(headers[i], xPos + 5, yPosition, headerPaint);
             xPos += columnWidths[i];
         }
         yPosition += LINE_HEIGHT + 5;
 
         // Draw line under header
-        canvas.drawLine(MARGIN, yPosition, PAGE_WIDTH - MARGIN, yPosition, new Paint());
-        yPosition += LINE_HEIGHT;
+        Paint linePaint = new Paint();
+        linePaint.setStrokeWidth(2);
+        canvas.drawLine(MARGIN, yPosition, PAGE_WIDTH - MARGIN, yPosition, linePaint);
+        yPosition += LINE_HEIGHT + 5;
 
-        // Work program rows
+        // Work program rows with proper formatting
         for (WorkProgramEntity e : workPrograms) {
             if (yPosition > PAGE_HEIGHT - MARGIN - 100) {
                 // Start new page
@@ -118,29 +125,48 @@ public class AnalyticsPdfExporter {
                 page = document.startPage(pageInfo);
                 canvas = page.getCanvas();
                 yPosition = MARGIN;
+                
+                // Redraw header on new page
+                xPos = MARGIN;
+                headerBgPaint.setColor(0xFFE0E0E0);
+                canvas.drawRect(MARGIN, yPosition - LINE_HEIGHT, PAGE_WIDTH - MARGIN, yPosition + 5, headerBgPaint);
+                for (int i = 0; i < headers.length; i++) {
+                    canvas.drawText(headers[i], xPos + 5, yPosition, headerPaint);
+                    xPos += columnWidths[i];
+                }
+                yPosition += LINE_HEIGHT + 5;
+                canvas.drawLine(MARGIN, yPosition, PAGE_WIDTH - MARGIN, yPosition, linePaint);
+                yPosition += LINE_HEIGHT + 5;
             }
 
             xPos = MARGIN;
+            double profit = e.projectedIncome - e.projectedExpenses;
             String[] rowData = {
                 e.cultivarName != null ? e.cultivarName : "N/A",
-                String.format("%.2f hectare", e.areaSize),
+                String.format(Locale.getDefault(), "%.2f", e.areaSize),
                 e.startingDate != null ? e.startingDate : "N/A",
-                getPhasesSummary(context, e),
-                String.format("₱%,.2f", e.projectedIncome),
-                String.format("₱%,.2f", e.projectedExpenses),
-                String.format("₱%,.2f", e.projectedIncome - e.projectedExpenses)
+                String.format(Locale.getDefault(), "%,.2f", e.projectedIncome),
+                String.format(Locale.getDefault(), "%,.2f", e.projectedExpenses),
+                String.format(Locale.getDefault(), "%,.2f", profit)
             };
 
             for (int i = 0; i < rowData.length; i++) {
-                // Truncate if too long
                 String text = rowData[i];
-                if (text.length() > 15) {
-                    text = text.substring(0, 12) + "...";
+                // Truncate if too long, but preserve numbers
+                if (text.length() > 20 && i != 1 && i != 3 && i != 4 && i != 5) {
+                    text = text.substring(0, 17) + "...";
                 }
-                canvas.drawText(text, xPos, yPosition, textPaint);
+                canvas.drawText(text, xPos + 5, yPosition, textPaint);
                 xPos += columnWidths[i];
             }
-            yPosition += LINE_HEIGHT;
+            yPosition += LINE_HEIGHT + 3;
+            
+            // Draw subtle line between rows
+            Paint rowLinePaint = new Paint();
+            rowLinePaint.setColor(0xFFF0F0F0);
+            rowLinePaint.setStrokeWidth(1);
+            canvas.drawLine(MARGIN, yPosition, PAGE_WIDTH - MARGIN, yPosition, rowLinePaint);
+            yPosition += 3;
         }
 
         document.finishPage(page);

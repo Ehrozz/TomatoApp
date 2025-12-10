@@ -1,6 +1,8 @@
 package com.android.tomatoapp;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.Menu;
@@ -8,6 +10,10 @@ import android.view.MenuItem;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.view.View;
+import android.widget.Toast;
+import androidx.core.content.FileProvider;
+import java.io.File;
+import java.io.InputStream;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.ActionBarDrawerToggle;
@@ -50,10 +56,13 @@ public class DetectionResults extends BaseDrawerActivity {
 
         Intent intent = getIntent();
         if (intent != null) {
-            // Set image
+            // Set image with proper error handling
             String imageUriStr = intent.getStringExtra("imageUri");
-            if (imageUriStr != null) {
-                detectionImage.setImageURI(Uri.parse(imageUriStr));
+            if (imageUriStr != null && !imageUriStr.isEmpty()) {
+                loadImageFromUri(imageUriStr);
+            } else {
+                // Set default image if no URI provided
+                detectionImage.setImageResource(R.mipmap.ic_logo);
             }
 
             // Set badge number - show total detections in history
@@ -199,6 +208,99 @@ public class DetectionResults extends BaseDrawerActivity {
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Scan Results");
+        }
+    }
+
+    /**
+     * Load image from URI with proper error handling for FileProvider and file:// URIs
+     */
+    private void loadImageFromUri(String imageUriStr) {
+        try {
+            // Handle plain file paths (no scheme)
+            if (imageUriStr != null && !imageUriStr.contains("://")) {
+                File file = new File(imageUriStr);
+                if (file.exists()) {
+                    try {
+                        // Try to convert to FileProvider URI if it's in app's external files
+                        if (imageUriStr.contains(getExternalFilesDir(null).getAbsolutePath())) {
+                            Uri fileProviderUri = FileProvider.getUriForFile(
+                                this,
+                                getPackageName() + ".provider",
+                                file
+                            );
+                            detectionImage.setImageURI(fileProviderUri);
+                            return;
+                        } else {
+                            // Direct file path
+                            Bitmap bitmap = BitmapFactory.decodeFile(imageUriStr);
+                            if (bitmap != null) {
+                                detectionImage.setImageBitmap(bitmap);
+                                return;
+                            }
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            
+            Uri imageUri = Uri.parse(imageUriStr);
+            
+            // Handle FileProvider URIs (content://)
+            if ("content".equals(imageUri.getScheme())) {
+                try {
+                    InputStream inputStream = getContentResolver().openInputStream(imageUri);
+                    if (inputStream != null) {
+                        Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+                        if (bitmap != null) {
+                            detectionImage.setImageBitmap(bitmap);
+                            inputStream.close();
+                            return;
+                        }
+                        inputStream.close();
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            
+            // Handle file:// URIs
+            if ("file".equals(imageUri.getScheme())) {
+                try {
+                    String filePath = imageUri.getPath();
+                    if (filePath != null) {
+                        File file = new File(filePath);
+                        if (file.exists()) {
+                            // Try to convert to FileProvider URI if it's in app's external files
+                            if (filePath.contains(getExternalFilesDir(null).getAbsolutePath())) {
+                                Uri fileProviderUri = FileProvider.getUriForFile(
+                                    this,
+                                    getPackageName() + ".provider",
+                                    file
+                                );
+                                detectionImage.setImageURI(fileProviderUri);
+                                return;
+                            } else {
+                                // Direct file path
+                                Bitmap bitmap = BitmapFactory.decodeFile(filePath);
+                                if (bitmap != null) {
+                                    detectionImage.setImageBitmap(bitmap);
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            
+            // Try direct URI loading as fallback
+            detectionImage.setImageURI(imageUri);
+        } catch (Exception e) {
+            e.printStackTrace();
+            // Set default image on error
+            detectionImage.setImageResource(R.mipmap.ic_logo);
         }
     }
 

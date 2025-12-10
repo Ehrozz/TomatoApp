@@ -732,6 +732,25 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
+        <!-- Save to Analytics Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSaveToAnalytics"
+            android:text="Save to Analytics"
+            android:textAllCaps="false"
+            android:textSize="16sp"
+            android:textColor="@android:color/white"
+            android:backgroundTint="@color/sidebar_dark_green"
+            android:paddingLeft="24dp"
+            android:paddingRight="24dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="16dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="16dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            app:cornerRadius="12dp" />
+
     </LinearLayout>
     </ScrollView>
 

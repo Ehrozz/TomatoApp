@@ -53,10 +53,10 @@ public class ResearchExporter {
             File csvFile = new File(downloadsDir, fileName);
             FileWriter writer = new FileWriter(csvFile);
             
-            // Write CSV header
+            // Write CSV header with proper formatting
             writer.append("Program ID,Cultivar,Planting Date,Harvest Date,Area (hectare),Season,Season Month,Is Off-Season,");
-            writer.append("Projected Income (PHP),Projected Expenses (PHP),Actual Income (PHP),Actual Expenses (PHP),");
-            writer.append("Net Profit (PHP),Adjusted Income (PHP),Adjusted Expenses (PHP),Adjusted Profit (PHP),");
+            writer.append("Projected Income (PHP),Projected Expenses (PHP),Net Profit (PHP),");
+            writer.append("Adjusted Income (PHP),Adjusted Expenses (PHP),Adjusted Profit (PHP),");
             writer.append("Actual Yield (kg/hectare),Total Yield (kg),Completion Rate (%),");
             writer.append("Total Tasks,Completed Tasks,Missed Tasks,Skipped Tasks,");
             writer.append("Phase 1 Completion (%),Phase 2 Completion (%),Phase 3 Completion (%),");
@@ -74,8 +74,6 @@ public class ResearchExporter {
                 writer.append(program.isOffSeason ? "Yes" : "No").append(",");
                 writer.append(String.format(Locale.getDefault(), "%.2f", program.projectedIncome)).append(",");
                 writer.append(String.format(Locale.getDefault(), "%.2f", program.projectedExpenses)).append(",");
-                writer.append(String.format(Locale.getDefault(), "%.2f", program.projectedIncome)).append(","); // Actual = projected for now
-                writer.append(String.format(Locale.getDefault(), "%.2f", program.projectedExpenses)).append(","); // Actual = projected for now
                 double netProfit = program.projectedIncome - program.projectedExpenses;
                 writer.append(String.format(Locale.getDefault(), "%.2f", netProfit)).append(",");
                 writer.append(String.format(Locale.getDefault(), "%.2f", program.adjustedIncome)).append(",");

@@ -39,8 +39,6 @@ public class DiseaseView extends AppCompatActivity {
         diseaseNameMap.put("Tomato Leaf Curl Virus", "Tomato Leaf Curl Virus (TLCV)");
         diseaseNameMap.put("Early Blight", "Early Blight (Alternaria solani)");
         diseaseNameMap.put("Late Blight", "Late Blight (Phytophthora infestans)");
-        diseaseNameMap.put("Bacterial Wilt", "Bacterial Wilt (Ralstonia solanacearum)");
-        diseaseNameMap.put("Fusarium Wilt", "Fusarium Wilt (Fusarium oxysporum)");
         diseaseNameMap.put("Anthracnose ", "Anthracnose (Colletotrichum spp.)");
         diseaseNameMap.put("Black Leaf Mold", "Black Leaf Mold (Pseudocercospora fuligena)");
         diseaseNameMap.put("Yellow Leaf Curl", "Tomato Leaf Curl Virus (TLCV)"); // Yellow Leaf Curl is a variant
@@ -53,7 +51,6 @@ public class DiseaseView extends AppCompatActivity {
         diseaseImageMap.put("Anthracnose ", R.drawable.disease_anthracnose);
         diseaseImageMap.put("Black Leaf Mold", R.drawable.disease_black_leaf_mold);
         diseaseImageMap.put("Early Blight", R.drawable.disease_early_blight);
-        diseaseImageMap.put("Fusarium Wilt", R.drawable.disease_fusarium_wilt);
         diseaseImageMap.put("Late Blight", R.drawable.disease_late_blight);
         diseaseImageMap.put("Yellow Leaf Curl", R.drawable.disease_yellow_leaf_curl);
         diseaseImageMap.put("Tomato Leaf Curl Virus", R.drawable.disease_yellow_leaf_curl);
@@ -72,8 +69,6 @@ public class DiseaseView extends AppCompatActivity {
         // Late Blight - Leaf Beetle (common pest)
         pestImageMap.put("Late Blight", R.drawable.pest_leaf_beetle);
         
-        // Fusarium Wilt - Root Weevil (root-related pest)
-        pestImageMap.put("Fusarium Wilt", R.drawable.pest_root_weevil);
         
         // Anthracnose - Generic pest image
         pestImageMap.put("Anthracnose", R.drawable.pest_1);
@@ -96,8 +91,6 @@ public class DiseaseView extends AppCompatActivity {
         // Late Blight - Leaf beetles
         pestCommonNameMap.put("Late Blight", "Leaf beetles");
         
-        // Fusarium Wilt - Root weevils
-        pestCommonNameMap.put("Fusarium Wilt", "Root weevils");
         
         // Anthracnose - Fruitworm
         pestCommonNameMap.put("Anthracnose", "Fruitworm");

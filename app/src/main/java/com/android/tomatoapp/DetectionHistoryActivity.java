@@ -30,6 +30,7 @@ public class DetectionHistoryActivity extends BaseDrawerActivity {
     private View emptyState;
     private ArrayList<JSONObject> historyData;
     private HistoryAdapter adapter;
+    private boolean isResumingFromOtherActivity = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -139,48 +140,82 @@ public class DetectionHistoryActivity extends BaseDrawerActivity {
                     }
                 });
                 
-                // Delete button click listener
+                // Delete button click listener - prevent event propagation
                 holder.deleteButton.setOnClickListener(v -> {
+                    holder.isDeleteButtonClicked = true;
                     v.setClickable(false); // Prevent multiple clicks
+                    int adapterPosition = holder.getAdapterPosition();
+                    if (adapterPosition == RecyclerView.NO_POSITION) {
+                        v.setClickable(true);
+                        holder.isDeleteButtonClicked = false;
+                        return;
+                    }
                     new AlertDialog.Builder(DetectionHistoryActivity.this)
                             .setTitle("Delete Detection")
                             .setMessage("Are you sure you want to delete this detection?")
                             .setPositiveButton("Delete", (dialog, which) -> {
-                                deleteDetection(position);
+                                // Use adapter position to ensure correct item
+                                int pos = holder.getAdapterPosition();
+                                if (pos != RecyclerView.NO_POSITION && pos < items.size()) {
+                                    deleteDetection(pos);
+                                }
+                                holder.isDeleteButtonClicked = false;
                             })
                             .setNegativeButton("Cancel", (dialog, which) -> {
                                 v.setClickable(true);
+                                holder.isDeleteButtonClicked = false;
                             })
                             .setOnDismissListener(dialog -> {
                                 v.setClickable(true);
+                                // Reset flag after a delay to prevent item click
+                                holder.itemView.postDelayed(() -> holder.isDeleteButtonClicked = false, 300);
                             })
                             .show();
                 });
                 
-                // Set click listener for item
+                // Set click listener for item - use proper click handling
                 holder.itemView.setOnClickListener(v -> {
-                    // Only open if the click wasn't on the delete button
-                    if (v != holder.deleteButton) {
-                        try {
-                            Intent intent = new Intent(DetectionHistoryActivity.this, DetectionResults.class);
-                            intent.putExtra("title", entry.getString("disease"));
-                            intent.putExtra("imageUri", entry.getString("imageUri"));
-                            intent.putExtra("description", entry.optString("description", ""));
-                            intent.putExtra("symptoms", entry.optString("symptoms", ""));
-                            intent.putExtra("cause", entry.optString("cause", ""));
-                            intent.putExtra("cure", entry.optString("cure", ""));
-                            intent.putExtra("prevention", entry.optString("prevention", ""));
-                            intent.putExtra("pestTitle", entry.optString("pestTitle", ""));
-                            intent.putExtra("pestDescription", entry.optString("pestDescription", ""));
-                            intent.putExtra("pestImageUri", entry.optString("pestImageUri", ""));
-                            intent.putExtra("accuracy", entry.getString("accuracy"));
-                            intent.putExtra("detectionCultivar", cultivar);
-                            intent.putExtra("detectionPhase", phase);
-                            
-                            startActivity(intent);
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
+                    // Don't open if delete button was clicked
+                    if (holder.isDeleteButtonClicked) {
+                        return;
+                    }
+                    
+                    // Check if click was directly on delete button
+                    if (v == holder.deleteButton) {
+                        return;
+                    }
+                    
+                    // Get current adapter position to ensure we have the right item
+                    int adapterPosition = holder.getAdapterPosition();
+                    if (adapterPosition == RecyclerView.NO_POSITION || adapterPosition >= items.size()) {
+                        return;
+                    }
+                    
+                    try {
+                        // Get the entry at current position
+                        JSONObject currentEntry = items.get(adapterPosition);
+                        
+                        Intent intent = new Intent(DetectionHistoryActivity.this, DetectionResults.class);
+                        intent.putExtra("title", currentEntry.optString("disease", "Unknown"));
+                        intent.putExtra("imageUri", currentEntry.optString("imageUri", ""));
+                        intent.putExtra("description", currentEntry.optString("description", ""));
+                        intent.putExtra("symptoms", currentEntry.optString("symptoms", ""));
+                        intent.putExtra("cause", currentEntry.optString("cause", ""));
+                        intent.putExtra("cure", currentEntry.optString("cure", ""));
+                        intent.putExtra("prevention", currentEntry.optString("prevention", ""));
+                        intent.putExtra("pestTitle", currentEntry.optString("pestTitle", ""));
+                        intent.putExtra("pestDescription", currentEntry.optString("pestDescription", ""));
+                        intent.putExtra("pestImageUri", currentEntry.optString("pestImageUri", ""));
+                        intent.putExtra("accuracy", currentEntry.optString("accuracy", "0%"));
+                        intent.putExtra("topPredictions", currentEntry.optString("topPredictions", ""));
+                        intent.putExtra("confidenceWarning", currentEntry.optString("confidenceWarning", ""));
+                        intent.putExtra("detectionCultivar", currentEntry.optString("cultivar", getString(R.string.detection_cultivar_unspecified)));
+                        intent.putExtra("detectionPhase", currentEntry.optInt("phase", 0));
+                        
+                        startActivity(intent);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        Toast.makeText(DetectionHistoryActivity.this, "Error opening detection details", Toast.LENGTH_SHORT).show();
                     }
                 });
                 
@@ -198,6 +233,7 @@ public class DetectionHistoryActivity extends BaseDrawerActivity {
             ImageView image;
             TextView title, description, context;
             ImageButton deleteButton;
+            private boolean isDeleteButtonClicked = false;
 
             HistoryViewHolder(View itemView) {
                 super(itemView);
@@ -238,8 +274,18 @@ public class DetectionHistoryActivity extends BaseDrawerActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // Reload history when returning to this activity
-        loadHistory();
+        // Only reload if we're returning from another activity (not initial creation)
+        if (isResumingFromOtherActivity) {
+            loadHistory();
+            isResumingFromOtherActivity = false;
+        }
+    }
+    
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Mark that we're pausing (likely going to another activity)
+        isResumingFromOtherActivity = true;
     }
 
     @Override

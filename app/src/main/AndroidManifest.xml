@@ -127,6 +127,10 @@
             android:name=".UserManualActivity"
             android:exported="false"
             android:label="User Manual" />
+        <activity
+            android:name=".NotificationListActivity"
+            android:exported="false"
+            android:label="Notifications" />
 
         <receiver
             android:name=".notifications.NotificationReceiver"

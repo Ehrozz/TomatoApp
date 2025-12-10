@@ -80,46 +80,6 @@ public class DiseaseData {
                 "Phytophthora infestans → spreads via wind and rain, thrives in cool humid weather, infects tomato & potato."
         ));
 
-        diseaseMap.put("Bacterial Wilt (Ralstonia solanacearum)", new DiseaseInfo(
-                "Causes sudden wilting of tomato plants, even when soil moisture is adequate.",
-                "Soilborne bacterium entering through root wounds. Persists in soil, infects vascular tissue, blocks water movement.",
-                "• Rotate with cereals/legumes\n" +
-                        "• Soil solarization\n" +
-                        "• Use resistant or grafted rootstocks\n" +
-                        "• Improve drainage; avoid waterlogging\n" +
-                        "• Sanitize tools; remove infected plants",
-                "- Use resistant varieties (identified by PCAARRD & UPLB).\n" +
-                        "- Rotate with non-solanaceous crops.\n" +
-                        "- Solarize soil with clear plastic.\n" +
-                        "- Improve drainage.",
-                "Bacterium (soil-borne)",
-                "• Sudden wilting without yellowing\n" +
-                        "• Leaves remain green while wilting\n" +
-                        "• Brown vascular streaks inside stems\n" +
-                        "• Sticky bacterial ooze in cut stems",
-                "Ralstonia solanacearum → soilborne bacterium that spreads via infected soil, water, or plant debris. Difficult to eradicate."
-        ));
-
-        diseaseMap.put("Fusarium Wilt (Fusarium oxysporum)", new DiseaseInfo(
-                "Soilborne fungus that infects roots, spreads through vascular tissue, and causes wilting.",
-                "Persists in soil for many years. Enters through root wounds and blocks water transport.",
-                "• Plant resistant/tolerant varieties\n" +
-                        "• Rotate with non-host crops\n" +
-                        "• Soil sterilization (solarization/steam)\n" +
-                        "• Apply organic amendments, Trichoderma biocontrol\n" +
-                        "• Avoid root injury; maintain balanced fertilization",
-                "- Use biocontrol products like WiltCure.\n" +
-                        "- Plant resistant varieties.\n" +
-                        "- Rotate crops.\n" +
-                        "- Use Trichoderma-based soil treatments.",
-                "Fungus",
-                "• Lower leaves turn yellow → progresses upward\n" +
-                        "• Wilting during day but recovery at night (early)\n" +
-                        "• Brown vascular streaks inside stems\n" +
-                        "• Stunted growth, eventual plant death",
-                "Fusarium oxysporum → soilborne fungus spreading via debris, contaminated soil, and water."
-        ));
-
         diseaseMap.put("Anthracnose (Colletotrichum spp.)", new DiseaseInfo(
                 "Fungal disease that mainly affects ripening fruits, causing sunken black spots.",
                 "Caused by Colletotrichum spp. Spores spread by rain splash, irrigation, insects, and contaminated tools.",

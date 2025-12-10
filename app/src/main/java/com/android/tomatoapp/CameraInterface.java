@@ -41,6 +41,7 @@ import org.tensorflow.lite.Interpreter;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -380,7 +381,9 @@ public class CameraInterface extends AppCompatActivity {
                                 detectionResults.getOrDefault("pestImageUri", ""),  // add pest image if available
                                 selectedCultivarLabel,
                                 selectedPhase,
-                                linkedProgramId
+                                linkedProgramId,
+                                detectionResults.getOrDefault("topPredictions", ""),
+                                detectionResults.getOrDefault("confidenceWarning", "")
                         );
                         persistDetectionForProgram(detectionResults, photoUri);
 
@@ -425,15 +428,23 @@ public class CameraInterface extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == 200 && resultCode == RESULT_OK && data != null) {
-            Uri selectedImage = data.getData();
+            Uri selectedImageUri = data.getData();
             
             // Check if image was selected
-            if (selectedImage == null) {
+            if (selectedImageUri == null) {
                 Toast.makeText(this, "Failed to load image. Please try again.", Toast.LENGTH_SHORT).show();
                 return;
             }
             
-            HashMap<String, String> detectionResults = runTeachableMachineDetection(selectedImage);
+            // Copy gallery image to app storage (same as camera photos) for consistent access
+            Uri savedImageUri = copyGalleryImageToAppStorage(selectedImageUri);
+            if (savedImageUri == null) {
+                Toast.makeText(this, "Failed to save image. Please try again.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            // Run detection on the saved image
+            HashMap<String, String> detectionResults = runTeachableMachineDetection(savedImageUri);
             
             // Check if detection was successful
             if (detectionResults == null || detectionResults.isEmpty()) {
@@ -441,8 +452,9 @@ public class CameraInterface extends AppCompatActivity {
                 return;
             }
 
-            String imageUriString = selectedImage.toString();
+            String imageUriString = savedImageUri.toString();
             
+            // Save detection with all details to history (same as camera photos)
             DetectionHistoryManager.addHistory(
                     CameraInterface.this,
                     imageUriString,
@@ -458,9 +470,11 @@ public class CameraInterface extends AppCompatActivity {
                     detectionResults.getOrDefault("pestImageUri", ""),
                     selectedCultivarLabel,
                     selectedPhase,
-                    linkedProgramId
+                    linkedProgramId,
+                    detectionResults.getOrDefault("topPredictions", ""),
+                    detectionResults.getOrDefault("confidenceWarning", "")
             );
-            persistDetectionForProgram(detectionResults, selectedImage);
+            persistDetectionForProgram(detectionResults, savedImageUri);
 
             NotificationUseCases.notifyDiseaseDetection(
                     CameraInterface.this,
@@ -470,6 +484,7 @@ public class CameraInterface extends AppCompatActivity {
                     selectedPhase
             );
 
+            // Pass results to DetectionResults activity (same as camera photos)
             Intent intent = new Intent(CameraInterface.this, DetectionResults.class);
             intent.putExtra("imageUri", imageUriString);
             for (String key : detectionResults.keySet()) {
@@ -479,6 +494,60 @@ public class CameraInterface extends AppCompatActivity {
             intent.putExtra("detectionPhase", selectedPhase);
             startActivity(intent);
 
+        }
+    }
+    
+    /**
+     * Copy gallery image to app's external files directory and return FileProvider URI
+     * This ensures the image is accessible like camera photos
+     */
+    private Uri copyGalleryImageToAppStorage(Uri galleryUri) {
+        try {
+            // Create destination file in app's external files directory
+            File destinationFile = new File(
+                    getExternalFilesDir(null),
+                    "gallery_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
+                            .format(System.currentTimeMillis()) + ".jpg"
+            );
+            
+            // Copy image from gallery to app storage
+            try (InputStream inputStream = getContentResolver().openInputStream(galleryUri);
+                 FileOutputStream outputStream = new FileOutputStream(destinationFile)) {
+                
+                if (inputStream == null) {
+                    return null;
+                }
+                
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                while ((bytesRead = inputStream.read(buffer)) != -1) {
+                    outputStream.write(buffer, 0, bytesRead);
+                }
+            }
+            
+            // Scan file to make it visible in gallery
+            MediaScannerConnection.scanFile(
+                    this,
+                    new String[]{destinationFile.getAbsolutePath()},
+                    null,
+                    null
+            );
+            
+            // Create FileProvider URI (same format as camera photos)
+            Uri fileProviderUri = FileProvider.getUriForFile(
+                    this,
+                    getPackageName() + ".provider",
+                    destinationFile
+            );
+            
+            Toast.makeText(this,
+                    "Image saved: " + destinationFile.getName(),
+                    Toast.LENGTH_SHORT).show();
+            
+            return fileProviderUri;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
     }
 
@@ -512,23 +581,25 @@ public class CameraInterface extends AppCompatActivity {
 
             // Improved pixel normalization - normalize to [0, 1] range
             // Using float32 format for better precision
+            // Teachable Machine models expect RGB format with values normalized to [0, 1]
             ByteBuffer input = ByteBuffer.allocateDirect(224 * 224 * 3 * 4).order(ByteOrder.nativeOrder());
             int[] pixels = new int[224 * 224];
             resized.getPixels(pixels, 0, 224, 0, 0, 224, 224);
             
             // Enhanced normalization with better color space handling
+            // Ensure proper RGB extraction and normalization
             for (int pixel : pixels) {
-                // Extract RGB values
+                // Extract RGB values (ARGB format from getPixels)
                 int r = (pixel >> 16) & 0xFF;
                 int g = (pixel >> 8) & 0xFF;
                 int b = pixel & 0xFF;
                 
-                // Normalize to [0, 1] range
+                // Normalize to [0, 1] range (matching Teachable Machine training format)
                 float rNorm = r / 255.0f;
                 float gNorm = g / 255.0f;
                 float bNorm = b / 255.0f;
                 
-                // Add to buffer (RGB order)
+                // Add to buffer (RGB order - matching model input format)
                 input.putFloat(rNorm);
                 input.putFloat(gNorm);
                 input.putFloat(bNorm);
@@ -587,8 +658,31 @@ public class CameraInterface extends AppCompatActivity {
                 return results;
             }
 
-            // Apply softmax to get proper probabilities (if model doesn't output probabilities)
-            float[] probabilities = applySoftmax(output[0]);
+            // Check if model outputs are already probabilities (sum close to 1.0) or logits
+            float sum = 0f;
+            float maxVal = Float.NEGATIVE_INFINITY;
+            float minVal = Float.POSITIVE_INFINITY;
+            for (float val : output[0]) {
+                sum += val;
+                if (val > maxVal) maxVal = val;
+                if (val < minVal) minVal = val;
+            }
+            
+            float[] probabilities;
+            // Teachable Machine models typically output probabilities (already softmaxed)
+            // Check if values are in [0, 1] range and sum to ~1.0 (with some tolerance)
+            // Also check if all values are positive (probabilities should be >= 0)
+            boolean allPositive = minVal >= 0f;
+            boolean inRange = maxVal <= 1.0f;
+            boolean sumsToOne = Math.abs(sum - 1.0f) < 0.15f; // Allow some tolerance for floating point errors
+            
+            if (allPositive && inRange && sumsToOne) {
+                // Already probabilities, use directly (most common for Teachable Machine)
+                probabilities = output[0].clone();
+            } else {
+                // Likely logits, apply softmax to convert to probabilities
+                probabilities = applySoftmax(output[0]);
+            }
             
             // Get top 3 predictions for better accuracy
             int[] topIndices = getTopKIndices(probabilities, 3);
@@ -603,22 +697,35 @@ public class CameraInterface extends AppCompatActivity {
             float thirdProb = topProbs.length > 2 ? topProbs[2] : 0f;
 
             // Adaptive threshold based on model type and dataset quality
-            // Lower threshold for imbalanced datasets (0.30-0.40 instead of 0.50)
-            float threshold = 0.30f; // Lower threshold to handle imbalanced datasets
-            float highConfidenceThreshold = 0.70f; // High confidence threshold
+            // Adjusted thresholds for better accuracy reporting
+            // Minimum threshold for accepting a detection (was too low at 0.30)
+            float threshold = 0.50f; // 50% minimum confidence for valid detection
+            float highConfidenceThreshold = 0.75f; // 75% for high confidence
+            float mediumConfidenceThreshold = 0.60f; // 60% for medium confidence
             
             String rawLabel = labels.get(maxIdx).trim().toLowerCase();
             
-            // Store top 3 predictions for user reference
+            // Store top 3 predictions for user reference (always include for transparency)
             StringBuilder topPredictions = new StringBuilder();
-            topPredictions.append(labels.get(topIndices[0]).trim()).append(" (").append(String.format("%.1f%%", topProbs[0] * 100)).append(")");
-            if (topProbs.length > 1 && topProbs[1] > 0.1f) {
-                topPredictions.append(", ").append(labels.get(topIndices[1]).trim()).append(" (").append(String.format("%.1f%%", topProbs[1] * 100)).append(")");
+            topPredictions.append("1. ").append(labels.get(topIndices[0]).trim())
+                    .append(" (").append(String.format("%.1f%%", topProbs[0] * 100)).append(")");
+            if (topProbs.length > 1 && topProbs[1] > 0.05f) {
+                topPredictions.append("\n2. ").append(labels.get(topIndices[1]).trim())
+                        .append(" (").append(String.format("%.1f%%", topProbs[1] * 100)).append(")");
             }
-            if (topProbs.length > 2 && topProbs[2] > 0.1f) {
-                topPredictions.append(", ").append(labels.get(topIndices[2]).trim()).append(" (").append(String.format("%.1f%%", topProbs[2] * 100)).append(")");
+            if (topProbs.length > 2 && topProbs[2] > 0.05f) {
+                topPredictions.append("\n3. ").append(labels.get(topIndices[2]).trim())
+                        .append(" (").append(String.format("%.1f%%", topProbs[2] * 100)).append(")");
             }
             results.put("topPredictions", topPredictions.toString());
+            
+            // Store individual prediction scores for dynamic analysis
+            results.put("primaryPrediction", labels.get(topIndices[0]).trim());
+            results.put("primaryConfidence", String.format("%.1f%%", topProbs[0] * 100));
+            if (topProbs.length > 1) {
+                results.put("secondaryPrediction", labels.get(topIndices[1]).trim());
+                results.put("secondaryConfidence", String.format("%.1f%%", topProbs[1] * 100));
+            }
 
             HashMap<String, String> labelMapping = new HashMap<>();
             
@@ -628,7 +735,6 @@ public class CameraInterface extends AppCompatActivity {
                 labelMapping.put("anthracnose", "Anthracnose (Colletotrichum spp.)");
                 labelMapping.put("black leaf mold", "Black Leaf Mold (Pseudocercospora fuligena)");
                 labelMapping.put("early blight", "Early Blight (Alternaria solani)");
-                labelMapping.put("fusarium wilt", "Fusarium Wilt (Fusarium oxysporum)");
                 labelMapping.put("late blight", "Late Blight (Phytophthora infestans)");
                 labelMapping.put("yellow leaf curl", "Tomato Yellow Leaf Curl Virus (TYLCV)");
                 labelMapping.put("healty", "Healthy Tomato");
@@ -657,68 +763,127 @@ public class CameraInterface extends AppCompatActivity {
                 mappedLabel = sb.toString();
             }
 
-            // Determine confidence level and add warnings
-            String confidenceWarning = "";
-            if (maxProb < threshold) {
-                confidenceWarning = "⚠️ Very Low Confidence - Consider retaking photo with better lighting/angle";
-            } else if (maxProb < highConfidenceThreshold) {
-                confidenceWarning = "⚠️ Low Confidence - Top predictions: " + topPredictions.toString();
-            } else if (secondProb > 0.25f && (maxProb - secondProb) < 0.15f) {
-                confidenceWarning = "⚠️ Ambiguous Detection - Multiple similar predictions. Top: " + topPredictions.toString();
+            // Generate dynamic results based on actual model predictions
+            // Build comprehensive prediction analysis
+            StringBuilder predictionAnalysis = new StringBuilder();
+            predictionAnalysis.append("📊 Model Prediction Analysis:\n\n");
+            predictionAnalysis.append("Primary Detection: ").append(labels.get(topIndices[0]).trim())
+                    .append(" (").append(String.format("%.1f%%", topProbs[0] * 100)).append(" confidence)\n");
+            
+            if (topProbs.length > 1 && topProbs[1] > 0.05f) {
+                predictionAnalysis.append("Secondary: ").append(labels.get(topIndices[1]).trim())
+                        .append(" (").append(String.format("%.1f%%", topProbs[1] * 100)).append(")\n");
+            }
+            if (topProbs.length > 2 && topProbs[2] > 0.05f) {
+                predictionAnalysis.append("Tertiary: ").append(labels.get(topIndices[2]).trim())
+                        .append(" (").append(String.format("%.1f%%", topProbs[2] * 100)).append(")\n");
             }
             
+            // Determine confidence level and generate dynamic warnings
+            String confidenceWarning = "";
+            String confidenceLevel = "";
+            boolean isAmbiguous = secondProb > 0.20f && (maxProb - secondProb) < 0.25f;
+            
             if (maxProb < threshold) {
-                results.put("title", "Unknown / Low Confidence");
+                confidenceLevel = "Very Low";
+                confidenceWarning = "⚠️ Very Low Confidence (" + String.format("%.1f%%", maxProb * 100) + 
+                        ") - Model uncertainty is high. Consider retaking photo with better lighting/angle.";
+            } else if (maxProb < mediumConfidenceThreshold) {
+                confidenceLevel = "Low-Medium";
+                confidenceWarning = "⚠️ Low-Medium Confidence (" + String.format("%.1f%%", maxProb * 100) + 
+                        ") - Results should be interpreted with caution.";
+            } else if (maxProb < highConfidenceThreshold) {
+                confidenceLevel = "Medium";
+                confidenceWarning = "⚠️ Medium Confidence (" + String.format("%.1f%%", maxProb * 100) + 
+                        ") - Detection is reasonably reliable but consider additional verification.";
+            } else {
+                confidenceLevel = "High";
+                if (isAmbiguous) {
+                    confidenceWarning = "⚠️ High Confidence but Ambiguous - Multiple similar predictions detected.";
+                }
+            }
+            
+            if (isAmbiguous && maxProb >= threshold) {
+                confidenceWarning = "⚠️ Ambiguous Detection - Multiple similar predictions. " +
+                        "The model suggests " + labels.get(topIndices[0]).trim() + " (" + 
+                        String.format("%.1f%%", topProbs[0] * 100) + ") but " + 
+                        labels.get(topIndices[1]).trim() + " (" + 
+                        String.format("%.1f%%", topProbs[1] * 100) + ") is also likely.";
+            }
+            
+            // Generate dynamic description based on predictions
+            String dynamicDescription = generateDynamicDescription(
+                    mappedLabel, maxProb, topIndices, topProbs, labels, isAmbiguous, confidenceLevel
+            );
+            
+            // Get static disease info as reference, but make it secondary to dynamic analysis
+            DiseaseInfo staticInfo = DiseaseData.getDiseaseInfo(mappedLabel);
+            
+            // Build comprehensive results
+            if (maxProb < threshold) {
+                // Very low confidence - show all predictions
+                results.put("title", "Uncertain Detection");
                 results.put("accuracy", String.format("%.1f%%", maxProb * 100));
-                results.put("description", "Low confidence detection. The model could not reliably identify the condition.\n\n" +
-                        "Top predictions: " + topPredictions.toString() + "\n\n" +
-                        "Recommendations:\n" +
-                        "• Ensure good lighting\n" +
-                        "• Focus clearly on the affected area\n" +
+                results.put("description", dynamicDescription + "\n\n" + predictionAnalysis.toString() +
+                        "\nRecommendations:\n" +
+                        "• Ensure good lighting and focus\n" +
+                        "• Capture clear image of affected area\n" +
                         "• Try different angles\n" +
-                        "• Use the appropriate model (Fruits vs Leaves)");
-                results.put("symptoms", "No reliable symptoms detected.");
-                results.put("cause", "Uncertain cause.");
-                results.put("cure", "No reliable cure information.");
-                results.put("prevention", "No reliable prevention information.");
+                        "• Use the appropriate model (Fruits vs Leaves vs Pest)");
+                results.put("symptoms", "Unable to reliably detect symptoms due to low confidence.");
+                results.put("cause", "Detection confidence too low to determine cause.");
+                results.put("cure", "Please retake photo with better conditions for accurate diagnosis.");
+                results.put("prevention", "Ensure proper image quality for reliable detection.");
                 results.put("pestTitle", "Unknown");
-                results.put("pestDescription", "No pest information.");
+                results.put("pestDescription", "Cannot determine pest information with current confidence level.");
                 results.put("confidenceWarning", confidenceWarning);
             } else {
-                DiseaseInfo info = DiseaseData.getDiseaseInfo(mappedLabel);
-                if (info != null) {
-                    results.put("title", mappedLabel);
-                    results.put("accuracy", String.format("%.1f%%", maxProb * 100));
-                    
-                    // Add confidence warning to description if needed
-                    String description = info.getDescription();
-                    if (!confidenceWarning.isEmpty()) {
-                        description = confidenceWarning + "\n\n" + description;
-                    }
-                    results.put("description", description);
-                    
-                    results.put("symptoms", info.getSymptoms());
-                    results.put("cause", info.getCause());
-                    results.put("cure", info.getCure());
-                    results.put("prevention", info.getPrevention());
-                    results.put("pestTitle", info.getPest());
-                    results.put("pestDescription", info.getPestDescription());
-                    results.put("confidenceWarning", confidenceWarning);
-                } else {
-                    results.put("title", mappedLabel + " (Database Info Missing)");
-                    results.put("accuracy", String.format("%.1f%%", maxProb * 100));
-                    results.put("description", "Detection: " + mappedLabel + "\n" +
-                            "Top predictions: " + topPredictions.toString() + "\n\n" +
-                            (!confidenceWarning.isEmpty() ? confidenceWarning + "\n\n" : "") +
-                            "No detailed information available in database for this condition.");
-                    results.put("symptoms", "No data available.");
-                    results.put("cause", "No data available.");
-                    results.put("cure", "No data available.");
-                    results.put("prevention", "No data available.");
-                    results.put("pestTitle", "Unknown");
-                    results.put("pestDescription", "No data available.");
-                    results.put("confidenceWarning", confidenceWarning);
+                // Valid detection - combine dynamic analysis with static info
+                results.put("title", mappedLabel);
+                results.put("accuracy", String.format("%.1f%%", maxProb * 100));
+                
+                // Build dynamic description with static info as supplementary
+                StringBuilder fullDescription = new StringBuilder();
+                fullDescription.append(dynamicDescription);
+                
+                if (isAmbiguous) {
+                    fullDescription.append("\n\n").append(predictionAnalysis.toString());
+                    fullDescription.append("\n⚠️ Note: Multiple conditions are possible. Please verify with additional images or expert consultation.");
                 }
+                
+                if (staticInfo != null) {
+                    // Add static info as reference, but mark it as supplementary
+                    fullDescription.append("\n\n--- Reference Information ---\n");
+                    if (!confidenceWarning.isEmpty()) {
+                        fullDescription.append(confidenceWarning).append("\n\n");
+                    }
+                    fullDescription.append(staticInfo.getDescription());
+                } else if (!confidenceWarning.isEmpty()) {
+                    fullDescription.append("\n\n").append(confidenceWarning);
+                }
+                
+                results.put("description", fullDescription.toString());
+                
+                // Use static info for symptoms/cause/cure, but add dynamic context
+                if (staticInfo != null) {
+                    results.put("symptoms", staticInfo.getSymptoms() + 
+                            (isAmbiguous ? "\n\nNote: Symptoms may overlap with other conditions." : ""));
+                    results.put("cause", staticInfo.getCause());
+                    results.put("cure", staticInfo.getCure());
+                    results.put("prevention", staticInfo.getPrevention());
+                    results.put("pestTitle", staticInfo.getPest());
+                    results.put("pestDescription", staticInfo.getPestDescription());
+                } else {
+                    // No static info available - use dynamic generation
+                    results.put("symptoms", generateDynamicSymptoms(mappedLabel, maxProb));
+                    results.put("cause", "Cause information not available in database. Model detected: " + mappedLabel);
+                    results.put("cure", "Treatment information not available. Please consult agricultural expert.");
+                    results.put("prevention", "Prevention strategies not available. Model confidence: " + 
+                            String.format("%.1f%%", maxProb * 100));
+                    results.put("pestTitle", "Unknown");
+                    results.put("pestDescription", "Pest information not available in database.");
+                }
+                results.put("confidenceWarning", confidenceWarning);
             }
 
         } catch (Exception e) {
@@ -913,6 +1078,74 @@ public class CameraInterface extends AppCompatActivity {
         }
         
         return probabilities;
+    }
+    
+    /**
+     * Generate dynamic description based on actual model predictions
+     */
+    private String generateDynamicDescription(String mappedLabel, float maxProb, int[] topIndices, 
+                                               float[] topProbs, ArrayList<String> labels, 
+                                               boolean isAmbiguous, String confidenceLevel) {
+        StringBuilder desc = new StringBuilder();
+        
+        desc.append("🔍 Detection Result:\n");
+        desc.append("Detected Condition: ").append(mappedLabel).append("\n");
+        desc.append("Confidence Level: ").append(confidenceLevel).append(" (").append(String.format("%.1f%%", maxProb * 100)).append(")\n");
+        
+        if (isAmbiguous) {
+            desc.append("\n⚠️ Ambiguous Detection:\n");
+            desc.append("The model detected multiple possible conditions with similar confidence:\n");
+            for (int i = 0; i < Math.min(3, topProbs.length); i++) {
+                if (topProbs[i] > 0.15f) {
+                    desc.append("• ").append(labels.get(topIndices[i]).trim())
+                            .append(": ").append(String.format("%.1f%%", topProbs[i] * 100)).append("\n");
+                }
+            }
+            desc.append("\nRecommendation: Verify with additional images or consult an expert.");
+        } else {
+            desc.append("\n✅ Primary Detection:\n");
+            desc.append("The model confidently identified this condition as: ").append(mappedLabel).append("\n");
+            desc.append("Confidence Score: ").append(String.format("%.1f%%", maxProb * 100));
+            
+            if (maxProb >= 0.75f) {
+                desc.append("\n\nThis is a high-confidence detection. The model is very certain about this diagnosis.");
+            } else if (maxProb >= 0.60f) {
+                desc.append("\n\nThis is a medium-confidence detection. The result is reasonably reliable.");
+            } else {
+                desc.append("\n\nThis is a lower-confidence detection. Please verify with additional images.");
+            }
+        }
+        
+        // Add context about model performance
+        if (maxProb < 0.50f) {
+            desc.append("\n\n📸 Image Quality Recommendations:\n");
+            desc.append("• Ensure good lighting conditions\n");
+            desc.append("• Focus clearly on the affected area\n");
+            desc.append("• Avoid shadows and reflections\n");
+            desc.append("• Use appropriate model type (Fruits/Leaves/Pest)");
+        }
+        
+        return desc.toString();
+    }
+    
+    /**
+     * Generate dynamic symptoms description based on detection
+     */
+    private String generateDynamicSymptoms(String mappedLabel, float confidence) {
+        StringBuilder symptoms = new StringBuilder();
+        symptoms.append("Based on model detection: ").append(mappedLabel).append("\n");
+        symptoms.append("Detection Confidence: ").append(String.format("%.1f%%", confidence * 100)).append("\n\n");
+        
+        if (confidence >= 0.75f) {
+            symptoms.append("High confidence detection. The model identified specific symptoms associated with this condition.");
+        } else if (confidence >= 0.50f) {
+            symptoms.append("Medium confidence detection. Symptoms may be present but require verification.");
+        } else {
+            symptoms.append("Low confidence detection. Symptoms cannot be reliably determined from this image.");
+        }
+        
+        symptoms.append("\n\nFor detailed symptom information, please refer to agricultural resources or consult an expert.");
+        return symptoms.toString();
     }
     
     /**

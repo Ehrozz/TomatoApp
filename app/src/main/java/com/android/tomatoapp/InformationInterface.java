@@ -37,8 +37,6 @@ public class InformationInterface extends BaseDrawerActivity {
         diseaseNameMap.put("Tomato Leaf Curl Virus", "Tomato Leaf Curl Virus (TLCV)");
         diseaseNameMap.put("Early Blight", "Early Blight (Alternaria solani)");
         diseaseNameMap.put("Late Blight", "Late Blight (Phytophthora infestans)");
-        diseaseNameMap.put("Bacterial Wilt", "Bacterial Wilt (Ralstonia solanacearum)");
-        diseaseNameMap.put("Fusarium Wilt", "Fusarium Wilt (Fusarium oxysporum)");
         diseaseNameMap.put("Anthracnose ", "Anthracnose (Colletotrichum spp.)");
         diseaseNameMap.put("Black Leaf Mold", "Black Leaf Mold (Pseudocercospora fuligena)");
     }
@@ -50,7 +48,6 @@ public class InformationInterface extends BaseDrawerActivity {
         diseaseImageMap.put("Anthracnose ", R.drawable.disease_anthracnose);
         diseaseImageMap.put("Black Leaf Mold", R.drawable.disease_black_leaf_mold);
         diseaseImageMap.put("Early Blight", R.drawable.disease_early_blight);
-        diseaseImageMap.put("Fusarium Wilt", R.drawable.disease_fusarium_wilt);
         diseaseImageMap.put("Late Blight", R.drawable.disease_late_blight);
         diseaseImageMap.put("Yellow Leaf Curl", R.drawable.disease_yellow_leaf_curl);
         diseaseImageMap.put("Tomato Leaf Curl Virus", R.drawable.disease_yellow_leaf_curl);
@@ -83,7 +80,6 @@ public class InformationInterface extends BaseDrawerActivity {
                 "Tomato Leaf Curl Virus",
                 "Early Blight",
                 "Late Blight",
-                "Fusarium Wilt",
                 "Anthracnose ",
                 "Black Leaf Mold"
         );

@@ -18,6 +18,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.firebase.auth.FirebaseAuth;
@@ -262,6 +263,40 @@ public class Calculator extends AppCompatActivity {
         
         // Setup harvest unit spinner
         setupHarvestUnitSpinner();
+        
+        // Setup "Save to Analytics" button
+        setupSaveToAnalyticsButton();
+    }
+    
+    /**
+     * Sets up the "Save to Analytics" button
+     */
+    private void setupSaveToAnalyticsButton() {
+        com.google.android.material.button.MaterialButton btnSaveToAnalytics = findViewById(R.id.btnSaveToAnalytics);
+        if (btnSaveToAnalytics == null) return;
+        
+        // Only show button if we have a program ID (linked to a work program)
+        if (programId == null || cultivarName == null || dateSaved == null) {
+            btnSaveToAnalytics.setVisibility(View.GONE);
+            return;
+        }
+        
+        btnSaveToAnalytics.setVisibility(View.VISIBLE);
+        btnSaveToAnalytics.setOnClickListener(v -> {
+            // Validate that calculation is complete
+            if (hectare <= 0 || grossIncome <= 0) {
+                Toast.makeText(this, "Please complete the calculation before saving to analytics", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            // Show confirmation dialog
+            new androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle("Save to Analytics")
+                    .setMessage("This will save the current calculation to Analytics and Season Comparison. Continue?")
+                    .setPositiveButton("Save", (dialog, which) -> saveToAnalytics())
+                    .setNegativeButton("Cancel", null)
+                    .show();
+        });
     }
     
     /**
@@ -889,7 +924,7 @@ public class Calculator extends AppCompatActivity {
     }
     
     /**
-     * Saves calculation to Firebase
+     * Saves calculation to Firebase (for calculation history only, not analytics)
      * Only saves if values have changed significantly to avoid duplicate entries
      */
     private void saveCalculation() {
@@ -918,35 +953,54 @@ public class Calculator extends AppCompatActivity {
                             // Update last saved values
                             lastSavedGrossIncome = grossIncome;
                             lastSavedTotalExpenses = totalExpenses;
-                            
-                            // Also enrich the related work program record if programId is available
-                            if (programId != null && hectare > 0 && currentUser != null) {
-                                DatabaseReference workProgramRef = FirebaseDatabase.getInstance()
-                                        .getReference("users")
-                                        .child(currentUser.getUid())
-                                        .child("workPrograms")
-                                        .child(programId);
-
-                                Map<String, Object> updates = new HashMap<>();
-                                // Legacy fields (already used in the app)
-                                updates.put("cultivar", cultivarName);
-                                updates.put("startDate", dateSaved);
-                                updates.put("landArea", hectare);
-                                // New analytics-friendly fields
-                                updates.put("cultivarName", cultivarName);
-                                updates.put("startingDate", dateSaved);
-                                updates.put("areaSize", hectare);
-                                updates.put("projectedIncome", grossIncome);
-                                updates.put("projectedExpenses", totalExpenses);
-
-                                workProgramRef.updateChildren(updates);
-                            }
                         })
                         .addOnFailureListener(e -> {
                             Toast.makeText(this, "Failed to save calculation", Toast.LENGTH_SHORT).show();
                         });
             }
         }
+    }
+    
+    /**
+     * Saves calculation data to Analytics and Season Comparison
+     * This is only called when user explicitly clicks "Save to Analytics" button
+     */
+    private void saveToAnalytics() {
+        if (currentUser == null || programId == null) {
+            Toast.makeText(this, "Cannot save to analytics: Missing program information", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        if (hectare <= 0 || grossIncome <= 0) {
+            Toast.makeText(this, "Please complete the calculation before saving to analytics", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        DatabaseReference workProgramRef = FirebaseDatabase.getInstance()
+                .getReference("users")
+                .child(currentUser.getUid())
+                .child("workPrograms")
+                .child(programId);
+
+        Map<String, Object> updates = new HashMap<>();
+        // Legacy fields (already used in the app)
+        updates.put("cultivar", cultivarName);
+        updates.put("startDate", dateSaved);
+        updates.put("landArea", hectare);
+        // Analytics-friendly fields
+        updates.put("cultivarName", cultivarName);
+        updates.put("startingDate", dateSaved);
+        updates.put("areaSize", hectare);
+        updates.put("projectedIncome", grossIncome);
+        updates.put("projectedExpenses", totalExpenses);
+
+        workProgramRef.updateChildren(updates)
+                .addOnSuccessListener(aVoid -> {
+                    Toast.makeText(this, "Successfully saved to Analytics and Season Comparison", Toast.LENGTH_SHORT).show();
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Failed to save to analytics: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
     }
 
     private void compute() {
@@ -999,10 +1053,7 @@ public class Calculator extends AppCompatActivity {
             // 🔹 Compute expenses and net income
             computeExpenses();
             
-            // Auto-save to Firebase when calculation is complete
-            if (grossIncome > 0 && totalExpenses >= 0) {
-                saveCalculation();
-            }
+            // Note: Auto-save to analytics removed - user must click "Save to Analytics" button
             
             // Ensure net income defaults to zero if no calculation
             if (grossIncome == 0 && totalExpenses == 0 && tvNetIncomeCard != null) {

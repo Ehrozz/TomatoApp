@@ -98,6 +98,20 @@ public class MainActivity extends BaseDrawerActivity {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         requestWeather();
         
+        // Setup bell icon click listener
+        ImageView notificationBellIcon = findViewById(R.id.notificationBellIcon);
+        if (notificationBellIcon != null) {
+            notificationBellIcon.setOnClickListener(v -> {
+                try {
+                    Intent intent = new Intent(MainActivity.this, NotificationListActivity.class);
+                    startActivity(intent);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    Toast.makeText(MainActivity.this, "Unable to open notifications", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+        
         // Sync all data from Firebase to local database
         if (user != null) {
             LocalDataManager manager = LocalDataManager.getInstance(this);

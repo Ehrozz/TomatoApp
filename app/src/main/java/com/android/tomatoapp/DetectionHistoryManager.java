@@ -32,6 +32,29 @@ public class DetectionHistoryManager {
                                   String cultivar,
                                   int phase,
                                   String programId) {
+        // Overloaded method for backward compatibility
+        addHistory(context, imageUri, title, accuracy, description, symptoms, cause, cure, 
+                  prevention, pestTitle, pestDescription, pestImageUri, cultivar, phase, 
+                  programId, "", "");
+    }
+    
+    public static void addHistory(Context context,
+                                  String imageUri,
+                                  String title,
+                                  String accuracy,
+                                  String description,
+                                  String symptoms,
+                                  String cause,
+                                  String cure,
+                                  String prevention,
+                                  String pestTitle,
+                                  String pestDescription,
+                                  String pestImageUri,
+                                  String cultivar,
+                                  int phase,
+                                  String programId,
+                                  String topPredictions,
+                                  String confidenceWarning) {
 
         SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         String historyJson = prefs.getString(KEY_HISTORY, "[]");
@@ -54,6 +77,8 @@ public class DetectionHistoryManager {
             entry.put("cultivar", cultivar);
             entry.put("phase", phase);
             entry.put("programId", programId != null ? programId : "");
+            entry.put("topPredictions", topPredictions != null ? topPredictions : "");
+            entry.put("confidenceWarning", confidenceWarning != null ? confidenceWarning : "");
 
             historyArray.put(entry);
             prefs.edit().putString(KEY_HISTORY, historyArray.toString()).apply();
