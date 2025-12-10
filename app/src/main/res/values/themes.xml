@@ -13,4 +13,13 @@
     </style>
 
     <style name="Theme.TomatoApp" parent="Base.Theme.TomatoApp" />
+    
+    <!-- Detection Type Dialog Style -->
+    <style name="DetectionTypeDialogStyle" parent="Theme.Material3.DayNight.Dialog">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation.Dialog</item>
+    </style>
 </resources>

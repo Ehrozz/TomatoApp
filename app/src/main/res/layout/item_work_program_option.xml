@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/cardProgram"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/spacing_medium"
+    app:cardCornerRadius="@dimen/corner_radius_medium"
+    app:cardElevation="@dimen/elevation_card"
+    app:cardBackgroundColor="@android:color/transparent"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="@drawable/ripple_detection_type"
+    android:background="@drawable/card_leaves_background">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="@dimen/spacing_large"
+        android:gravity="center_vertical"
+        android:minHeight="80dp">
+
+        <!-- Icon Container -->
+        <FrameLayout
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_marginEnd="@dimen/spacing_medium"
+            android:background="@drawable/circle_icon_background"
+            android:gravity="center"
+            android:padding="2dp">
+
+            <ImageView
+                android:id="@+id/imgCultivar"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_gravity="center"
+                android:contentDescription="Cultivar Image"
+                android:scaleType="centerCrop"
+                android:adjustViewBounds="true" />
+        </FrameLayout>
+
+        <!-- Text Content -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/txtCultivarName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Cultivar Name"
+                android:textSize="@dimen/text_size_body"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:id="@+id/txtStartDate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Start Date: N/A"
+                android:textSize="@dimen/text_size_caption"
+                android:textColor="@color/text_secondary" />
+        </LinearLayout>
+
+        <!-- Arrow Icon -->
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@android:drawable/ic_menu_more"
+            android:contentDescription="Select"
+            app:tint="@color/fresh_green"
+            android:rotation="90" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>
+

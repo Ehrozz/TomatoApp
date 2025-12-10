@@ -113,13 +113,11 @@
     </LinearLayout>
 
     <!-- Bottom Navigation Bar (Semi-transparent dark) -->
-    <LinearLayout
+    <RelativeLayout
         android:id="@+id/bottomNavBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
         android:paddingStart="24dp"
         android:paddingEnd="24dp"
         android:paddingTop="20dp"
@@ -127,16 +125,12 @@
         android:background="@drawable/bottom_nav_gradient"
         android:fitsSystemWindows="true">
 
-        <!-- Spacer (Left) -->
-        <View
-            android:layout_width="0dp"
-            android:layout_height="56dp"
-            android:layout_weight="1" />
-
-        <!-- Scan Button (Center) -->
+        <!-- Scan Button (Centered) -->
         <LinearLayout
+            android:id="@+id/scanButtonContainer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
             android:orientation="vertical"
             android:gravity="center">
 
@@ -171,11 +165,19 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- Spacer (Right) -->
-        <View
-            android:layout_width="0dp"
+        <!-- Menu Button (Right - Hamburger) -->
+        <ImageButton
+            android:id="@+id/menuButton"
+            android:layout_width="56dp"
             android:layout_height="56dp"
-            android:layout_weight="1" />
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:src="@android:drawable/ic_menu_more"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Menu"
+            app:tint="@color/white"
+            android:scaleType="centerInside"
+            android:padding="14dp" />
 
         <!-- Model Selector (Hidden, kept for code compatibility) -->
         <com.google.android.material.card.MaterialCardView
@@ -197,19 +199,7 @@
                 android:padding="14dp"
                 app:tint="@color/white" />
         </com.google.android.material.card.MaterialCardView>
-
-        <!-- Menu Button (Right - Hamburger) -->
-        <ImageButton
-            android:id="@+id/menuButton"
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:src="@android:drawable/ic_menu_more"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Menu"
-            app:tint="@color/white"
-            android:scaleType="centerInside"
-            android:padding="14dp" />
-    </LinearLayout>
+    </RelativeLayout>
 
     <!-- Gallery Button (Hidden, can be accessed via menu) -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton

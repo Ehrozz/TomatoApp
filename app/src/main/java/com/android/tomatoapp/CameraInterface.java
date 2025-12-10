@@ -486,31 +486,57 @@ public class CameraInterface extends AppCompatActivity {
         HashMap<String, String> results = new HashMap<>();
         try {
             // Load and preprocess image with better quality
-            Bitmap bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(imageUri));
-            if (bitmap == null) {
-                results.put("title", "Error");
+            Bitmap bitmap = null;
+            try {
+                bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(imageUri));
+            } catch (Exception e) {
+                e.printStackTrace();
+                results.put("title", "Image Loading Error");
                 results.put("accuracy", "0%");
-                results.put("description", "Failed to load image.");
+                results.put("description", "Failed to load image: " + e.getMessage());
                 return results;
             }
             
-            // Better image preprocessing: use high-quality scaling and maintain aspect ratio
+            if (bitmap == null) {
+                results.put("title", "Image Error");
+                results.put("accuracy", "0%");
+                results.put("description", "Failed to decode image. Please ensure the image is valid.");
+                return results;
+            }
+            
+            // Enhanced image preprocessing: use high-quality scaling and maintain aspect ratio
             Bitmap resized = preprocessImage(bitmap, 224, 224);
+            
+            // Clean up original bitmap (resized is a new bitmap)
+            bitmap.recycle();
 
             // Improved pixel normalization - normalize to [0, 1] range
+            // Using float32 format for better precision
             ByteBuffer input = ByteBuffer.allocateDirect(224 * 224 * 3 * 4).order(ByteOrder.nativeOrder());
             int[] pixels = new int[224 * 224];
             resized.getPixels(pixels, 0, 224, 0, 0, 224, 224);
+            
+            // Enhanced normalization with better color space handling
             for (int pixel : pixels) {
-                // Normalize RGB values to [0, 1] range
-                float r = ((pixel >> 16) & 0xFF) / 255.0f;
-                float g = ((pixel >> 8) & 0xFF) / 255.0f;
-                float b = (pixel & 0xFF) / 255.0f;
-                input.putFloat(r);
-                input.putFloat(g);
-                input.putFloat(b);
+                // Extract RGB values
+                int r = (pixel >> 16) & 0xFF;
+                int g = (pixel >> 8) & 0xFF;
+                int b = pixel & 0xFF;
+                
+                // Normalize to [0, 1] range
+                float rNorm = r / 255.0f;
+                float gNorm = g / 255.0f;
+                float bNorm = b / 255.0f;
+                
+                // Add to buffer (RGB order)
+                input.putFloat(rNorm);
+                input.putFloat(gNorm);
+                input.putFloat(bNorm);
             }
             input.rewind();
+            
+            // Clean up resized bitmap
+            resized.recycle();
 
             // Load model if not loaded or if model type changed
             if (tflite == null || loadedModelType != currentModelType) {
@@ -526,12 +552,40 @@ public class CameraInterface extends AppCompatActivity {
                 } else {
                     modelName = "model_pest.tflite";
                 }
-                tflite = new Interpreter(loadModelFile(modelName));
-                loadedModelType = currentModelType;
+                
+                // Enhanced model loading with error handling
+                try {
+                    MappedByteBuffer modelBuffer = loadModelFile(modelName);
+                    Interpreter.Options options = new Interpreter.Options();
+                    options.setNumThreads(4); // Use 4 threads for better performance
+                    try {
+                        // Try to enable XNNPACK for faster inference (may not be available on all devices)
+                        options.setUseXNNPACK(true);
+                    } catch (Exception e) {
+                        // XNNPACK not available, continue without it
+                    }
+                    tflite = new Interpreter(modelBuffer, options);
+                    loadedModelType = currentModelType;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    results.put("title", "Model Loading Error");
+                    results.put("accuracy", "0%");
+                    results.put("description", "Failed to load detection model: " + modelName + "\n\nError: " + e.getMessage() + "\n\nPlease ensure the model file exists in assets folder.");
+                    return results;
+                }
             }
 
+            // Run inference with error handling
             float[][] output = new float[1][labels.size()];
-            tflite.run(input, output);
+            try {
+                tflite.run(input, output);
+            } catch (Exception e) {
+                e.printStackTrace();
+                results.put("title", "Inference Error");
+                results.put("accuracy", "0%");
+                results.put("description", "Failed to run detection: " + e.getMessage());
+                return results;
+            }
 
             // Apply softmax to get proper probabilities (if model doesn't output probabilities)
             float[] probabilities = applySoftmax(output[0]);
@@ -762,7 +816,7 @@ public class CameraInterface extends AppCompatActivity {
         labels = new ArrayList<>();
         String labelsFile;
         if (currentModelType == ModelType.FRUITS) {
-            labelsFile = "fruit_labels.txt";
+            labelsFile = "fruits_labels.txt";
         } else if (currentModelType == ModelType.LEAVES) {
             labelsFile = "leaves_labels.txt";
         } else {
@@ -791,11 +845,43 @@ public class CameraInterface extends AppCompatActivity {
     }
     
     /**
-     * Preprocess image with better quality scaling
+     * Preprocess image with better quality scaling and normalization
+     * Enhanced preprocessing for better detection accuracy
      */
     private Bitmap preprocessImage(Bitmap bitmap, int targetWidth, int targetHeight) {
-        // Use high-quality scaling
-        return Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true);
+        // Calculate scaling to maintain aspect ratio
+        int originalWidth = bitmap.getWidth();
+        int originalHeight = bitmap.getHeight();
+        
+        // Calculate the scale factor to fit the image while maintaining aspect ratio
+        float scaleWidth = (float) targetWidth / originalWidth;
+        float scaleHeight = (float) targetHeight / originalHeight;
+        float scale = Math.min(scaleWidth, scaleHeight);
+        
+        // Create scaled bitmap maintaining aspect ratio
+        int scaledWidth = Math.round(originalWidth * scale);
+        int scaledHeight = Math.round(originalHeight * scale);
+        
+        Bitmap scaledBitmap = Bitmap.createScaledBitmap(bitmap, scaledWidth, scaledHeight, true);
+        
+        // Create final bitmap with target dimensions, centered
+        Bitmap finalBitmap = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888);
+        android.graphics.Canvas canvas = new android.graphics.Canvas(finalBitmap);
+        
+        // Fill with black background (common for ML models)
+        canvas.drawColor(android.graphics.Color.BLACK);
+        
+        // Center the scaled image
+        float left = (targetWidth - scaledWidth) / 2f;
+        float top = (targetHeight - scaledHeight) / 2f;
+        canvas.drawBitmap(scaledBitmap, left, top, null);
+        
+        // Clean up
+        if (scaledBitmap != bitmap) {
+            scaledBitmap.recycle();
+        }
+        
+        return finalBitmap;
     }
     
     /**

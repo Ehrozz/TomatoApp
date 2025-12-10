@@ -1,0 +1,6 @@
+0 Anthracnose
+1 Black Leaf Mold
+2 Early blight
+3 Late Blight
+4 Yellow Leaf Curl
+5 Healty

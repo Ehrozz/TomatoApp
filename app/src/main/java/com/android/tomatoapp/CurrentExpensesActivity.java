@@ -397,8 +397,41 @@ public class CurrentExpensesActivity extends BaseDrawerActivity {
         }
         
         card.setVisibility(View.VISIBLE);
+        
+        // Update card title with full phase description
+        updatePhaseCardTitle(card, phase);
+        
         ExpenseTableAdapter adapter = new ExpenseTableAdapter(expenses);
         recyclerView.setAdapter(adapter);
+    }
+    
+    private void updatePhaseCardTitle(MaterialCardView card, int phase) {
+        if (card == null) return;
+        
+        // Find the TextView that contains the phase title
+        TextView phaseTitle = findPhaseTitleTextView(card);
+        if (phaseTitle != null) {
+            phaseTitle.setText(PhaseHelper.getPhaseNameWithDescription(phase));
+        }
+    }
+    
+    private TextView findPhaseTitleTextView(ViewGroup parent) {
+        for (int i = 0; i < parent.getChildCount(); i++) {
+            View child = parent.getChildAt(i);
+            if (child instanceof TextView) {
+                TextView textView = (TextView) child;
+                String text = textView.getText().toString();
+                if (text.startsWith("Phase")) {
+                    return textView;
+                }
+            } else if (child instanceof ViewGroup) {
+                TextView found = findPhaseTitleTextView((ViewGroup) child);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
     }
     
     private void updateDateRangeHeader(Map<Integer, List<ExpenseEntry>> expensesByPhase) {

@@ -1,7 +1,0 @@
-0 anthracnose
-1 black leaf mold
-2 early blight
-3 fusarium wilt
-4 late blight
-5 yellow leaf curl 
-6 healty

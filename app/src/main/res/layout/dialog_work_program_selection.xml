@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/dialog_background"
+    android:padding="@dimen/spacing_large">
+
+    <!-- Header Section -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="@dimen/spacing_medium"
+        android:paddingBottom="@dimen/spacing_medium">
+
+        <ImageView
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_tomato_logo_green"
+            android:contentDescription="App Icon"
+            android:layout_marginEnd="@dimen/spacing_medium" />
+
+        <TextView
+            android:id="@+id/txtTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Select Work Program"
+            android:textSize="@dimen/text_size_title"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary" />
+
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Link this detection to a work program"
+        android:textSize="@dimen/text_size_caption"
+        android:textColor="@color/text_secondary"
+        android:layout_marginBottom="@dimen/spacing_large"
+        android:gravity="center" />
+
+    <!-- Scrollable container for work programs -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxHeight="400dp"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:id="@+id/programsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+    </ScrollView>
+
+    <!-- Continue without linking option -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/btnContinueWithout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_medium"
+        app:cardCornerRadius="@dimen/corner_radius_medium"
+        app:cardElevation="@dimen/elevation_card"
+        app:cardBackgroundColor="@android:color/transparent"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="@drawable/ripple_detection_type"
+        android:background="@drawable/card_pest_background">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="@dimen/spacing_medium"
+            android:gravity="center_vertical"
+            android:minHeight="60dp">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                android:contentDescription="Continue without linking"
+                app:tint="@color/text_secondary"
+                android:layout_marginEnd="@dimen/spacing_medium" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Continue without linking to a program"
+                android:textSize="@dimen/text_size_body"
+                android:textColor="@color/text_primary" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+</LinearLayout>
+

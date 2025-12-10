@@ -1,9 +1,9 @@
-0 Aphids
-1 leaf beetles 
-2 root grubs 
-3 root weevils 
-4 thrips 
-5 Whiteflies 
-6 fruitworm 
-7 Leafminer 
-8 Spider mites
+0 Leaf Miner
+1 Leaf Beetles 
+2 Thrips
+3 Whiteflies 
+4 Root weevils
+5 Root grubs
+6 Fruitworm
+7 Aphids
+8 Spidermites

@@ -90,31 +90,25 @@ public class IPM extends BaseDrawerActivity {
     }
 
     private void showWorkProgramSelectionDialog(List<WorkProgramEntity> programs, DetectionTypeDialog.DetectionType detectionType) {
-        String[] programLabels = new String[programs.size() + 1];
-        programLabels[0] = "Continue without linking to a program";
-        for (int i = 0; i < programs.size(); i++) {
-            WorkProgramEntity program = programs.get(i);
-            String cultivar = program.cultivarName != null ? program.cultivarName : "Unknown";
-            String startDate = program.startingDate != null ? program.startingDate : "N/A";
-            programLabels[i + 1] = cultivar + " (" + startDate + ")";
-        }
-
-        new AlertDialog.Builder(this)
-                .setTitle("Select Work Program (Optional)")
-                .setItems(programLabels, (dialog, which) -> {
-                    if (which == 0) {
-                        // Continue without program
-                        launchCameraInterface(detectionType, null, null, -1);
-                    } else {
-                        WorkProgramEntity selectedProgram = programs.get(which - 1);
-                        // Calculate phase based on start date
-                        int phase = calculatePhase(selectedProgram.startingDate, selectedProgram.cultivarName);
-                        launchCameraInterface(detectionType, selectedProgram.id, 
-                                selectedProgram.cultivarName, phase);
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        WorkProgramSelectionDialog dialog = new WorkProgramSelectionDialog(
+            this,
+            programs,
+            new WorkProgramSelectionDialog.OnWorkProgramSelectedListener() {
+                @Override
+                public void onWorkProgramSelected(WorkProgramEntity program) {
+                    // Calculate phase based on start date
+                    int phase = calculatePhase(program.startingDate, program.cultivarName);
+                    launchCameraInterface(detectionType, program.id, 
+                            program.cultivarName, phase);
+                }
+                
+                @Override
+                public void onContinueWithoutProgram() {
+                    launchCameraInterface(detectionType, null, null, -1);
+                }
+            }
+        );
+        dialog.show();
     }
 
     private int calculatePhase(String startDate, String cultivarName) {

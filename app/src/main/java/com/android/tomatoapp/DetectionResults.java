@@ -158,18 +158,40 @@ public class DetectionResults extends BaseDrawerActivity {
                 detectionCure.setText(cure);
             }
 
-            // Set accuracy
+            // Set accuracy with enhanced display
             String acc = intent.getStringExtra("accuracy");
             String confidenceWarning = intent.getStringExtra("confidenceWarning");
             
             StringBuilder accuracyText = new StringBuilder();
+            
+            // Add confidence level indicator
+            if (acc != null && !acc.isEmpty()) {
+                try {
+                    float accuracyValue = Float.parseFloat(acc.replace("%", "").trim());
+                    String confidenceLevel;
+                    if (accuracyValue >= 80) {
+                        confidenceLevel = "🟢 High Confidence";
+                    } else if (accuracyValue >= 50) {
+                        confidenceLevel = "🟡 Medium Confidence";
+                    } else {
+                        confidenceLevel = "🔴 Low Confidence";
+                    }
+                    accuracyText.append(confidenceLevel).append("\n");
+                } catch (NumberFormatException e) {
+                    // Ignore parsing errors
+                }
+            }
+            
             if (confidenceWarning != null && !confidenceWarning.isEmpty()) {
-                accuracyText.append("⚠️ ").append(confidenceWarning).append("\n\n");
+                accuracyText.append("\n⚠️ ").append(confidenceWarning).append("\n");
             }
-            accuracyText.append("Detection Accuracy: ").append(acc != null ? acc : "N/A");
+            
+            accuracyText.append("\nDetection Accuracy: ").append(acc != null ? acc : "N/A");
+            
             if (topPredictions != null && !topPredictions.isEmpty()) {
-                accuracyText.append("\n\nTop Predictions: ").append(topPredictions);
+                accuracyText.append("\n\n📊 Top Predictions:\n").append(topPredictions);
             }
+            
             detectionAccuracy.setText(accuracyText.toString());
         }
 

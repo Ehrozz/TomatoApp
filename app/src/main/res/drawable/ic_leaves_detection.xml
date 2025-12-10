@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Main Leaf Shape -->
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M12,2C6.48,2 2,6.48 2,12c0,5.52 4.48,10 10,10 5.52,0 10,-4.48 10,-10C22,6.48 17.52,2 12,2z"/>
+    <!-- Central Vein -->
+    <path
+        android:fillColor="#2E7D32"
+        android:pathData="M12,4 L12,20"/>
+    <!-- Left Side Veins -->
+    <path
+        android:fillColor="#2E7D32"
+        android:pathData="M8,8 Q12,6 12,8 Q12,10 8,8z"/>
+    <path
+        android:fillColor="#2E7D32"
+        android:pathData="M8,12 Q12,10 12,12 Q12,14 8,12z"/>
+    <path
+        android:fillColor="#2E7D32"
+        android:pathData="M8,16 Q12,14 12,16 Q12,18 8,16z"/>
+    <!-- Right Side Veins -->
+    <path
+        android:fillColor="#2E7D32"
+        android:pathData="M16,8 Q12,6 12,8 Q12,10 16,8z"/>
+    <path
+        android:fillColor="#2E7D32"
+        android:pathData="M16,12 Q12,10 12,12 Q12,14 16,12z"/>
+    <path
+        android:fillColor="#2E7D32"
+        android:pathData="M16,16 Q12,14 12,16 Q12,18 16,16z"/>
+</vector>
+

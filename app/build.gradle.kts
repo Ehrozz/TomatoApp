@@ -30,6 +30,20 @@ android {
             isMinifyEnabled = false
         }
     }
+    
+    // Configure APK naming with version information
+    applicationVariants.all {
+        val variant = this
+        variant.outputs.all {
+            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            val buildType = variant.buildType.name
+            val versionName = variant.versionName
+            val versionCode = variant.versionCode
+            
+            output.outputFileName = "TomatoApp_v${versionName}_(${versionCode})_${buildType}.apk"
+        }
+    }
+    
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
