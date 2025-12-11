@@ -46,7 +46,7 @@ public class LocalDataManager {
         return instance;
     }
 
-    // Sync Work Programs from Firebase
+    // Sync Work Programs from Firebase to Local (with deduplication)
     public void syncWorkProgramsFromFirebase(String userId) {
         executorService.execute(() -> {
             try {
@@ -60,6 +60,9 @@ public class LocalDataManager {
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
                         executorService.execute(() -> {
                             try {
+                                // Get existing local work programs to check for duplicates
+                                List<WorkProgramEntity> localPrograms = database.workProgramDao().getAllForUser(userId);
+                                
                                 List<WorkProgramEntity> entities = new ArrayList<>();
                                 for (DataSnapshot child : snapshot.getChildren()) {
                                     String programId = child.getKey();
@@ -67,15 +70,25 @@ public class LocalDataManager {
 
                                     WorkProgramEntity entity = parseWorkProgramFromSnapshot(child, programId, userId);
                                     if (entity != null) {
+                                        // Check if this program already exists locally with same ID
+                                        boolean exists = false;
+                                        for (WorkProgramEntity local : localPrograms) {
+                                            if (local.id.equals(entity.id)) {
+                                                exists = true;
+                                                break;
+                                            }
+                                        }
+                                        
+                                        // Only add if it doesn't exist locally (upsert will handle updates)
                                         entities.add(entity);
                                     }
                                 }
 
-                                // Save to local database
+                                // Save to local database (upsert handles duplicates by ID)
                                 for (WorkProgramEntity entity : entities) {
                                     database.workProgramDao().upsert(entity);
                                 }
-                                Log.d(TAG, "Synced " + entities.size() + " work programs");
+                                Log.d(TAG, "Synced " + entities.size() + " work programs from Firebase");
                             } catch (Exception e) {
                                 Log.e(TAG, "Error syncing work programs", e);
                             }
@@ -92,6 +105,108 @@ public class LocalDataManager {
             }
         });
     }
+
+    // Sync Work Programs from Local to Firebase (for offline-created programs)
+    public void syncWorkProgramsToFirebase(Context context, String userId) {
+        executorService.execute(() -> {
+            try {
+                if (!isOnline(context)) {
+                    Log.d(TAG, "Device is offline, skipping sync to Firebase");
+                    return;
+                }
+
+                List<WorkProgramEntity> localPrograms = database.workProgramDao().getAllForUser(userId);
+                if (localPrograms.isEmpty()) {
+                    Log.d(TAG, "No local work programs to sync");
+                    return;
+                }
+
+                DatabaseReference dbRef = FirebaseDatabase.getInstance()
+                        .getReference("users")
+                        .child(userId)
+                        .child("workPrograms");
+
+                // Check which programs exist in Firebase
+                dbRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        executorService.execute(() -> {
+                            try {
+                                // Collect Firebase program IDs
+                                java.util.Set<String> firebaseIds = new java.util.HashSet<>();
+                                for (DataSnapshot child : snapshot.getChildren()) {
+                                    String programId = child.getKey();
+                                    if (programId != null) {
+                                        firebaseIds.add(programId);
+                                    }
+                                }
+
+                                // Sync local programs that don't exist in Firebase
+                                int syncedCount = 0;
+                                for (WorkProgramEntity entity : localPrograms) {
+                                    if (!firebaseIds.contains(entity.id)) {
+                                        // This program was created offline, sync it to Firebase
+                                        DatabaseReference programRef = dbRef.child(entity.id);
+                                        java.util.Map<String, Object> programData = new java.util.HashMap<>();
+                                        programData.put("cultivarName", entity.cultivarName);
+                                        programData.put("startingDate", entity.startingDate);
+                                        programData.put("areaSize", entity.areaSize);
+                                        programData.put("projectedIncome", entity.projectedIncome);
+                                        programData.put("projectedExpenses", entity.projectedExpenses);
+                                        programData.put("adjustedIncome", entity.adjustedIncome);
+                                        programData.put("adjustedExpenses", entity.adjustedExpenses);
+                                        
+                                        // Add research fields if available
+                                        if (entity.season != null) {
+                                            programData.put("season", entity.season);
+                                        }
+                                        if (entity.seasonMonth > 0) {
+                                            programData.put("seasonMonth", entity.seasonMonth);
+                                        }
+                                        programData.put("isOffSeason", entity.isOffSeason);
+                                        if (entity.actualYield > 0) {
+                                            programData.put("actualYield", entity.actualYield);
+                                        }
+                                        if (entity.totalYield > 0) {
+                                            programData.put("totalYield", entity.totalYield);
+                                        }
+                                        if (entity.harvestDate != null) {
+                                            programData.put("harvestDate", entity.harvestDate);
+                                        }
+
+                                        programRef.setValue(programData)
+                                                .addOnSuccessListener(aVoid -> {
+                                                    Log.d(TAG, "Synced work program " + entity.id + " to Firebase");
+                                                })
+                                                .addOnFailureListener(e -> {
+                                                    Log.e(TAG, "Failed to sync work program " + entity.id + " to Firebase", e);
+                                                });
+                                        syncedCount++;
+                                    }
+                                }
+
+                                if (syncedCount > 0) {
+                                    Log.d(TAG, "Synced " + syncedCount + " local work programs to Firebase");
+                                } else {
+                                    Log.d(TAG, "All local work programs already exist in Firebase");
+                                }
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error syncing work programs to Firebase", e);
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        Log.e(TAG, "Error checking Firebase for work programs", error.toException());
+                    }
+                });
+            } catch (Exception e) {
+                Log.e(TAG, "Error syncing work programs to Firebase", e);
+            }
+        });
+    }
+
 
     // Sync Calculations from Firebase
     public void syncCalculationsFromFirebase(String userId) {
@@ -507,34 +622,143 @@ public class LocalDataManager {
         }
     }
 
+    // Save Work Program to Local Database (for offline support)
+    public void saveWorkProgramToLocal(WorkProgramEntity entity) {
+        executorService.execute(() -> {
+            try {
+                database.workProgramDao().upsert(entity);
+                Log.d(TAG, "Saved work program " + entity.id + " to local database");
+            } catch (Exception e) {
+                Log.e(TAG, "Error saving work program to local database", e);
+            }
+        });
+    }
+
     // Helper method to parse WorkProgram from Firebase snapshot
     private WorkProgramEntity parseWorkProgramFromSnapshot(DataSnapshot snapshot, String programId, String userId) {
         try {
-            // This is a simplified version - you may need to adjust based on actual Firebase structure
             String cultivarName = snapshot.child("cultivarName").getValue(String.class);
+            if (cultivarName == null) {
+                cultivarName = snapshot.child("cultivar").getValue(String.class);
+            }
             String startingDate = snapshot.child("startingDate").getValue(String.class);
-            Object areaSizeObj = snapshot.child("areaSize").getValue();
+            if (startingDate == null) {
+                startingDate = snapshot.child("startDate").getValue(String.class);
+            }
+
+            // Safely parse numeric fields
             double areaSize = 0;
+            Object areaSizeObj = snapshot.child("areaSize").getValue();
             if (areaSizeObj != null) {
                 if (areaSizeObj instanceof Double) {
                     areaSize = (Double) areaSizeObj;
                 } else if (areaSizeObj instanceof Long) {
                     areaSize = ((Long) areaSizeObj).doubleValue();
+                } else if (areaSizeObj instanceof String) {
+                    try {
+                        areaSize = Double.parseDouble((String) areaSizeObj);
+                    } catch (NumberFormatException ignored) { }
+                }
+            } else {
+                // Fallback to legacy landArea
+                Object legacyAreaValue = snapshot.child("landArea").getValue();
+                if (legacyAreaValue instanceof Double) {
+                    areaSize = (Double) legacyAreaValue;
+                } else if (legacyAreaValue instanceof Long) {
+                    areaSize = ((Long) legacyAreaValue).doubleValue();
+                } else if (legacyAreaValue instanceof String) {
+                    try {
+                        areaSize = Double.parseDouble((String) legacyAreaValue);
+                    } catch (NumberFormatException ignored) { }
                 }
             }
 
-            // Create a basic entity - you may need to add more fields
+            double projectedIncome = 0;
+            Object incomeValue = snapshot.child("projectedIncome").getValue();
+            if (incomeValue instanceof Double) {
+                projectedIncome = (Double) incomeValue;
+            } else if (incomeValue instanceof Long) {
+                projectedIncome = ((Long) incomeValue).doubleValue();
+            } else if (incomeValue instanceof String) {
+                try {
+                    projectedIncome = Double.parseDouble((String) incomeValue);
+                } catch (NumberFormatException ignored) { }
+            }
+
+            double projectedExpenses = 0;
+            Object expensesValue = snapshot.child("projectedExpenses").getValue();
+            if (expensesValue instanceof Double) {
+                projectedExpenses = (Double) expensesValue;
+            } else if (expensesValue instanceof Long) {
+                projectedExpenses = ((Long) expensesValue).doubleValue();
+            } else if (expensesValue instanceof String) {
+                try {
+                    projectedExpenses = Double.parseDouble((String) expensesValue);
+                } catch (NumberFormatException ignored) { }
+            }
+
+            double adjustedIncome = 0;
+            Object adjustedIncomeValue = snapshot.child("adjustedIncome").getValue();
+            if (adjustedIncomeValue instanceof Double) {
+                adjustedIncome = (Double) adjustedIncomeValue;
+            } else if (adjustedIncomeValue instanceof Long) {
+                adjustedIncome = ((Long) adjustedIncomeValue).doubleValue();
+            }
+
+            double adjustedExpenses = 0;
+            Object adjustedExpensesValue = snapshot.child("adjustedExpenses").getValue();
+            if (adjustedExpensesValue instanceof Double) {
+                adjustedExpenses = (Double) adjustedExpensesValue;
+            } else if (adjustedExpensesValue instanceof Long) {
+                adjustedExpenses = ((Long) adjustedExpensesValue).doubleValue();
+            }
+
+            // Calculate phases JSON if we have cultivar and start date
+            String phasesJson = null;
+            if (cultivarName != null && startingDate != null) {
+                phasesJson = WorkProgramDataHelper.calculatePhasesJson(cultivarName, startingDate);
+            }
+
+            // Parse research fields
+            String season = snapshot.child("season").getValue(String.class);
+            Integer seasonMonthObj = snapshot.child("seasonMonth").getValue(Integer.class);
+            Boolean isOffSeasonObj = snapshot.child("isOffSeason").getValue(Boolean.class);
+            Double actualYieldObj = snapshot.child("actualYield").getValue(Double.class);
+            Double totalYieldObj = snapshot.child("totalYield").getValue(Double.class);
+            String harvestDate = snapshot.child("harvestDate").getValue(String.class);
+
+            // Auto-detect season if not set
+            if (season == null && startingDate != null) {
+                season = SeasonHelper.getSeason(startingDate);
+            }
+            int seasonMonth = seasonMonthObj != null ? seasonMonthObj :
+                             (startingDate != null ? SeasonHelper.getSeasonMonth(startingDate) : 0);
+            boolean isOffSeason = isOffSeasonObj != null ? isOffSeasonObj :
+                                 (startingDate != null ? SeasonHelper.isOffSeason(startingDate) : false);
+            double actualYield = actualYieldObj != null ? actualYieldObj : 0.0;
+            double totalYield = totalYieldObj != null ? totalYieldObj : 0.0;
+
+            // Create entity with all fields
             return new WorkProgramEntity(
                     programId,
                     userId,
                     cultivarName != null ? cultivarName : "",
                     areaSize,
                     startingDate != null ? startingDate : "",
-                    "", // phasesJson
-                    "", // detectionHistoriesJson
-                    0, 0, 0, 0, // projected/adjusted income/expenses
-                    0, 0, 0, 0, 0, // phase completions
-                    0, 0, 0, 0, 0.0 // task metrics
+                    phasesJson != null ? phasesJson : "",
+                    null, // detectionHistoriesJson - loaded on-demand
+                    projectedIncome,
+                    projectedExpenses,
+                    adjustedIncome,
+                    adjustedExpenses,
+                    0.0, 0.0, 0.0, 0.0, 0.0, // phase completions
+                    0, 0, 0, 0, 0.0, // task metrics
+                    season != null ? season : (startingDate != null ? SeasonHelper.getSeason(startingDate) : "unknown"),
+                    seasonMonth,
+                    isOffSeason,
+                    actualYield,
+                    totalYield,
+                    harvestDate
             );
         } catch (Exception e) {
             Log.e(TAG, "Error parsing work program", e);

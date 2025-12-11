@@ -104,6 +104,9 @@ public class WorkProgramSelection extends BaseDrawerActivity {
                     }
                     
                     updateUI();
+                    
+                    // Sync from Firebase to local to ensure consistency
+                    LocalDataManager.getInstance(WorkProgramSelection.this).syncWorkProgramsFromFirebase(userId);
                 }
             }
 
@@ -129,6 +132,21 @@ public class WorkProgramSelection extends BaseDrawerActivity {
 
         // Header menu button - Sort options
         headerMenuButton.setOnClickListener(v -> showSortMenu());
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        
+        // When resuming, check if we're online and sync
+        if (LocalDataManager.isOnline(this)) {
+            // Sync local work programs to Firebase (for offline-created ones)
+            LocalDataManager.getInstance(this).syncWorkProgramsToFirebase(this, userId);
+            // Also sync from Firebase to local (to get any updates)
+            LocalDataManager.getInstance(this).syncWorkProgramsFromFirebase(userId);
+            // Reload to show synced data
+            loadWorkPrograms();
+        }
     }
 
     private void loadWorkPrograms() {

@@ -51,11 +51,32 @@ public abstract class BaseDrawerActivity extends AppCompatActivity {
         super.attachBaseContext(context);
     }
 
+    private boolean wasOffline = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         // Apply theme setting before super.onCreate
         applyTheme();
         super.onCreate(savedInstanceState);
+        
+        // Check initial connectivity state
+        wasOffline = !LocalDataManager.isOnline(this);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        
+        // Check if we just came back online
+        boolean isOnline = LocalDataManager.isOnline(this);
+        if (wasOffline && isOnline) {
+            // We just came back online, sync local data to Firebase
+            FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+            if (currentUser != null) {
+                LocalDataManager.getInstance(this).syncWorkProgramsToFirebase(this, currentUser.getUid());
+            }
+        }
+        wasOffline = !isOnline;
     }
 
     private void applyTheme() {

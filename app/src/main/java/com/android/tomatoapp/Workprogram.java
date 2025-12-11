@@ -290,13 +290,38 @@ public class Workprogram extends BaseDrawerActivity {
                 programData.put("adjustedExpenses", 0.0);
                 programData.put("detectionHistories", new java.util.HashMap<String, Object>());
                 
-                // Save all data at once
+                // Calculate phases JSON for local storage
+                String phasesJson = WorkProgramDataHelper.calculatePhasesJson(selectedCultivar, selectedDate);
+                
+                // Create WorkProgramEntity for local database
+                WorkProgramEntity localEntity = new WorkProgramEntity(
+                        id,
+                        userId,
+                        selectedCultivar,
+                        areaSizeValue,
+                        selectedDate,
+                        phasesJson,
+                        null, // detectionHistoriesJson
+                        0.0, // projectedIncome
+                        0.0, // projectedExpenses
+                        0.0, // adjustedIncome
+                        0.0, // adjustedExpenses
+                        0.0, 0.0, 0.0, 0.0, 0.0, // phase completions
+                        0, 0, 0, 0, 0.0 // task metrics
+                );
+                
+                // Save to local database immediately (works offline)
+                LocalDataManager.getInstance(Workprogram.this).saveWorkProgramToLocal(localEntity);
+                
+                // Save all data at once to Firebase (will queue if offline)
                 DatabaseReference programRef = dbRef.child(id);
                 programRef.setValue(programData).addOnSuccessListener(unused -> {
                     Toast.makeText(this, "Work Program saved successfully!", Toast.LENGTH_LONG).show();
 
-                    // Sync to local database
-                    LocalDataManager.getInstance(Workprogram.this).syncWorkProgramsFromFirebase(userId);
+                    // Sync from Firebase to local (to ensure consistency, handles online case)
+                    if (LocalDataManager.isOnline(Workprogram.this)) {
+                        LocalDataManager.getInstance(Workprogram.this).syncWorkProgramsFromFirebase(userId);
+                    }
 
                     // Initialize weather data collection for this program
                     initializeWeatherDataCollection(programId, selectedDate, selectedCultivar);
@@ -342,7 +367,15 @@ public class Workprogram extends BaseDrawerActivity {
                         btnCurrentExpenses.setOnClickListener(view -> openCurrentExpenses());
                     }
 
-                }).addOnFailureListener(e -> Toast.makeText(this, "Failed to save: " + e.getMessage(), Toast.LENGTH_LONG).show());
+                }).addOnFailureListener(e -> {
+                    // Even if Firebase save fails, local save succeeded
+                    // Show appropriate message based on online status
+                    if (LocalDataManager.isOnline(this)) {
+                        Toast.makeText(this, "Failed to save to Firebase: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    } else {
+                        Toast.makeText(this, "Work Program saved locally. Will sync when online.", Toast.LENGTH_LONG).show();
+                    }
+                });
 
                 cultivarCard.setVisibility(CardView.GONE);
             });
