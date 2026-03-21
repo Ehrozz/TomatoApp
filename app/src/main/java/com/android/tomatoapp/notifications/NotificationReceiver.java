@@ -9,8 +9,8 @@ import android.text.TextUtils;
 
 import androidx.core.app.TaskStackBuilder;
 
-import com.android.tomatoapp.common.managers.AppNotificationManager;
-import com.android.tomatoapp.core.ui.MainActivity;
+import com.android.tomatoapp.AppNotificationManager;
+import com.android.tomatoapp.MainActivity;
 
 /**
  * Receives scheduled alarms and displays notifications.

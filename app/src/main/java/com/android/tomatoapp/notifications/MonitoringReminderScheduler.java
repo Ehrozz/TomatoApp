@@ -4,7 +4,7 @@ import android.content.Context;
 import android.os.Bundle;
 import android.text.TextUtils;
 
-import com.android.tomatoapp.monitoring.ui.PlantMonitoringActivity;
+import com.android.tomatoapp.PlantMonitoringActivity;
 
 import java.util.Calendar;
 

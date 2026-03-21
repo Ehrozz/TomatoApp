@@ -37,61 +37,61 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Material3.Light">
         <activity
-            android:name=".financial.ui.Calculator"
+            android:name=".Calculator"
             android:exported="false" />
         <activity
-            android:name=".analytics.ui.AnalyticsActivity"
+            android:name=".AnalyticsActivity"
             android:exported="false" />
         <activity
-            android:name=".analytics.ui.CultivarDetailsActivity"
+            android:name=".CultivarDetailsActivity"
             android:exported="false" />
         <activity
-            android:name=".financial.ui.CostSelection"
+            android:name=".CostSelection"
             android:exported="false" />
         <activity
-            android:name=".financial.ui.CurrentExpensesActivity"
+            android:name=".CurrentExpensesActivity"
             android:exported="false"
             android:label="Current Expenses" />
         <activity
-            android:name=".analytics.ui.DetectionHistoryActivity"
+            android:name=".DetectionHistoryActivity"
             android:exported="false" />
         <activity
-            android:name=".detection.ui.DetectionResults"
+            android:name=".DetectionResults"
             android:exported="false" />
         <activity
-            android:name=".detection.ui.DiseaseView"
+            android:name=".DiseaseView"
             android:exported="false" />
         <activity
-            android:name=".financial.ui.Cost"
+            android:name=".Cost"
             android:exported="false" />
         <activity
-            android:name=".workprogram.ui.WorkProgramSelection"
+            android:name=".WorkProgramSelection"
             android:exported="false" />
         <activity
-            android:name=".common.ui.InformationInterface"
+            android:name=".InformationInterface"
             android:exported="false" />
         <activity
-            android:name=".detection.ui.CameraInterface"
+            android:name=".CameraInterface"
             android:exported="false" />
         <activity
-            android:name=".common.ui.IPM"
+            android:name=".IPM"
             android:exported="false" />
         <activity
-            android:name=".task.ui.DailyTask"
+            android:name=".DailyTask"
             android:exported="false" />
         <activity
-            android:name=".financial.ui.DailyExpensesActivity"
+            android:name=".DailyExpensesActivity"
             android:exported="false"
             android:label="Daily Expenses" />
         <activity
-            android:name=".workprogram.ui.Workprogram"
+            android:name=".Workprogram"
             android:exported="false" />
         <activity
-            android:name=".auth.ui.Register"
+            android:name=".Register"
             android:exported="false"
             android:theme="@style/Theme.Material3.Light.NoActionBar" />
         <activity
-            android:name=".auth.ui.Login"
+            android:name=".Login"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -100,35 +100,35 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".core.ui.MainActivity"
+            android:name=".MainActivity"
             android:exported="true" />
 
         <activity
-            android:name=".weather.ui.ForecastActivity"
+            android:name=".ForecastActivity"
             android:exported="false"
             android:label="Forecast" />
         <activity
-            android:name=".monitoring.ui.PlantMonitoringActivity"
+            android:name=".PlantMonitoringActivity"
             android:exported="false"
             android:label="@string/monitor_title" />
         <activity
-            android:name=".auth.ui.ProfileActivity"
+            android:name=".ProfileActivity"
             android:exported="false"
             android:label="Profile" />
         <activity
-            android:name=".analytics.ui.SeasonComparisonActivity"
+            android:name=".SeasonComparisonActivity"
             android:exported="false"
             android:label="Season Comparison" />
         <activity
-            android:name=".settings.ui.SettingsActivity"
+            android:name=".SettingsActivity"
             android:exported="false"
             android:label="Settings" />
         <activity
-            android:name=".settings.ui.UserManualActivity"
+            android:name=".UserManualActivity"
             android:exported="false"
             android:label="User Manual" />
         <activity
-            android:name=".common.ui.NotificationListActivity"
+            android:name=".NotificationListActivity"
             android:exported="false"
             android:label="Notifications" />
 
