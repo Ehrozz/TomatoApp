@@ -6,8 +6,8 @@ import android.content.Intent;
 
 import androidx.core.app.TaskStackBuilder;
 
-import com.android.tomatoapp.AppNotificationManager;
-import com.android.tomatoapp.DetectionResults;
+import com.android.tomatoapp.common.managers.AppNotificationManager;
+import com.android.tomatoapp.detection.ui.DetectionResults;
 
 import java.util.Map;
 
