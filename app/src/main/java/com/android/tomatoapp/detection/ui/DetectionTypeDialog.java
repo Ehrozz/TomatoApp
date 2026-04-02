@@ -15,6 +15,8 @@ import androidx.annotation.NonNull;
 
 import com.google.android.material.card.MaterialCardView;
 
+import com.android.tomatoapp.R;
+
 public class DetectionTypeDialog extends Dialog {
     
     public enum DetectionType {

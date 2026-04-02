@@ -24,6 +24,16 @@ import java.io.File;
 import java.io.InputStream;
 import java.util.UUID;
 
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.common.utils.ReferenceImageProvider;
+import com.android.tomatoapp.core.network.LocalDataManager;
+import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.detection.ui.CameraInterface;
+import com.android.tomatoapp.detection.ui.DetectionTypeDialog;
+import com.android.tomatoapp.detection.ui.SimpleCaptureActivity;
+import com.android.tomatoapp.monitoring.data.PlantMonitoringEntity;
+import com.android.tomatoapp.monitoring.data.PlantMonitoringRepository;
+
 public class PlantMonitoringActivity extends BaseDrawerActivity {
 
     public static final String EXTRA_PROGRAM_ID = "programId";

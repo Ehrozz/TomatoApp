@@ -6,6 +6,21 @@ import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 
+import com.android.tomatoapp.detection.data.DetectionHistoryDao;
+import com.android.tomatoapp.detection.data.DetectionHistoryEntity;
+import com.android.tomatoapp.financial.data.CalculationDao;
+import com.android.tomatoapp.financial.data.CalculationEntity;
+import com.android.tomatoapp.monitoring.data.PlantMonitoringDao;
+import com.android.tomatoapp.monitoring.data.PlantMonitoringEntity;
+import com.android.tomatoapp.settings.data.SettingsDao;
+import com.android.tomatoapp.settings.data.SettingsEntity;
+import com.android.tomatoapp.task.data.TaskDao;
+import com.android.tomatoapp.task.data.TaskEntity;
+import com.android.tomatoapp.weather.data.WeatherData;
+import com.android.tomatoapp.weather.data.WeatherDataDao;
+import com.android.tomatoapp.workprogram.data.WorkProgramDao;
+import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
+
 @Database(entities = {
         WorkProgramEntity.class,
         PlantMonitoringEntity.class,
@@ -44,5 +59,3 @@ public abstract class AppDatabase extends RoomDatabase {
         return INSTANCE;
     }
 }
-
-

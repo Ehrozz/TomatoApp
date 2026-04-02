@@ -40,6 +40,12 @@ import com.google.firebase.database.ValueEventListener;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.common.ui.dialogs.TermsDialog;
+import com.android.tomatoapp.common.utils.PhoneUtils;
+import com.android.tomatoapp.core.network.FirebaseErrorHandler;
+import com.android.tomatoapp.core.ui.MainActivity;
+
 public class Login extends AppCompatActivity {
     private TextInputEditText editTextEmail;
     private TextInputEditText editTextPassword;

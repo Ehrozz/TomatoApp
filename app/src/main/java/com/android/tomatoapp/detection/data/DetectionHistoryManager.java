@@ -2,6 +2,7 @@ package com.android.tomatoapp.detection.data;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Log;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -13,7 +14,10 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.android.tomatoapp.core.network.LocalDataManager;
+
 public class DetectionHistoryManager {
+    private static final String TAG = "DetectionHistoryManager";
     private static final String PREF_NAME = "detection_history";
     private static final String KEY_HISTORY = "history";
 
@@ -106,7 +110,7 @@ public class DetectionHistoryManager {
                 );
             }
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error adding detection history", e);
         }
     }
 
@@ -142,7 +146,7 @@ public class DetectionHistoryManager {
                     return historyList;
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e(TAG, "Error retrieving detection history from local database", e);
             }
         }
         
@@ -156,7 +160,7 @@ public class DetectionHistoryManager {
                 historyList.add(historyArray.getJSONObject(i));
             }
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error parsing detection history JSON", e);
         }
         return historyList;
     }
@@ -195,7 +199,7 @@ public class DetectionHistoryManager {
 
             prefs.edit().putString(KEY_HISTORY, newArray.toString()).apply();
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error removing detection from history", e);
         }
     }
 }

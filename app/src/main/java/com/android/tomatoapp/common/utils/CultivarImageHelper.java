@@ -2,6 +2,7 @@ package com.android.tomatoapp.common.utils;
 
 import java.util.HashMap;
 import java.util.Map;
+import com.android.tomatoapp.R;
 
 /**
  * Helper class to map cultivar names to their image resources.

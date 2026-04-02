@@ -1,8 +1,11 @@
 package com.android.tomatoapp.workprogram.ui;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.drawable.Drawable;
+import android.location.Location;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -38,9 +41,6 @@ import com.prolificinteractive.materialcalendarview.DayViewDecorator;
 import com.prolificinteractive.materialcalendarview.DayViewFacade;
 import com.prolificinteractive.materialcalendarview.MaterialCalendarView;
 
-import android.content.SharedPreferences;
-import android.location.Location;
-
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
@@ -50,7 +50,25 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.auth.ui.Login;
+import com.android.tomatoapp.common.managers.CompletedDecorator;
+import com.android.tomatoapp.common.managers.MissedDecorator;
+import com.android.tomatoapp.common.managers.SkippedDecorator;
+import com.android.tomatoapp.common.utils.CultivarImageHelper;
+import com.android.tomatoapp.core.network.LocalDataManager;
+import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.financial.ui.CurrentExpensesActivity;
+import com.android.tomatoapp.settings.data.SettingsPreferences;
+import com.android.tomatoapp.task.data.TaskEntity;
+import com.android.tomatoapp.task.ui.DailyTask;
+import com.android.tomatoapp.weather.data.WeatherDataCollector;
+import com.android.tomatoapp.workprogram.data.WorkProgramDataHelper;
+import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
+
 public class Workprogram extends BaseDrawerActivity {
+
+    private static final String TAG = "Workprogram";
 
     private CardView cultivarCard;
     private Spinner cultivarSpinner;
@@ -347,7 +365,7 @@ public class Workprogram extends BaseDrawerActivity {
                                 }
                             }
                         } catch (ParseException e) {
-                            e.printStackTrace();
+                            Log.e(TAG, "Error initializing work program dates", e);
                         }
                     }
 
@@ -440,7 +458,7 @@ public class Workprogram extends BaseDrawerActivity {
             calendarView.addDecorator(new PhaseRangeDecorator(phase4, p4));
             calendarView.addDecorator(new PhaseRangeDecorator(phase5, p5));
         } catch (ParseException e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error parsing phases for calendar display", e);
         }
     }
 
@@ -486,7 +504,7 @@ public class Workprogram extends BaseDrawerActivity {
                 try {
                     return Integer.parseInt(c[3]); // use max maturity days
                 } catch (NumberFormatException e) {
-                    e.printStackTrace();
+                    Log.e(TAG, "Error parsing maturity days for cultivar " + cultivar, e);
                     return 0;
                 }
             }
@@ -948,7 +966,7 @@ public class Workprogram extends BaseDrawerActivity {
                     }
                     
                 } catch (ParseException e) {
-                    e.printStackTrace();
+                    Log.e(TAG, "Error calculating accessible dates", e);
                 }
 
                 updateTaskWarningBanner();
@@ -975,7 +993,7 @@ public class Workprogram extends BaseDrawerActivity {
             Date d1 = sdf.parse(clickedDate);
             Date d2 = sdf.parse(startDate);
             return d1 != null && d2 != null && d1.before(d2);
-        } catch (ParseException e) { e.printStackTrace(); return false; }
+        } catch (ParseException e) { Log.e(TAG, "Error comparing dates", e); return false; }
     }
 
     private CalendarDay parseCalendarDay(String dateStr) {
@@ -986,7 +1004,7 @@ public class Workprogram extends BaseDrawerActivity {
                 cal.setTime(d);
                 return CalendarDay.from(cal);
             }
-        } catch (ParseException e) { e.printStackTrace(); }
+        } catch (ParseException e) { Log.e(TAG, "Error parsing calendar day from " + dateStr, e); }
         return null;
     }
 

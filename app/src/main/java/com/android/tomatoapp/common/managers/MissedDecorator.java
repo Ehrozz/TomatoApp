@@ -11,6 +11,8 @@ import com.prolificinteractive.materialcalendarview.spans.DotSpan;
 
 import java.util.HashSet;
 
+import com.android.tomatoapp.R;
+
 /**
  * Decorator for marking missed days on the calendar.
  * Supports refreshing without removing other decorators.

@@ -4,6 +4,7 @@ import android.content.Context;
 import android.os.Bundle;
 
 import com.android.tomatoapp.R;
+import com.android.tomatoapp.core.ui.MainActivity;
 
 import java.util.Calendar;
 import java.util.Random;
@@ -53,7 +54,7 @@ public final class GeneralUpdateScheduler {
                 NotificationChannels.CHANNEL_GENERAL,
                 "TomatoApp tip",
                 "Tap to view today's tip",
-                com.android.tomatoapp.MainActivity.class,
+                MainActivity.class,
                 extras,
                 calendar.getTimeInMillis(),
                 INTERVAL_DAY,

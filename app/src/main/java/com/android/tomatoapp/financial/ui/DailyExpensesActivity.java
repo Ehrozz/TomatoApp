@@ -31,6 +31,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.auth.ui.Login;
+import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.settings.data.SettingsPreferences;
+
 // Data Model Classes
 class LaborItem {
     int numWorkers;

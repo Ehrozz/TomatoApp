@@ -5,6 +5,8 @@ import androidx.room.Entity;
 import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
+import com.android.tomatoapp.season.data.SeasonHelper;
+
 /**
  * Local representation of a work program for analytics.
  * Mirrors the Firebase structure and adds local-only fields if needed.

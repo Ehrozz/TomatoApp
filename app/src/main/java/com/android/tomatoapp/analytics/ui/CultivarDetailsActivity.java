@@ -13,14 +13,18 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AlertDialog;
-import androidx.recyclerview.widget.LinearLayoutManager;
-
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.analytics.data.AnalyticsPdfExporter;
+import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.workprogram.data.WorkProgramDataHelper;
+import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
+import com.android.tomatoapp.workprogram.data.WorkProgramRepository;
+import com.android.tomatoapp.workprogram.data.WorkProgramSelectionAdapter;
 import com.github.mikephil.charting.charts.BarChart;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.XAxis;
@@ -31,11 +35,11 @@ import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
-import com.github.mikephil.charting.utils.ColorTemplate;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Details screen for a specific cultivar showing all work programs with table and chart views.
@@ -216,7 +220,7 @@ public class CultivarDetailsActivity extends BaseDrawerActivity {
         row.addView(createCell(e.cultivarName != null ? e.cultivarName : "N/A", 120));
         
         // Column 2: Area Size
-        row.addView(createCell(String.format("%.2f ha", e.areaSize), 100));
+        row.addView(createCell(String.format(Locale.getDefault(), "%.2f ha", e.areaSize), 100));
         
         // Column 3: Start Date
         row.addView(createCell(e.startingDate != null ? e.startingDate : "N/A", 110));
@@ -231,14 +235,14 @@ public class CultivarDetailsActivity extends BaseDrawerActivity {
         row.addView(createCell(getDetectionsSummaryForEntity(e), 100));
         
         // Column 10: Income
-        row.addView(createCell(String.format("₱%,.0f", e.projectedIncome), 130, true));
+        row.addView(createCell(String.format(Locale.getDefault(), "₱%,.0f", e.projectedIncome), 130, true));
         
         // Column 11: Expenses
-        row.addView(createCell(String.format("₱%,.0f", e.projectedExpenses), 130, true));
+        row.addView(createCell(String.format(Locale.getDefault(), "₱%,.0f", e.projectedExpenses), 130, true));
         
         // Column 12: Profit
         double profit = e.projectedIncome - e.projectedExpenses;
-        row.addView(createCell(String.format("₱%,.0f", profit), 130, true, profit >= 0));
+        row.addView(createCell(String.format(Locale.getDefault(), "₱%,.0f", profit), 130, true, profit >= 0));
         
         return row;
     }
@@ -450,13 +454,13 @@ public class CultivarDetailsActivity extends BaseDrawerActivity {
         public void onBindViewHolder(WorkProgramViewHolder holder, int position) {
             WorkProgramEntity e = items.get(position);
             holder.cultivarName.setText(e.cultivarName != null ? e.cultivarName : "N/A");
-            holder.areaSize.setText(String.format("%.2f hectare", e.areaSize));
+            holder.areaSize.setText(String.format(Locale.getDefault(), "%.2f hectare", e.areaSize));
             holder.startingDate.setText(e.startingDate != null ? e.startingDate : "N/A");
             holder.phases.setText(getPhasesSummary(e));
-            holder.projectedIncome.setText(String.format("₱%,.2f", e.projectedIncome));
-            holder.projectedExpenses.setText(String.format("₱%,.2f", e.projectedExpenses));
+            holder.projectedIncome.setText(String.format(Locale.getDefault(), "₱%,.2f", e.projectedIncome));
+            holder.projectedExpenses.setText(String.format(Locale.getDefault(), "₱%,.2f", e.projectedExpenses));
             double profit = e.projectedIncome - e.projectedExpenses;
-            holder.profit.setText(String.format("₱%,.2f", profit));
+            holder.profit.setText(String.format(Locale.getDefault(), "₱%,.2f", profit));
         }
 
         private String getPhasesSummary(WorkProgramEntity e) {
@@ -584,4 +588,3 @@ public class CultivarDetailsActivity extends BaseDrawerActivity {
         }
     }
 }
-

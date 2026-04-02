@@ -25,6 +25,11 @@ import com.google.firebase.database.ValueEventListener;
 import java.util.List;
 import java.util.ArrayList;
 
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.auth.data.User;
+import com.android.tomatoapp.core.network.FirebaseErrorHandler;
+import com.android.tomatoapp.core.ui.MainActivity;
+
 public class Register extends AppCompatActivity {
 
     private static final int MIN_PASSWORD_LENGTH = 6;

@@ -28,12 +28,20 @@ import androidx.core.content.FileProvider;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import android.util.Log;
+
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
 import java.util.concurrent.ExecutionException;
+import com.android.tomatoapp.R;
 
 public class SimpleCaptureActivity extends AppCompatActivity {
+
+    private static final String TAG = "SimpleCaptureActivity";
 
     public static final String EXTRA_CAPTURED_IMAGE_URI = "captured_image_uri";
 
@@ -112,7 +120,7 @@ public class SimpleCaptureActivity extends AppCompatActivity {
                 cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture);
 
             } catch (ExecutionException | InterruptedException e) {
-                e.printStackTrace();
+                Log.e(TAG, "Failed to start camera", e);
                 Toast.makeText(this, "Failed to start camera: " + e.getMessage(), Toast.LENGTH_LONG).show();
             }
         }, ContextCompat.getMainExecutor(this));
@@ -136,7 +144,9 @@ public class SimpleCaptureActivity extends AppCompatActivity {
         // Ensure directory exists
         File parentDir = photoFile.getParentFile();
         if (parentDir != null && !parentDir.exists()) {
-            parentDir.mkdirs();
+            if (!parentDir.mkdirs()) {
+                Log.w(TAG, "Failed to create directory: " + parentDir.getAbsolutePath());
+            }
         }
 
         ImageCapture.OutputFileOptions outputOptions =
@@ -174,7 +184,7 @@ public class SimpleCaptureActivity extends AppCompatActivity {
 
                     @Override
                     public void onError(@NonNull ImageCaptureException exception) {
-                        exception.printStackTrace();
+                        Log.e(TAG, "Failed to capture photo", exception);
                         Toast.makeText(SimpleCaptureActivity.this,
                                 "Failed to capture photo: " + exception.getMessage(),
                                 Toast.LENGTH_SHORT).show();
@@ -211,16 +221,45 @@ public class SimpleCaptureActivity extends AppCompatActivity {
                 File picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
                 File tomatoAppDir = new File(picturesDir, "TomatoApp");
                 if (!tomatoAppDir.exists()) {
-                    tomatoAppDir.mkdirs();
+                    if (!tomatoAppDir.mkdirs()) {
+                        Log.w(TAG, "Failed to create TomatoApp directory in Pictures");
+                        return;
+                    }
                 }
                 
                 File destFile = new File(tomatoAppDir, fileName);
-                java.nio.file.Files.copy(sourceFile.toPath(), destFile.toPath(), 
-                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                
+                // Manual file copy (API 24 compatible)
+                try {
+                    copyFile(sourceFile, destFile);
+                    // Notify MediaStore about the new file
+                    MediaScannerConnection.scanFile(
+                            this,
+                            new String[]{destFile.getAbsolutePath()},
+                            new String[]{"image/jpeg"},
+                            null
+                    );
+                } catch (IOException e) {
+                    Log.w(TAG, "Failed to copy file to public Pictures directory", e);
+                }
             }
         } catch (Exception e) {
             // Silently fail - we still have the image in app directory
-            e.printStackTrace();
+            Log.w(TAG, "Error saving to public Pictures", e);
+        }
+    }
+    
+    /**
+     * Copies a file from source to destination (API 24 compatible alternative to Files.copy).
+     */
+    private void copyFile(File source, File destination) throws IOException {
+        try (FileInputStream in = new FileInputStream(source);
+             FileOutputStream out = new FileOutputStream(destination)) {
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = in.read(buffer)) != -1) {
+                out.write(buffer, 0, bytesRead);
+            }
         }
     }
 

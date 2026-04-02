@@ -3,22 +3,23 @@ package com.android.tomatoapp.common.models;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.Menu;
-import android.view.MenuItem;
-import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.ActionBarDrawerToggle;
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import androidx.drawerlayout.widget.DrawerLayout;
 
-import com.google.android.material.navigation.NavigationView;
-import com.google.firebase.auth.FirebaseAuth;
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.analytics.ui.DetectionHistoryActivity;
+import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.detection.ui.CameraInterface;
+import com.android.tomatoapp.detection.ui.DetectionTypeDialog;
+import com.android.tomatoapp.task.data.TaskSchedule;
+import com.android.tomatoapp.workprogram.data.WorkProgramDataHelper;
+import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
+import com.android.tomatoapp.workprogram.data.WorkProgramRepository;
+import com.android.tomatoapp.workprogram.ui.WorkProgramSelectionDialog;
 
 import java.util.List;
 

@@ -18,6 +18,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.android.tomatoapp.core.database.AppDatabase;
+import com.android.tomatoapp.season.data.SeasonHelper;
+
 /**
  * Repository that keeps WorkProgram data in local Room and Firebase Realtime Database.
  */

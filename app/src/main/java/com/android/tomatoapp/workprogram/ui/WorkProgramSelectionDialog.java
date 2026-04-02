@@ -23,6 +23,10 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.common.utils.CultivarImageHelper;
+import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
+
 public class WorkProgramSelectionDialog extends Dialog {
     
     private OnWorkProgramSelectedListener listener;

@@ -10,6 +10,8 @@ import com.prolificinteractive.materialcalendarview.CalendarDay;
 import com.prolificinteractive.materialcalendarview.spans.DotSpan;
 import java.util.HashSet;
 
+import com.android.tomatoapp.R;
+
 
 /**
  * Decorator for marking completed days on the calendar.

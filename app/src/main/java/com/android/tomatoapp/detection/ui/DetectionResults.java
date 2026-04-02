@@ -5,28 +5,25 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuItem;
+import android.util.Log;
+import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.view.View;
-import android.widget.Toast;
-import androidx.core.content.FileProvider;
-import java.io.File;
-import java.io.InputStream;
 
 import androidx.activity.EdgeToEdge;
-import androidx.appcompat.app.ActionBarDrawerToggle;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.core.content.FileProvider;
 
-import com.google.android.material.navigation.NavigationView;
-import com.google.firebase.auth.FirebaseAuth;
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.detection.data.DetectionHistoryManager;
 
+import java.io.File;
+import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Locale;
 
 public class DetectionResults extends BaseDrawerActivity {
-
+    private static final String TAG = "DetectionResults";
 
     private TextView identifyViewText, scoreText, finding1, finding2, finding3;
     private TextView detectionContextInfo;
@@ -67,7 +64,7 @@ public class DetectionResults extends BaseDrawerActivity {
 
             // Set badge number - show total detections in history
             ArrayList<org.json.JSONObject> history = DetectionHistoryManager.getHistory(this);
-            int totalDetections = history != null ? history.size() : 0;
+            int totalDetections = history.size();
             if (totalDetections > 0) {
                 badgeNumber.setText(String.valueOf(totalDetections));
             } else {
@@ -81,7 +78,7 @@ public class DetectionResults extends BaseDrawerActivity {
             } else {
                 // Generate a simple ID based on timestamp
                 long timestamp = System.currentTimeMillis();
-                identifyViewText.setText("Identify View, " + (timestamp % 10000));
+                identifyViewText.setText(String.format(Locale.getDefault(), "Identify View, %d", (timestamp % 10000)));
             }
 
             String detectionCultivar = intent.getStringExtra("detectionCultivar");
@@ -107,12 +104,12 @@ public class DetectionResults extends BaseDrawerActivity {
                 if (cleanAcc.contains(".")) {
                     String[] parts = cleanAcc.split("\\.");
                     if (parts.length >= 2) {
-                        scoreText.setText(parts[0] + " - " + parts[1].substring(0, Math.min(parts[1].length(), 3)));
+                        scoreText.setText(String.format(Locale.getDefault(), "%s - %s", parts[0], parts[1].substring(0, Math.min(parts[1].length(), 3))));
                     } else {
-                        scoreText.setText(cleanAcc.substring(0, Math.min(cleanAcc.length(), 4)) + " - 0");
+                        scoreText.setText(String.format(Locale.getDefault(), "%s - 0", cleanAcc.substring(0, Math.min(cleanAcc.length(), 4))));
                     }
                 } else {
-                    scoreText.setText(cleanAcc.substring(0, Math.min(cleanAcc.length(), 4)) + " - 0");
+                    scoreText.setText(String.format(Locale.getDefault(), "%s - 0", cleanAcc.substring(0, Math.min(cleanAcc.length(), 4))));
                 }
             } else if (topPredictions != null && !topPredictions.isEmpty()) {
                 // Use first prediction's confidence as score
@@ -222,7 +219,8 @@ public class DetectionResults extends BaseDrawerActivity {
                 if (file.exists()) {
                     try {
                         // Try to convert to FileProvider URI if it's in app's external files
-                        if (imageUriStr.contains(getExternalFilesDir(null).getAbsolutePath())) {
+                        File externalFilesDir = getExternalFilesDir(null);
+                        if (externalFilesDir != null && imageUriStr.contains(externalFilesDir.getAbsolutePath())) {
                             Uri fileProviderUri = FileProvider.getUriForFile(
                                 this,
                                 getPackageName() + ".provider",
@@ -239,7 +237,7 @@ public class DetectionResults extends BaseDrawerActivity {
                             }
                         }
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        Log.e(TAG, "Error loading image from file path", e);
                     }
                 }
             }
@@ -260,7 +258,7 @@ public class DetectionResults extends BaseDrawerActivity {
                         inputStream.close();
                     }
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    Log.e(TAG, "Error loading image from content URI", e);
                 }
             }
             
@@ -272,7 +270,8 @@ public class DetectionResults extends BaseDrawerActivity {
                         File file = new File(filePath);
                         if (file.exists()) {
                             // Try to convert to FileProvider URI if it's in app's external files
-                            if (filePath.contains(getExternalFilesDir(null).getAbsolutePath())) {
+                            File externalFilesDir = getExternalFilesDir(null);
+                            if (externalFilesDir != null && filePath.contains(externalFilesDir.getAbsolutePath())) {
                                 Uri fileProviderUri = FileProvider.getUriForFile(
                                     this,
                                     getPackageName() + ".provider",
@@ -291,22 +290,17 @@ public class DetectionResults extends BaseDrawerActivity {
                         }
                     }
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    Log.e(TAG, "Error loading image from file URI", e);
                 }
             }
             
             // Try direct URI loading as fallback
             detectionImage.setImageURI(imageUri);
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error loading image", e);
             // Set default image on error
             detectionImage.setImageResource(R.mipmap.ic_logo);
         }
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        return true; // no back button menu
     }
 
 }

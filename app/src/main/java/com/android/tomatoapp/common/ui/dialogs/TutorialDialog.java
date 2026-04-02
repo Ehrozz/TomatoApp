@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.view.Window;
 import android.widget.TextView;
+import com.android.tomatoapp.R;
 
 import androidx.annotation.NonNull;
 
@@ -13,6 +14,8 @@ import com.google.android.material.button.MaterialButton;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import com.android.tomatoapp.common.managers.TutorialManager;
 
 /**
  * Dialog-based tutorial that guides users through app features.

@@ -8,22 +8,28 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.CheckBox;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AlertDialog;
-import androidx.recyclerview.widget.LinearLayoutManager;
-
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.analytics.data.AnalyticsManager;
+import com.android.tomatoapp.analytics.data.AnalyticsPdfExporter;
+import com.android.tomatoapp.analytics.data.ResearchExporter;
+import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.workprogram.data.WorkProgramDataHelper;
+import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
+import com.android.tomatoapp.workprogram.data.WorkProgramRepository;
+import com.android.tomatoapp.workprogram.data.WorkProgramSelectionAdapter;
 import com.github.mikephil.charting.charts.BarChart;
+import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.BarData;
@@ -32,9 +38,7 @@ import com.github.mikephil.charting.data.BarEntry;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
-import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
-import com.github.mikephil.charting.utils.ColorTemplate;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -416,11 +420,11 @@ public class AnalyticsActivity extends BaseDrawerActivity {
             holder.programCount.setText(programCount + (programCount == 1 ? " program" : " programs"));
 
             // Set summary stats
-            holder.totalArea.setText(String.format("%.2f hectare", summary.totalArea));
-            holder.totalProfit.setText(String.format("₱%,.0f", summary.getProfit()));
-            holder.profitPerArea.setText(String.format("₱%,.0f", summary.getProfitPerArea()));
+            holder.totalArea.setText(String.format(Locale.getDefault(), "%.2f hectare", summary.totalArea));
+            holder.totalProfit.setText(String.format(Locale.getDefault(), "₱%,.0f", summary.getProfit()));
+            holder.profitPerArea.setText(String.format(Locale.getDefault(), "₱%,.0f", summary.getProfitPerArea()));
             holder.avgCompletionRate.setText(String.format(Locale.getDefault(), "%.0f%%", summary.getAverageCompletionRate()));
-            holder.adjustedProfit.setText(String.format("₱%,.0f", summary.getAdjustedProfit()));
+            holder.adjustedProfit.setText(String.format(Locale.getDefault(), "₱%,.0f", summary.getAdjustedProfit()));
 
             // Navigate to details screen on click
             holder.itemView.setOnClickListener(v -> {
@@ -485,12 +489,12 @@ public class AnalyticsActivity extends BaseDrawerActivity {
         public void onBindViewHolder(WorkProgramViewHolder holder, int position) {
             WorkProgramEntity e = items.get(position);
             holder.startDate.setText(e.startingDate != null ? e.startingDate : "N/A");
-            holder.area.setText(String.format("%.2f hectare", e.areaSize));
+            holder.area.setText(String.format(Locale.getDefault(), "%.2f hectare", e.areaSize));
             holder.phases.setText(getPhasesSummary(e));
-            holder.income.setText(String.format("₱%,.0f", e.projectedIncome));
-            holder.expenses.setText(String.format("₱%,.0f", e.projectedExpenses));
+            holder.income.setText(String.format(Locale.getDefault(), "₱%,.0f", e.projectedIncome));
+            holder.expenses.setText(String.format(Locale.getDefault(), "₱%,.0f", e.projectedExpenses));
             double profit = e.projectedIncome - e.projectedExpenses;
-            holder.profit.setText(String.format("₱%,.0f", profit));
+            holder.profit.setText(String.format(Locale.getDefault(), "₱%,.0f", profit));
         }
 
         private String getPhasesSummary(WorkProgramEntity e) {
@@ -558,13 +562,13 @@ public class AnalyticsActivity extends BaseDrawerActivity {
         public void onBindViewHolder(SummaryViewHolder holder, int position) {
             AnalyticsManager.CultivarSummary s = items.get(position);
             holder.name.setText(s.cultivarName);
-            holder.area.setText(String.format("Area: %.2f hectare", s.totalArea));
-            holder.income.setText(String.format("Income: ₱%,.0f", s.totalIncome));
-            holder.expenses.setText(String.format("Expenses: ₱%,.0f", s.totalExpenses));
-            holder.profit.setText(String.format("Profit: ₱%,.0f", s.getProfit()));
-            holder.profitPerArea.setText(String.format("Profit/Area: ₱%,.0f", s.getProfitPerArea()));
+            holder.area.setText(String.format(Locale.getDefault(), "Area: %.2f hectare", s.totalArea));
+            holder.income.setText(String.format(Locale.getDefault(), "Income: ₱%,.0f", s.totalIncome));
+            holder.expenses.setText(String.format(Locale.getDefault(), "Expenses: ₱%,.0f", s.totalExpenses));
+            holder.profit.setText(String.format(Locale.getDefault(), "Profit: ₱%,.0f", s.getProfit()));
+            holder.profitPerArea.setText(String.format(Locale.getDefault(), "Profit/Area: ₱%,.0f", s.getProfitPerArea()));
             holder.completionRate.setText(String.format(Locale.getDefault(), "Completion: %.0f%%", s.getAverageCompletionRate()));
-            holder.adjustedProfit.setText(String.format("Adjusted Profit: ₱%,.0f", s.getAdjustedProfit()));
+            holder.adjustedProfit.setText(String.format(Locale.getDefault(), "Adjusted Profit: ₱%,.0f", s.getAdjustedProfit()));
         }
 
         @Override
@@ -671,7 +675,7 @@ public class AnalyticsActivity extends BaseDrawerActivity {
                 }
             }
             
-            String filePath = ResearchExporter.exportToCsvWithWeather(this, programsToExport);
+            String filePath = ResearchExporter.exportToCsv(this, programsToExport, false);
             
             runOnUiThread(() -> {
                 progressBar.setVisibility(View.GONE);
@@ -684,5 +688,3 @@ public class AnalyticsActivity extends BaseDrawerActivity {
         }).start();
     }
 }
-
-

@@ -1,8 +1,12 @@
 package com.android.tomatoapp.workprogram.data;
 
+import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.android.tomatoapp.detection.data.DetectionHistoryManager;
+import com.android.tomatoapp.task.data.TaskModel;
+import com.android.tomatoapp.task.data.TaskSchedule;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -28,7 +32,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class WorkProgramDataHelper {
 
-    private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+    private static final String TAG = "WorkProgramDataHelper";
+    private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
     private static final Map<String, Integer> DAY_TASK_CACHE = new ConcurrentHashMap<>();
     private static final Map<String, int[]> PHASE_TOTAL_CACHE = new ConcurrentHashMap<>();
 
@@ -131,7 +136,7 @@ public class WorkProgramDataHelper {
 
             return phasesJson.toString();
         } catch (ParseException | JSONException e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error calculating phases", e);
             return null;
         }
     }
@@ -511,7 +516,7 @@ public class WorkProgramDataHelper {
                 }
             }
         } catch (ParseException e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error counting detections per phase", e);
         }
         
         return counts;

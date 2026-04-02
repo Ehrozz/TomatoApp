@@ -26,6 +26,10 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.common.managers.AppNotificationManager;
+import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+
 public class NotificationListActivity extends BaseDrawerActivity {
     
     private RecyclerView recyclerView;

@@ -1,17 +1,19 @@
 package com.android.tomatoapp.analytics.ui;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.analytics.data.AnalyticsManager;
+import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
+import com.android.tomatoapp.workprogram.data.WorkProgramRepository;
 import com.github.mikephil.charting.charts.BarChart;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.data.BarData;
@@ -237,4 +239,3 @@ public class SeasonComparisonActivity extends BaseDrawerActivity {
         }
     }
 }
-

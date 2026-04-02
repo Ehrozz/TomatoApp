@@ -12,6 +12,9 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.settings.data.SettingsPreferences;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 

@@ -10,6 +10,7 @@ import com.prolificinteractive.materialcalendarview.DayViewFacade;
 import com.prolificinteractive.materialcalendarview.spans.DotSpan;
 
 import java.util.HashSet;
+import com.android.tomatoapp.R;
 
 /**
  * Decorator for marking skipped days on the calendar.

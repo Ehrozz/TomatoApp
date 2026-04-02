@@ -29,6 +29,17 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.util.Locale;
 
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.analytics.ui.AnalyticsActivity;
+import com.android.tomatoapp.analytics.ui.SeasonComparisonActivity;
+import com.android.tomatoapp.auth.data.User;
+import com.android.tomatoapp.auth.ui.Login;
+import com.android.tomatoapp.auth.ui.ProfileActivity;
+import com.android.tomatoapp.core.network.LocalDataManager;
+import com.android.tomatoapp.settings.data.SettingsPreferences;
+import com.android.tomatoapp.settings.ui.SettingsActivity;
+import com.android.tomatoapp.settings.ui.UserManualActivity;
+
 /**
  * Base activity that provides drawer navigation functionality to all activities.
  * Activities should extend this class and call setupDrawer() in onCreate().

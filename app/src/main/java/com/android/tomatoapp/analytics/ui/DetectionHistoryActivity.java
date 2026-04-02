@@ -3,6 +3,7 @@ package com.android.tomatoapp.analytics.ui;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,20 +13,23 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.detection.data.DetectionHistoryManager;
+import com.android.tomatoapp.detection.ui.DetectionResults;
+
 import org.json.JSONObject;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
-import java.util.Locale;
 
 public class DetectionHistoryActivity extends BaseDrawerActivity {
 
+    private static final String TAG = "DetectionHistoryActivity";
+    
     private RecyclerView historyRecyclerView;
     private View emptyState;
     private ArrayList<JSONObject> historyData;
@@ -214,13 +218,13 @@ public class DetectionHistoryActivity extends BaseDrawerActivity {
                         
                         startActivity(intent);
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        Log.e(TAG, "Error opening detection details", e);
                         Toast.makeText(DetectionHistoryActivity.this, "Error opening detection details", Toast.LENGTH_SHORT).show();
                     }
                 });
                 
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e(TAG, "Error setting up detection item click listener", e);
             }
         }
 
@@ -241,7 +245,7 @@ public class DetectionHistoryActivity extends BaseDrawerActivity {
                 title = itemView.findViewById(R.id.historyItemTitle);
                 description = itemView.findViewById(R.id.historyItemDescription);
                 context = itemView.findViewById(R.id.historyItemContext);
-                deleteButton = itemView.findViewById(R.id.deleteButton);
+                deleteButton = findViewById(R.id.deleteButton);
             }
         }
     }
@@ -266,7 +270,7 @@ public class DetectionHistoryActivity extends BaseDrawerActivity {
             
             Toast.makeText(this, "Detection deleted", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error deleting detection", e);
             Toast.makeText(this, "Failed to delete detection", Toast.LENGTH_SHORT).show();
         }
     }

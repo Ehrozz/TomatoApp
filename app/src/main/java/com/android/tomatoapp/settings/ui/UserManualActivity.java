@@ -4,6 +4,9 @@ import android.os.Bundle;
 
 import androidx.annotation.Nullable;
 
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+
 /**
  * Activity displaying comprehensive user manual for TomatoApp.
  * Provides documentation for all major features and functionality.

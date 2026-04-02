@@ -4,6 +4,9 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 
+import com.android.tomatoapp.core.database.AppDatabase;
+import com.android.tomatoapp.workprogram.data.WorkProgramDao;
+import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 

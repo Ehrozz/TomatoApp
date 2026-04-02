@@ -3,6 +3,10 @@ package com.android.tomatoapp.analytics.data;
 import android.content.Context;
 import android.os.Environment;
 
+import com.android.tomatoapp.core.database.AppDatabase;
+import com.android.tomatoapp.weather.data.WeatherData;
+import com.android.tomatoapp.weather.data.WeatherDataDao;
+import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -168,7 +172,7 @@ public class ResearchExporter {
                     writer.append(String.format(Locale.getDefault(), "%.2f", weather.maxDailyPrecipitation)).append(",");
                     writer.append(String.valueOf(weather.daysTracked)).append("\n");
                 } else {
-                    writer.append(",,,,\n"); // Empty weather data
+                    writer.append(",,,,,,,,,\n"); // Adjusted to match 9 weather columns
                 }
             }
             
@@ -193,4 +197,3 @@ public class ResearchExporter {
         return value;
     }
 }
-

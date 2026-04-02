@@ -3,6 +3,8 @@ package com.android.tomatoapp;
 import android.app.Application;
 import android.util.Log;
 
+import com.android.tomatoapp.core.database.AppDatabase;
+import com.android.tomatoapp.core.network.LocalDataManager;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 

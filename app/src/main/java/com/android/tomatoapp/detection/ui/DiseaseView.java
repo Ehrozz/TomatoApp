@@ -22,6 +22,12 @@ import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.HashMap;
 
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.auth.ui.Login;
+import com.android.tomatoapp.common.models.DiseaseData;
+import com.android.tomatoapp.common.models.DiseaseInfo;
+import com.android.tomatoapp.core.ui.MainActivity;
+
 public class DiseaseView extends AppCompatActivity {
 
     DrawerLayout drawerLayout;

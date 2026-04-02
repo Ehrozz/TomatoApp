@@ -2,6 +2,7 @@ package com.android.tomatoapp.core.network;
 
 import android.content.Context;
 import android.text.TextUtils;
+import com.android.tomatoapp.R;
 
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException;

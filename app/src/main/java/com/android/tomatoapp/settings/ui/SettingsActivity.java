@@ -12,10 +12,15 @@ import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.common.managers.TutorialManager;
+import com.android.tomatoapp.core.network.LocalDataManager;
+import com.android.tomatoapp.core.ui.BaseDrawerActivity;
 import com.android.tomatoapp.notifications.GeneralUpdateScheduler;
 import com.android.tomatoapp.notifications.NotificationHelper;
 import com.android.tomatoapp.notifications.NotificationPermissionHelper;
 import com.android.tomatoapp.notifications.NotificationPreferences;
+import com.android.tomatoapp.settings.data.SettingsPreferences;
 
 import java.util.ArrayList;
 import java.util.List;

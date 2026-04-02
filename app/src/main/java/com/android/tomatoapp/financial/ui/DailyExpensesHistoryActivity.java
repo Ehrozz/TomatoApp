@@ -2,6 +2,7 @@ package com.android.tomatoapp.financial.ui;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,8 +30,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.settings.data.SettingsPreferences;
+
 public class DailyExpensesHistoryActivity extends BaseDrawerActivity {
 
+    private static final String TAG = "DailyExpensesHistoryActivity";
+    
     private RecyclerView recyclerView;
     private TextView emptyState;
     private TextView headerText;
@@ -172,7 +179,7 @@ public class DailyExpensesHistoryActivity extends BaseDrawerActivity {
                         expenseList.add(entry);
                         }
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        Log.e(TAG, "Error parsing expense entry", e);
                         // Skip invalid dates
                     }
                 }

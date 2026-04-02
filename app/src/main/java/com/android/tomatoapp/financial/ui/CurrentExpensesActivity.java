@@ -39,6 +39,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.common.utils.PhaseHelper;
+import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.settings.data.SettingsPreferences;
+import com.android.tomatoapp.task.data.TaskSchedule;
+
 public class CurrentExpensesActivity extends BaseDrawerActivity {
 
     private TextView cultivarHeader;

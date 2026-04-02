@@ -35,6 +35,17 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.auth.ui.Login;
+import com.android.tomatoapp.common.utils.CultivarImageHelper;
+import com.android.tomatoapp.core.network.LocalDataManager;
+import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.financial.ui.DailyExpensesActivity;
+import com.android.tomatoapp.monitoring.ui.PlantMonitoringActivity;
+import com.android.tomatoapp.settings.data.SettingsPreferences;
+import com.android.tomatoapp.task.data.TaskModel;
+import com.android.tomatoapp.task.data.TaskSchedule;
+
 public class DailyTask extends BaseDrawerActivity {
 
     private TextView cultivarNameHeader, cultivarDescription, dateHeader, taskSectionTitle, taskCountText;

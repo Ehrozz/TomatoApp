@@ -3,6 +3,9 @@ package com.android.tomatoapp.common.managers;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import com.android.tomatoapp.common.ui.dialogs.TutorialDialog;
+
+
 /**
  * Manages tutorial state and progression for new users.
  * Handles showing tutorial after terms acceptance and allows replay from Settings.

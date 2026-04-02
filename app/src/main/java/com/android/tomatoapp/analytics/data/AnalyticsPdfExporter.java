@@ -10,6 +10,8 @@ import android.text.Layout;
 import android.text.StaticLayout;
 import android.text.TextPaint;
 
+import com.android.tomatoapp.workprogram.data.WorkProgramDataHelper;
+import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
 import com.github.mikephil.charting.charts.BarChart;
 import com.github.mikephil.charting.charts.LineChart;
 
@@ -300,4 +302,3 @@ public class AnalyticsPdfExporter {
         return new File(downloadsDir, fileName);
     }
 }
-

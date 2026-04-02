@@ -6,6 +6,7 @@ import android.content.pm.PackageManager;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageView;
@@ -31,9 +32,23 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.ValueEventListener;
 
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.auth.ui.Login;
+import com.android.tomatoapp.common.managers.TutorialManager;
+import com.android.tomatoapp.common.models.IPM;
+import com.android.tomatoapp.common.ui.dialogs.TermsDialog;
+import com.android.tomatoapp.common.utils.PhilippineLocations;
+import com.android.tomatoapp.core.network.LocalDataManager;
+import com.android.tomatoapp.financial.ui.CostSelection;
 import com.android.tomatoapp.notifications.GeneralUpdateScheduler;
 import com.android.tomatoapp.notifications.NotificationChannels;
+import com.android.tomatoapp.notifications.NotificationListActivity;
 import com.android.tomatoapp.notifications.NotificationPermissionHelper;
+import com.android.tomatoapp.settings.data.SettingsPreferences;
+import com.android.tomatoapp.settings.ui.SettingsActivity;
+import com.android.tomatoapp.weather.data.WeatherDataCollector;
+import com.android.tomatoapp.weather.ui.ForecastActivity;
+import com.android.tomatoapp.workprogram.ui.WorkProgramSelection;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import android.location.Location;
@@ -49,6 +64,8 @@ import org.json.JSONObject;
 import org.json.JSONArray;
 
 public class MainActivity extends BaseDrawerActivity {
+
+    private static final String TAG = "MainActivity";
 
     FirebaseAuth mAuth;
     FirebaseUser user;
@@ -106,7 +123,7 @@ public class MainActivity extends BaseDrawerActivity {
                     Intent intent = new Intent(MainActivity.this, NotificationListActivity.class);
                     startActivity(intent);
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    Log.e(TAG, "Failed to open notifications", e);
                     Toast.makeText(MainActivity.this, "Unable to open notifications", Toast.LENGTH_SHORT).show();
                 }
             });

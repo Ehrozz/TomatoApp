@@ -43,6 +43,15 @@ import com.google.firebase.database.ValueEventListener;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.auth.ui.Login;
+import com.android.tomatoapp.common.models.CultivarNPData;
+import com.android.tomatoapp.common.utils.CultivarImageHelper;
+import com.android.tomatoapp.core.network.LocalDataManager;
+import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.financial.data.CalculationModel;
+import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
+
 public class CostSelection extends BaseDrawerActivity {
 
     private RecyclerView recyclerView;
@@ -524,7 +533,10 @@ public class CostSelection extends BaseDrawerActivity {
 
         @Override
         public void onBindViewHolder(@NonNull CultivarViewHolder holder, int position) {
-            Cultivar item = items.get(position);
+            int adapterPosition = holder.getAdapterPosition();
+            if (adapterPosition == RecyclerView.NO_POSITION) return;
+            
+            Cultivar item = items.get(adapterPosition);
             holder.name.setText(item.name);
             
             // Format date as "Started: YYYY-MM-DD"
@@ -550,7 +562,7 @@ public class CostSelection extends BaseDrawerActivity {
                     R.color.ripe_orange
             };
 
-            int colorIndex = position % bgColors.length;
+            int colorIndex = adapterPosition % bgColors.length;
             int bgColor = ContextCompat.getColor(holder.itemView.getContext(), bgColors[colorIndex]);
             holder.card.setCardBackgroundColor(bgColor);
 

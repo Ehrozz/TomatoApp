@@ -4,27 +4,30 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
-import android.widget.CheckBox;
-import android.widget.CompoundButton;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.financial.data.CalculationModel;
+import com.android.tomatoapp.task.data.TaskSchedule;
+import com.android.tomatoapp.workprogram.data.WorkProgramDataHelper;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -32,17 +35,15 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.HashMap;
 import java.util.Map;
-
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.ValueEventListener;
 
 public class Calculator extends AppCompatActivity {
 
+    private static final String TAG = "Calculator";
+    
     EditText etHectare, etAWF, etAFP, etMarketValue;
     TextView tvCultivarName, tvDateSaved, tvNP, tvSubTotalHarvest;
     Spinner spinnerHarvestUnit;
@@ -153,6 +154,7 @@ public class Calculator extends AppCompatActivity {
         tvCompletionWarning = findViewById(R.id.tvCompletionWarning);
         btnDailyExpensesHistory = findViewById(R.id.btnDailyExpensesHistory);
         tvAdjustedExpenses = findViewById(R.id.tvAdjustedExpenses);
+        tvTotalExpenses = findViewById(R.id.tvTotalExpenses);
         
         // Expense category cards
         tvLaborTotalCost = findViewById(R.id.tvLaborTotalCost);
@@ -183,9 +185,9 @@ public class Calculator extends AppCompatActivity {
         programId = getIntent().getStringExtra("program_id");
 
         // Display cultivar info
-        tvCultivarName.setText("Cultivar: " + (cultivarName != null ? cultivarName : "N/A"));
-        tvDateSaved.setText("Date Saved: " + (dateSaved != null ? dateSaved : "N/A"));
-        tvNP.setText("Number of Plants Per Hectare (NP): " + df.format(baseNP));
+        tvCultivarName.setText(String.format(Locale.getDefault(), "Cultivar: %s", (cultivarName != null ? cultivarName : "N/A")));
+        tvDateSaved.setText(String.format(Locale.getDefault(), "Date Saved: %s", (dateSaved != null ? dateSaved : "N/A")));
+        tvNP.setText(String.format(Locale.getDefault(), "Number of Plants Per Hectare (NP): %s", df.format(baseNP)));
         
         // Get maturity days for harvest prediction
         if (cultivarName != null) {
@@ -338,9 +340,9 @@ public class Calculator extends AppCompatActivity {
         
         if (totalHarvestKg > 0 || totalHarvestGrams > 0) {
             if (selectedUnit.equals("kg")) {
-                tvSubTotalHarvest.setText("₱" + df2.format(totalHarvestKg));
+                tvSubTotalHarvest.setText(String.format(Locale.getDefault(), "₱%s", df2.format(totalHarvestKg)));
             } else {
-                tvSubTotalHarvest.setText("₱" + df2.format(totalHarvestGrams));
+                tvSubTotalHarvest.setText(String.format(Locale.getDefault(), "₱%s", df2.format(totalHarvestGrams)));
             }
         } else {
             tvSubTotalHarvest.setText("₱—");
@@ -382,7 +384,7 @@ public class Calculator extends AppCompatActivity {
                 startActivity(intent);
             } catch (Exception e) {
                 Toast.makeText(Calculator.this, "Unable to open daily expenses history", Toast.LENGTH_SHORT).show();
-                e.printStackTrace();
+                Log.e(TAG, "Error opening daily expenses history", e);
             }
         });
     }
@@ -858,7 +860,7 @@ public class Calculator extends AppCompatActivity {
             String currentText = tvSummarySubtitle.getText().toString();
             // Only append if not already present (to avoid duplicates)
             if (!currentText.contains("Daily Expense Range")) {
-                tvSummarySubtitle.setText(currentText + rangeText);
+                tvSummarySubtitle.setText(String.format(Locale.getDefault(), "%s%s", currentText, rangeText));
             }
         }
     }
@@ -1013,9 +1015,9 @@ public class Calculator extends AppCompatActivity {
             // 🔹 Update NP immediately when hectare changes
             currentNP = baseNP * hectare;
             if (hectare > 0) {
-                tvNP.setText("Number of Plants (NP): " + df.format(currentNP));
+                tvNP.setText(String.format(Locale.getDefault(), "Number of Plants (NP): %s", df.format(currentNP)));
             } else {
-                tvNP.setText("Number of Plants (NP): " + df.format(baseNP));
+                tvNP.setText(String.format(Locale.getDefault(), "Number of Plants (NP): %s", df.format(baseNP)));
             }
 
             // 🔹 Compute totals only when all fields are filled
@@ -1061,7 +1063,7 @@ public class Calculator extends AppCompatActivity {
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error in calculation logic", e);
         }
     }
     
@@ -1081,13 +1083,13 @@ public class Calculator extends AppCompatActivity {
             
             // Display results
             if (tvTotalExpenses != null) {
-                tvTotalExpenses.setText("Total Expenses: ₱" + df2.format(totalExpenses));
+                tvTotalExpenses.setText(String.format(Locale.getDefault(), "Total Expenses: ₱%s", df2.format(totalExpenses)));
             }
 
             // Update card net income (default to zero if no calculation)
             if (tvNetIncomeCard != null) {
                 if (grossIncome > 0 || totalExpenses > 0) {
-                tvNetIncomeCard.setText("₱" + df2.format(netIncome));
+                tvNetIncomeCard.setText(String.format(Locale.getDefault(), "₱%s", df2.format(netIncome)));
                 } else {
                     tvNetIncomeCard.setText("₱0.00");
                 }
@@ -1095,7 +1097,7 @@ public class Calculator extends AppCompatActivity {
 
             applyAdjustedProjection();
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error calculating income/expenses", e);
             // Set default values on error
             if (tvTotalExpenses != null) {
                 tvTotalExpenses.setText("Total Expenses: ₱0.00");
@@ -1166,7 +1168,7 @@ public class Calculator extends AppCompatActivity {
         if (weakestPhase == -1) {
             return "";
         }
-        return "Focus on " + phaseLabelFromIndex(weakestPhase) + " tasks to recover momentum.";
+        return String.format(Locale.getDefault(), "Focus on %s tasks to recover momentum.", phaseLabelFromIndex(weakestPhase));
     }
 
     private String phaseLabelFromIndex(int phase) {
@@ -1241,11 +1243,11 @@ public class Calculator extends AppCompatActivity {
                         completionStats
                 );
         double adjustedNetIncome = projection.adjustedIncome - projection.adjustedExpenses;
-        tvAdjustedNetIncome.setText("₱" + df2.format(adjustedNetIncome));
+        tvAdjustedNetIncome.setText(String.format(Locale.getDefault(), "₱%s", df2.format(adjustedNetIncome)));
         if (tvAdjustedSubtitle != null) {
             tvAdjustedSubtitle.setText("Adjusted net income (based on completion)");
         }
-        tvAdjustedExpenses.setText("Adjusted Expenses: ₱" + df2.format(projection.adjustedExpenses));
+        tvAdjustedExpenses.setText(String.format(Locale.getDefault(), "Adjusted Expenses: ₱%s", df2.format(projection.adjustedExpenses)));
         updateCompletionWarning();
     }
 }

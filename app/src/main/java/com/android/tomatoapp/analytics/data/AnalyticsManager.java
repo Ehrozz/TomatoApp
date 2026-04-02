@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
+
 /**
  * Pure analytics calculations over WorkProgramEntity data.
  */
@@ -204,5 +206,3 @@ public class AnalyticsManager {
         return comparison;
     }
 }
-
-

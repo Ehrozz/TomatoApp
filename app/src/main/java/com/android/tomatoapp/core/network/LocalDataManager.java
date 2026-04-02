@@ -7,8 +7,18 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
+import com.android.tomatoapp.core.database.AppDatabase;
+import com.android.tomatoapp.detection.data.DetectionHistoryEntity;
+import com.android.tomatoapp.detection.data.DetectionHistoryManager;
+import com.android.tomatoapp.financial.data.CalculationEntity;
+import com.android.tomatoapp.financial.data.CalculationModel;
+import com.android.tomatoapp.notifications.NotificationPreferences;
+import com.android.tomatoapp.season.data.SeasonHelper;
+import com.android.tomatoapp.settings.data.SettingsEntity;
+import com.android.tomatoapp.settings.data.SettingsPreferences;
+import com.android.tomatoapp.task.data.TaskEntity;
+import com.android.tomatoapp.workprogram.data.WorkProgramDataHelper;
+import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -19,10 +29,9 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.android.tomatoapp.notifications.NotificationPreferences;
-
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -390,10 +399,10 @@ public class LocalDataManager {
                         NotificationPreferences.areMonitoringNotificationsEnabled(context),
                         NotificationPreferences.areGeneralNotificationsEnabled(context),
                         SettingsPreferences.getNotificationSound(context),
-                        String.format("%02d:%02d", SettingsPreferences.getNotificationHour(context), SettingsPreferences.getNotificationMinute(context)),
+                        String.format(Locale.getDefault(), "%02d:%02d", SettingsPreferences.getNotificationHour(context), SettingsPreferences.getNotificationMinute(context)),
                         SettingsPreferences.isQuietHoursEnabled(context),
-                        String.format("%02d:%02d", SettingsPreferences.getQuietHoursStartHour(context), SettingsPreferences.getQuietHoursStartMinute(context)),
-                        String.format("%02d:%02d", SettingsPreferences.getQuietHoursEndHour(context), SettingsPreferences.getQuietHoursEndMinute(context)),
+                        String.format(Locale.getDefault(), "%02d:%02d", SettingsPreferences.getQuietHoursStartHour(context), SettingsPreferences.getQuietHoursStartMinute(context)),
+                        String.format(Locale.getDefault(), "%02d:%02d", SettingsPreferences.getQuietHoursEndHour(context), SettingsPreferences.getQuietHoursEndMinute(context)),
                         System.currentTimeMillis()
                 );
                 database.settingsDao().insert(entity);
@@ -766,4 +775,3 @@ public class LocalDataManager {
         }
     }
 }
-

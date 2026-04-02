@@ -9,12 +9,12 @@ import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -32,7 +32,17 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.common.models.DiseaseData;
+import com.android.tomatoapp.common.models.DiseaseInfo;
+import com.android.tomatoapp.detection.data.DetectionHistoryManager;
+import com.android.tomatoapp.monitoring.data.PlantMonitoringEntity;
+import com.android.tomatoapp.monitoring.data.PlantMonitoringRepository;
 import com.android.tomatoapp.notifications.NotificationUseCases;
+import com.android.tomatoapp.task.data.TaskSchedule;
+import com.android.tomatoapp.workprogram.data.WorkProgramDataHelper;
+import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
+import com.android.tomatoapp.workprogram.data.WorkProgramRepository;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -59,6 +69,7 @@ import java.util.concurrent.ExecutionException;
 
 public class CameraInterface extends AppCompatActivity {
 
+    private static final String TAG = "CameraInterface";
     public static final String EXTRA_LINKED_PROGRAM_ID = "extra_linked_program_id";
     public static final String EXTRA_LINKED_CULTIVAR = "extra_linked_cultivar";
     public static final String EXTRA_LINKED_PHASE = "extra_linked_phase";
@@ -322,7 +333,7 @@ public class CameraInterface extends AppCompatActivity {
                 cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture);
 
             } catch (ExecutionException | InterruptedException e) {
-                e.printStackTrace();
+                Log.e(TAG, "Error starting camera", e);
                 Toast.makeText(this, "Failed to start camera: " + e.getMessage(), Toast.LENGTH_LONG).show();
             }
         }, ContextCompat.getMainExecutor(this));
@@ -408,7 +419,7 @@ public class CameraInterface extends AppCompatActivity {
 
                     @Override
                     public void onError(@NonNull ImageCaptureException exception) {
-                        exception.printStackTrace();
+                        Log.e(TAG, "Error capturing image", exception);
                         Toast.makeText(CameraInterface.this,
                                 "Failed to save photo: " + exception.getMessage(),
                                 Toast.LENGTH_SHORT).show();
@@ -546,7 +557,7 @@ public class CameraInterface extends AppCompatActivity {
             
             return fileProviderUri;
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error saving image", e);
             return null;
         }
     }
@@ -559,7 +570,7 @@ public class CameraInterface extends AppCompatActivity {
             try {
                 bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(imageUri));
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e(TAG, "Error loading image bitmap", e);
                 results.put("title", "Image Loading Error");
                 results.put("accuracy", "0%");
                 results.put("description", "Failed to load image: " + e.getMessage());
@@ -638,7 +649,7 @@ public class CameraInterface extends AppCompatActivity {
                     tflite = new Interpreter(modelBuffer, options);
                     loadedModelType = currentModelType;
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    Log.e(TAG, "Error loading TensorFlow model", e);
                     results.put("title", "Model Loading Error");
                     results.put("accuracy", "0%");
                     results.put("description", "Failed to load detection model: " + modelName + "\n\nError: " + e.getMessage() + "\n\nPlease ensure the model file exists in assets folder.");
@@ -651,7 +662,7 @@ public class CameraInterface extends AppCompatActivity {
             try {
                 tflite.run(input, output);
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e(TAG, "Error running ML inference", e);
                 results.put("title", "Inference Error");
                 results.put("accuracy", "0%");
                 results.put("description", "Failed to run detection: " + e.getMessage());
@@ -887,7 +898,7 @@ public class CameraInterface extends AppCompatActivity {
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error running detection", e);
         }
         return results;
     }
@@ -1005,7 +1016,7 @@ public class CameraInterface extends AppCompatActivity {
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error loading model labels", e);
         }
     }
     
@@ -1090,7 +1101,7 @@ public class CameraInterface extends AppCompatActivity {
         
         desc.append("🔍 Detection Result:\n");
         desc.append("Detected Condition: ").append(mappedLabel).append("\n");
-        desc.append("Confidence Level: ").append(confidenceLevel).append(" (").append(String.format("%.1f%%", maxProb * 100)).append(")\n");
+        desc.append("Confidence Level: ").append(confidenceLevel).append(" (").append(String.format(Locale.getDefault(), "%.1f%%", maxProb * 100)).append(")\n");
         
         if (isAmbiguous) {
             desc.append("\n⚠️ Ambiguous Detection:\n");
@@ -1098,14 +1109,14 @@ public class CameraInterface extends AppCompatActivity {
             for (int i = 0; i < Math.min(3, topProbs.length); i++) {
                 if (topProbs[i] > 0.15f) {
                     desc.append("• ").append(labels.get(topIndices[i]).trim())
-                            .append(": ").append(String.format("%.1f%%", topProbs[i] * 100)).append("\n");
+                            .append(": ").append(String.format(Locale.getDefault(), "%.1f%%", topProbs[i] * 100)).append("\n");
                 }
             }
             desc.append("\nRecommendation: Verify with additional images or consult an expert.");
         } else {
             desc.append("\n✅ Primary Detection:\n");
             desc.append("The model confidently identified this condition as: ").append(mappedLabel).append("\n");
-            desc.append("Confidence Score: ").append(String.format("%.1f%%", maxProb * 100));
+            desc.append("Confidence Score: ").append(String.format(Locale.getDefault(), "%.1f%%", maxProb * 100));
             
             if (maxProb >= 0.75f) {
                 desc.append("\n\nThis is a high-confidence detection. The model is very certain about this diagnosis.");
@@ -1134,7 +1145,7 @@ public class CameraInterface extends AppCompatActivity {
     private String generateDynamicSymptoms(String mappedLabel, float confidence) {
         StringBuilder symptoms = new StringBuilder();
         symptoms.append("Based on model detection: ").append(mappedLabel).append("\n");
-        symptoms.append("Detection Confidence: ").append(String.format("%.1f%%", confidence * 100)).append("\n\n");
+        symptoms.append("Detection Confidence: ").append(String.format(Locale.getDefault(), "%.1f%%", confidence * 100)).append("\n\n");
         
         if (confidence >= 0.75f) {
             symptoms.append("High confidence detection. The model identified specific symptoms associated with this condition.");
