@@ -7,11 +7,64 @@
     android:background="@color/soft_cream"
     tools:context=".monitoring.ui.PlantMonitoringActivity">
 
+    <!-- ===== TOP APP BAR / HEADER ===== -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/headerCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:cardElevation="4dp"
+        app:cardCornerRadius="0dp"
+        app:cardBackgroundColor="@color/white"
+        app:strokeWidth="0dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="48dp"
+            android:paddingBottom="16dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Daily Task Monitor"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="wrap_content"
+                android:layout_height="28dp"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="@color/green_light"
+                app:strokeWidth="0dp">
+                <TextView
+                    android:id="@+id/dateLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:text="Today"
+                    android:textColor="@color/green"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:gravity="center"
+                    android:paddingHorizontal="12dp" />
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_below="@id/headerCard"
         android:layout_above="@id/bottom_navigation"
-        android:fillViewport="true">
+        android:fillViewport="true"
+        android:clipToPadding="false"
+        android:paddingBottom="24dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -19,166 +72,218 @@
             android:orientation="vertical"
             android:padding="20dp">
 
-            <!-- Spacer for Action Bar -->
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="?attr/actionBarSize"
-                android:layout_marginBottom="60dp"/>
+            <!-- ===== TASK REFERENCE / RESULT CARD ===== -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Current Scan / Task"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.05"
+                android:layout_marginBottom="12dp" />
 
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/referenceCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                app:cardCornerRadius="18dp"
+                android:layout_marginBottom="24dp"
+                app:cardCornerRadius="24dp"
                 app:cardElevation="6dp"
-                app:cardBackgroundColor="@color/white">
+                app:cardBackgroundColor="@color/white"
+                app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
 
-                    <ImageView
-                        android:id="@+id/referenceImage"
+                    <FrameLayout
                         android:layout_width="match_parent"
-                        android:layout_height="200dp"
-                        android:scaleType="centerCrop"
-                        android:contentDescription="@string/monitor_reference_image" />
+                        android:layout_height="240dp">
+                        
+                        <ImageView
+                            android:id="@+id/referenceImage"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop"
+                            android:src="@drawable/bg_bottom_gradient_dark"
+                            android:background="@color/soft_cream"
+                            android:contentDescription="Captured image" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="80dp"
+                            android:layout_gravity="bottom"
+                            android:background="@drawable/bg_bottom_gradient_dark" />
+
+                        <!-- Camera Hint Icon (Only shows if no image is taken) -->
+                        <ImageView
+                            android:id="@+id/cameraHintIcon"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:layout_gravity="center"
+                            android:src="@android:drawable/ic_menu_camera"
+                            app:tint="@color/muted"
+                            android:alpha="0.3" />
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="bottom|start"
+                            android:layout_margin="16dp"
+                            app:cardCornerRadius="8dp"
+                            app:cardElevation="4dp"
+                            app:cardBackgroundColor="@color/warm_orange"
+                            app:strokeWidth="0dp">
+                            <TextView
+                                android:id="@+id/phaseBadge"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="PHASE 1"
+                                android:textColor="@color/white"
+                                android:textSize="10sp"
+                                android:textStyle="bold"
+                                android:paddingHorizontal="10dp"
+                                android:paddingVertical="4dp" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnDeleteImage"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:layout_gravity="top|end"
+                            android:layout_margin="12dp"
+                            android:padding="0dp"
+                            android:visibility="gone"
+                            app:icon="@android:drawable/ic_menu_delete"
+                            app:iconGravity="textStart"
+                            app:iconPadding="0dp"
+                            app:iconTint="@color/white"
+                            app:backgroundTint="@color/error"
+                            app:cornerRadius="20dp"
+                            style="@style/Widget.Material3.Button.Icon" />
+                    </FrameLayout>
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="16dp">
+                        android:padding="20dp">
 
                         <TextView
                             android:id="@+id/referencePhaseLabel"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:textStyle="bold"
+                            android:text="Task Instruction"
                             android:textColor="@color/text_primary"
-                            android:textSize="16sp"
-                            android:text="@string/monitor_phase_label" />
+                            android:textSize="20sp"
+                            android:textStyle="bold" />
 
                         <TextView
                             android:id="@+id/referenceDescription"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
+                            android:layout_marginTop="8dp"
                             android:textColor="@color/text_secondary"
                             android:textSize="14sp"
-                            android:text="@string/monitor_reference_hint" />
+                            android:lineSpacingExtra="4dp"
+                            android:text="Please capture a photo of your progress for this task." />
                     </LinearLayout>
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ===== NOTES SECTION ===== -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Monitoring Notes"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.05"
+                android:layout_marginBottom="12dp" />
 
             <com.google.android.material.textfield.TextInputLayout
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:hint="@string/monitor_notes">
+                android:layout_marginBottom="24dp"
+                app:boxCornerRadiusTopStart="16dp"
+                app:boxCornerRadiusTopEnd="16dp"
+                app:boxCornerRadiusBottomStart="16dp"
+                app:boxCornerRadiusBottomEnd="16dp"
+                app:boxStrokeColor="@color/green"
+                app:hintTextColor="@color/green"
+                android:hint="Observations (growth, pests, etc.)">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/inputNotes"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:minLines="3"
-                    android:maxLines="5"
-                    android:gravity="top|start" />
+                    android:maxLines="6"
+                    android:gravity="top|start"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Captured Image Holder -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/capturedImageCard"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:visibility="gone"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="4dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:layout_marginBottom="12dp">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Captured Image"
-                            android:textColor="@color/text_primary"
-                            android:textSize="16sp"
-                            android:textStyle="bold" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnDeleteImage"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Delete"
-                            android:textAllCaps="false"
-                            android:textColor="@color/error"
-                            style="@style/Widget.Material3.Button.TextButton"
-                            android:icon="@android:drawable/ic_menu_delete"
-                            app:iconTint="@color/error" />
-                    </LinearLayout>
-
-                    <ImageView
-                        android:id="@+id/capturedImageView"
-                        android:layout_width="match_parent"
-                        android:layout_height="200dp"
-                        android:scaleType="centerCrop"
-                        android:contentDescription="Captured image"
-                        android:background="@color/soft_cream" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Side-by-side buttons: Scan (left) and Capture (right) -->
+            <!-- ===== ACTIONS SECTION ===== -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:layout_marginBottom="12dp">
+                android:weightSum="2"
+                android:layout_marginBottom="16dp">
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnScanDiseases"
                     android:layout_width="0dp"
-                    android:layout_height="wrap_content"
+                    android:layout_height="60dp"
                     android:layout_weight="1"
-                    android:layout_marginEnd="6dp"
-                    android:text="@string/monitor_scan_button"
+                    android:layout_marginEnd="8dp"
+                    android:text="AI Health Scan"
                     android:textAllCaps="false"
-                    android:icon="@android:drawable/ic_menu_camera" />
+                    android:textStyle="bold"
+                    android:textSize="14sp"
+                    app:cornerRadius="16dp"
+                    app:icon="@android:drawable/ic_menu_camera"
+                    app:iconSize="20dp"
+                    app:backgroundTint="@color/warm_orange"
+                    android:textColor="@color/white" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnCapture"
                     android:layout_width="0dp"
-                    android:layout_height="wrap_content"
+                    android:layout_height="60dp"
                     android:layout_weight="1"
-                    android:layout_marginStart="6dp"
-                    android:text="Capture"
+                    android:layout_marginStart="8dp"
+                    android:text="Take Photo"
                     android:textAllCaps="false"
-                    android:icon="@android:drawable/ic_menu_camera" />
+                    android:textStyle="bold"
+                    android:textSize="14sp"
+                    app:cornerRadius="16dp"
+                    app:icon="@android:drawable/ic_menu_camera"
+                    app:iconSize="20dp"
+                    app:backgroundTint="@color/green"
+                    android:textColor="@color/white" />
             </LinearLayout>
 
-            <!-- Save Button -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSave"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Save"
-                android:textAllCaps="false"
-                android:icon="@android:drawable/ic_menu_save" />
+                android:layout_height="64dp"
+                android:text="Save Progress"
+                android:textAllCaps="true"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:letterSpacing="0.1"
+                app:cornerRadius="18dp"
+                app:icon="@android:drawable/ic_menu_save"
+                app:iconSize="22dp"
+                app:backgroundTint="@color/tomato_red"
+                android:textColor="@color/white"
+                app:elevation="4dp" />
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
@@ -196,4 +301,3 @@
         app:elevation="16dp" />
 
 </RelativeLayout>
-

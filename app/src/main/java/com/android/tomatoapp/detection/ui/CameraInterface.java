@@ -6,7 +6,10 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaScannerConnection;
+import android.net.ConnectivityManager;
+import android.net.NetworkCapabilities;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
@@ -100,6 +103,14 @@ public class CameraInterface extends BaseBottomNavActivity {
     private String linkedProgramId;
     private String linkedCultivarName;
     private int linkedPhase = -1;
+
+    // New UI elements wired from redesigned layout
+    private View connectivityBadge;
+    private View connectivityDot;
+    private TextView connectivityLabel;
+    private TextView taskContextLabel;
+    private View scanTypeBadge;
+    private TextView scanTypeLabel;
     private static final SimpleDateFormat START_DATE_FORMAT =
             new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
     
@@ -290,6 +301,28 @@ public class CameraInterface extends BaseBottomNavActivity {
         // Header title
         TextView headerTitle = findViewById(R.id.headerTitle);
         headerTitle.setText(R.string.scan_section);
+
+        // ── Connectivity badge ──────────────────────────────────────────────
+        connectivityBadge = findViewById(R.id.connectivityBadge);
+        connectivityDot   = findViewById(R.id.connectivityDot);
+        connectivityLabel = findViewById(R.id.connectivityLabel);
+        updateConnectivityBadge();
+
+        // ── Task context label & scan-type chip ────────────────────────────
+        taskContextLabel = findViewById(R.id.taskContextLabel);
+        scanTypeBadge    = findViewById(R.id.scanTypeBadge);
+        scanTypeLabel    = findViewById(R.id.scanTypeLabel);
+        if (taskContextLabel != null && linkedCultivarName != null && !linkedCultivarName.isEmpty()) {
+            taskContextLabel.setText(linkedCultivarName);
+        }
+        if (scanTypeLabel != null) {
+            // Map model type to a human-readable chip label
+            switch (currentModelType) {
+                case LEAVES: scanTypeLabel.setText("Leaves"); break;
+                case PEST:   scanTypeLabel.setText("Pest");   break;
+                default:     scanTypeLabel.setText("Fruits"); break;
+            }
+        }
 
         // Load labels from assets
         loadLabels();
@@ -1203,6 +1236,46 @@ public class CameraInterface extends BaseBottomNavActivity {
         return indices;
     }
 
+    /**
+     * Updates the connectivity badge pill (Online / Offline) in the header.
+     */
+    private void updateConnectivityBadge() {
+        if (connectivityLabel == null || connectivityDot == null) return;
+        boolean online = false;
+        try {
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+            if (cm != null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    android.net.Network net = cm.getActiveNetwork();
+                    NetworkCapabilities caps = net != null ? cm.getNetworkCapabilities(net) : null;
+                    online = caps != null
+                            && (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+                            || caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+                            || caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET));
+                } else {
+                    android.net.NetworkInfo info = cm.getActiveNetworkInfo();
+                    online = info != null && info.isConnected();
+                }
+            }
+        } catch (Exception ignored) { }
+
+        if (online) {
+            connectivityLabel.setText("Online");
+            // Green background tint already set in XML; just ensure dot is green
+            if (connectivityDot != null)
+                connectivityDot.setBackgroundResource(R.drawable.circle_green);
+            if (connectivityBadge != null)
+                ((com.google.android.material.card.MaterialCardView) connectivityBadge)
+                        .setCardBackgroundColor(0xCC2D7A3A); // dark-green semi-transparent
+        } else {
+            connectivityLabel.setText("Offline");
+            if (connectivityDot != null)
+                connectivityDot.setBackgroundResource(R.drawable.circle_orange);
+            if (connectivityBadge != null)
+                ((com.google.android.material.card.MaterialCardView) connectivityBadge)
+                        .setCardBackgroundColor(0xCC6B7280); // muted grey semi-transparent
+        }
+    }
 
     @Override
     public boolean onSupportNavigateUp() {

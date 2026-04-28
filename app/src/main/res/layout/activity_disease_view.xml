@@ -8,11 +8,11 @@
     android:background="@color/sidebar_dark_green"
     tools:context=".DiseaseView">
 
-    <!-- Header Image with Gradient -->
+    <!-- ===== HEADER IMAGE ===== -->
     <FrameLayout
         android:id="@+id/headerImageContainer"
         android:layout_width="match_parent"
-        android:layout_height="320dp"
+        android:layout_height="300dp"
         android:layout_alignParentTop="true">
 
         <ImageView
@@ -23,12 +23,14 @@
             android:scaleType="centerCrop"
             android:contentDescription="Disease illustration" />
 
+        <!-- Bottom dark gradient -->
         <View
             android:layout_width="match_parent"
-            android:layout_height="140dp"
+            android:layout_height="160dp"
             android:layout_gravity="bottom"
             android:background="@drawable/bg_bottom_gradient_dark" />
-            
+
+        <!-- "Tap to enlarge" hint -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -39,18 +41,21 @@
             android:paddingVertical="4dp"
             android:background="#80000000"
             android:layout_gravity="bottom|end"
-            android:layout_margin="16dp" />
+            android:layout_margin="14dp" />
     </FrameLayout>
 
-    <!-- Navigation Bar -->
+    <!-- ===== NAV BAR (overlaid on image top) ===== -->
     <LinearLayout
         android:id="@+id/disNav"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="16dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="48dp"
+        android:paddingBottom="12dp"
         android:gravity="center_vertical">
-        
+
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/backButtonCard"
             android:layout_width="36dp"
@@ -59,6 +64,7 @@
             app:cardCornerRadius="18dp"
             app:cardElevation="0dp"
             app:strokeWidth="0dp">
+
             <ImageButton
                 android:id="@+id/backButton"
                 android:layout_width="match_parent"
@@ -72,9 +78,10 @@
         </com.google.android.material.card.MaterialCardView>
 
         <TextView
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="INFORMATION"
+            android:layout_weight="1"
+            android:text="DISEASE INFO"
             android:textColor="@color/white"
             android:textSize="11sp"
             android:textStyle="bold"
@@ -82,7 +89,7 @@
             android:layout_marginStart="14dp" />
     </LinearLayout>
 
-    <!-- Main Content Card -->
+    <!-- ===== SCROLLABLE CONTENT CARD (slides over image) ===== -->
     <ScrollView
         android:id="@+id/scrollView"
         android:layout_width="match_parent"
@@ -99,7 +106,7 @@
             android:minHeight="500dp"
             app:cardBackgroundColor="@color/white"
             app:cardElevation="8dp"
-            app:cardCornerRadius="24dp"
+            app:cardCornerRadius="28dp"
             app:strokeWidth="0dp">
 
             <LinearLayout
@@ -107,8 +114,9 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:padding="24dp"
-                android:paddingBottom="40dp">
+                android:paddingBottom="48dp">
 
+                <!-- ===== SEVERITY + NAME HEADER ===== -->
                 <TextView
                     android:id="@+id/diseaseSeverityBadge"
                     android:layout_width="wrap_content"
@@ -117,8 +125,8 @@
                     android:textColor="#B45309"
                     android:textSize="11sp"
                     android:textStyle="bold"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="4dp"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="5dp"
                     android:background="@drawable/bg_pill_input"
                     android:backgroundTint="#FEF3E2"
                     android:layout_marginBottom="12dp" />
@@ -130,7 +138,7 @@
                     android:text="Early Blight"
                     android:textColor="@color/text"
                     android:fontFamily="serif"
-                    android:textSize="24sp"
+                    android:textSize="26sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -141,14 +149,17 @@
                     android:textColor="@color/muted"
                     android:textSize="14sp"
                     android:fontFamily="sans-serif-light"
-                    android:layout_marginBottom="24dp" />
+                    android:layout_marginBottom="20dp" />
 
-                <!-- Action Tabs -->
+                <!-- ===== TAB ROW ===== -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:layout_marginBottom="24dp">
+                    android:layout_marginBottom="24dp"
+                    android:background="@drawable/bg_pill_input"
+                    android:backgroundTint="@color/soft_cream"
+                    android:padding="4dp">
 
                     <LinearLayout
                         android:id="@+id/tabSymptoms"
@@ -157,12 +168,25 @@
                         android:layout_weight="1"
                         android:orientation="vertical"
                         android:gravity="center"
-                        android:padding="10dp"
+                        android:paddingTop="10dp"
+                        android:paddingBottom="10dp"
                         android:background="@drawable/bg_pill_input"
                         android:backgroundTint="@color/green_light"
-                        android:layout_marginEnd="6dp">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="👁" android:textSize="16sp" />
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Symptoms" android:textSize="9sp" android:textStyle="bold" android:textColor="@color/green" />
+                        android:layout_marginEnd="4dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="👁"
+                            android:textSize="16sp" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Symptoms"
+                            android:textSize="10sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/green"
+                            android:layout_marginTop="2dp" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -172,11 +196,24 @@
                         android:layout_weight="1"
                         android:orientation="vertical"
                         android:gravity="center"
-                        android:padding="10dp"
+                        android:paddingTop="10dp"
+                        android:paddingBottom="10dp"
                         android:background="@drawable/bg_pill_input"
-                        android:layout_marginHorizontal="3dp">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="💊" android:textSize="16sp" />
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Treatment" android:textSize="9sp" android:textStyle="bold" android:textColor="@color/muted" />
+                        android:layout_marginHorizontal="4dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="💊"
+                            android:textSize="16sp" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Treatment"
+                            android:textSize="10sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/muted"
+                            android:layout_marginTop="2dp" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -186,32 +223,66 @@
                         android:layout_weight="1"
                         android:orientation="vertical"
                         android:gravity="center"
-                        android:padding="10dp"
+                        android:paddingTop="10dp"
+                        android:paddingBottom="10dp"
                         android:background="@drawable/bg_pill_input"
-                        android:layout_marginStart="6dp">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🛡" android:textSize="16sp" />
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Prevention" android:textSize="9sp" android:textStyle="bold" android:textColor="@color/muted" />
+                        android:layout_marginStart="4dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="🛡"
+                            android:textSize="16sp" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Prevention"
+                            android:textSize="10sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/muted"
+                            android:layout_marginTop="2dp" />
                     </LinearLayout>
                 </LinearLayout>
 
-                <!-- Content Sections -->
+                <!-- ===== SYMPTOMS SECTION ===== -->
                 <LinearLayout
                     android:id="@+id/sectionSymptoms"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
-                    
-                    <TextView
+
+                    <!-- Section header -->
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Symptoms"
-                        android:textColor="@color/text"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:paddingBottom="6dp"
-                        android:layout_marginBottom="8dp"
-                        android:background="@drawable/bottom_nav_gradient"
-                        android:backgroundTint="@color/green_light" />
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="10dp">
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:layout_marginEnd="10dp"
+                            app:cardCornerRadius="8dp"
+                            app:cardElevation="0dp"
+                            app:cardBackgroundColor="@color/green_light"
+                            app:strokeWidth="0dp">
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:text="👁"
+                                android:textSize="15sp"
+                                android:gravity="center" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Symptoms"
+                            android:textColor="@color/text"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
 
                     <TextView
                         android:id="@+id/diseaseDescription"
@@ -219,21 +290,43 @@
                         android:layout_height="wrap_content"
                         android:text="Dark brown to black lesions with concentric rings appear on older, lower leaves first. Lesions are surrounded by yellow halos."
                         android:textColor="@color/muted"
-                        android:textSize="12sp"
+                        android:textSize="13sp"
                         android:lineSpacingExtra="6dp"
-                        android:layout_marginBottom="20dp" />
+                        android:layout_marginBottom="20dp"
+                        android:paddingStart="42dp" />
 
-                    <TextView
+                    <!-- Cause sub-section -->
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Cause"
-                        android:textColor="@color/text"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:paddingBottom="6dp"
-                        android:layout_marginBottom="8dp"
-                        android:background="@drawable/bottom_nav_gradient"
-                        android:backgroundTint="@color/green_light" />
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="10dp">
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:layout_marginEnd="10dp"
+                            app:cardCornerRadius="8dp"
+                            app:cardElevation="0dp"
+                            app:cardBackgroundColor="@color/orange_light"
+                            app:strokeWidth="0dp">
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:text="🔬"
+                                android:textSize="15sp"
+                                android:gravity="center" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Cause"
+                            android:textColor="@color/text"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
 
                     <TextView
                         android:id="@+id/diseaseCause"
@@ -241,28 +334,51 @@
                         android:layout_height="wrap_content"
                         android:text="Caused by the fungus Alternaria solani. Spreads rapidly in warm, humid conditions between 24–29°C."
                         android:textColor="@color/muted"
-                        android:textSize="12sp"
+                        android:textSize="13sp"
                         android:lineSpacingExtra="6dp"
-                        android:layout_marginBottom="20dp" />
+                        android:layout_marginBottom="8dp"
+                        android:paddingStart="42dp" />
                 </LinearLayout>
-                
+
+                <!-- ===== TREATMENT SECTION ===== -->
                 <LinearLayout
                     android:id="@+id/sectionTreatment"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:visibility="gone">
-                    <TextView
+
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Recommended Treatment"
-                        android:textColor="@color/text"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:paddingBottom="6dp"
-                        android:layout_marginBottom="8dp"
-                        android:background="@drawable/bottom_nav_gradient"
-                        android:backgroundTint="@color/green_light" />
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="10dp">
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:layout_marginEnd="10dp"
+                            app:cardCornerRadius="8dp"
+                            app:cardElevation="0dp"
+                            app:cardBackgroundColor="#E8F4FF"
+                            app:strokeWidth="0dp">
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:text="💊"
+                                android:textSize="15sp"
+                                android:gravity="center" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Recommended Treatment"
+                            android:textColor="@color/text"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
 
                     <TextView
                         android:id="@+id/diseaseCure"
@@ -270,28 +386,51 @@
                         android:layout_height="wrap_content"
                         android:text="Apply copper-based or chlorothalonil fungicides at first sign. Remove infected leaves promptly. Repeat every 7–10 days."
                         android:textColor="@color/muted"
-                        android:textSize="12sp"
+                        android:textSize="13sp"
                         android:lineSpacingExtra="6dp"
-                        android:layout_marginBottom="20dp" />
+                        android:layout_marginBottom="8dp"
+                        android:paddingStart="42dp" />
                 </LinearLayout>
-                
+
+                <!-- ===== PREVENTION SECTION ===== -->
                 <LinearLayout
                     android:id="@+id/sectionPrevention"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:visibility="gone">
-                    <TextView
+
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Prevention Measures"
-                        android:textColor="@color/text"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:paddingBottom="6dp"
-                        android:layout_marginBottom="8dp"
-                        android:background="@drawable/bottom_nav_gradient"
-                        android:backgroundTint="@color/green_light" />
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="10dp">
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:layout_marginEnd="10dp"
+                            app:cardCornerRadius="8dp"
+                            app:cardElevation="0dp"
+                            app:cardBackgroundColor="#F0E8FF"
+                            app:strokeWidth="0dp">
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:text="🛡"
+                                android:textSize="15sp"
+                                android:gravity="center" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Prevention Measures"
+                            android:textColor="@color/text"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
 
                     <TextView
                         android:id="@+id/diseasePrevention"
@@ -299,19 +438,20 @@
                         android:layout_height="wrap_content"
                         android:text="Ensure crop rotation, proper spacing for air circulation, and use disease-free seeds. Avoid overhead irrigation."
                         android:textColor="@color/muted"
-                        android:textSize="12sp"
+                        android:textSize="13sp"
                         android:lineSpacingExtra="6dp"
-                        android:layout_marginBottom="20dp" />
+                        android:layout_marginBottom="8dp"
+                        android:paddingStart="42dp" />
                 </LinearLayout>
 
-                <!-- Dummy views for backwards compatibility -->
-                <LinearLayout android:id="@+id/symptomsButton" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
-                <LinearLayout android:id="@+id/treatmentButton" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
+                <!-- ===== HIDDEN LEGACY COMPATIBILITY VIEWS ===== -->
+                <LinearLayout android:id="@+id/symptomsButton"   android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
+                <LinearLayout android:id="@+id/treatmentButton"  android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
                 <LinearLayout android:id="@+id/preventionButton" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
-                <TextView android:id="@+id/pestCommonName" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
-                <TextView android:id="@+id/pestScientificName" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
-                <TextView android:id="@+id/pestDescription" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
-                <TextView android:id="@+id/diseaseSymptoms" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
+                <TextView android:id="@+id/pestCommonName"       android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
+                <TextView android:id="@+id/pestScientificName"   android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
+                <TextView android:id="@+id/pestDescription"      android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
+                <TextView android:id="@+id/diseaseSymptoms"      android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
                 <com.google.android.material.card.MaterialCardView android:id="@+id/pestImageCard" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone">
                     <ImageView android:id="@+id/pestImage" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
                 </com.google.android.material.card.MaterialCardView>

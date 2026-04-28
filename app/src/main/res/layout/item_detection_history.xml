@@ -5,9 +5,10 @@
     android:layout_height="wrap_content"
     android:layout_marginBottom="12dp"
     app:cardBackgroundColor="@color/white"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="2dp"
-    app:strokeWidth="0dp"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="3dp"
+    app:strokeWidth="1dp"
+    app:strokeColor="@color/divider"
     android:clickable="true"
     android:focusable="true"
     android:foreground="?android:attr/selectableItemBackground">
@@ -15,84 +16,182 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="18dp"
-        android:gravity="center_vertical">
+        android:orientation="vertical">
 
-        <!-- Thumbnail -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="72dp"
-            android:layout_height="72dp"
-            android:layout_marginEnd="16dp"
-            app:cardCornerRadius="14dp"
-            app:cardElevation="0dp"
-            app:strokeWidth="0dp"
-            app:cardBackgroundColor="@color/soft_cream">
+        <!-- Top colored accent bar (color-coded by result status) -->
+        <View
+            android:id="@+id/statusAccentBar"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:background="@color/tomato_red" />
 
-            <ImageView
-                android:id="@+id/historyItemImage"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:src="@mipmap/ic_logo"
-                android:scaleType="centerCrop"
-                android:contentDescription="Detection image" />
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Text Content -->
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:orientation="horizontal"
+            android:padding="14dp"
+            android:gravity="center_vertical">
+
+            <!-- Thumbnail -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="68dp"
+                android:layout_height="68dp"
+                android:layout_marginEnd="14dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp"
+                app:cardBackgroundColor="@color/soft_cream">
+
+                <ImageView
+                    android:id="@+id/historyItemImage"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:src="@mipmap/ic_logo"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="Detection image" />
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Main content -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <!-- Scan type + status tags row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="6dp">
+
+                    <!-- Scan type tag (Disease / Ripeness / Stage) -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/scanTypeTag"
+                        android:layout_width="wrap_content"
+                        android:layout_height="22dp"
+                        android:layout_marginEnd="6dp"
+                        app:cardCornerRadius="11dp"
+                        app:cardElevation="0dp"
+                        app:cardBackgroundColor="@color/blue_light"
+                        app:strokeWidth="0dp">
+
+                        <TextView
+                            android:id="@+id/scanTypeText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="match_parent"
+                            android:text="Disease"
+                            android:textColor="@color/blue"
+                            android:textSize="10sp"
+                            android:textStyle="bold"
+                            android:gravity="center"
+                            android:paddingStart="8dp"
+                            android:paddingEnd="8dp" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <!-- Result status tag (Healthy / Infected) -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/resultStatusTag"
+                        android:layout_width="wrap_content"
+                        android:layout_height="22dp"
+                        app:cardCornerRadius="11dp"
+                        app:cardElevation="0dp"
+                        app:cardBackgroundColor="@color/red_light"
+                        app:strokeWidth="0dp">
+
+                        <TextView
+                            android:id="@+id/resultStatusText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="match_parent"
+                            android:text="⚠ Infected"
+                            android:textColor="@color/tomato_red"
+                            android:textSize="10sp"
+                            android:textStyle="bold"
+                            android:gravity="center"
+                            android:paddingStart="8dp"
+                            android:paddingEnd="8dp" />
+                    </com.google.android.material.card.MaterialCardView>
+                </LinearLayout>
+
+                <!-- Detection title -->
+                <TextView
+                    android:id="@+id/historyItemTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Detection Title"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="3dp"
+                    android:maxLines="2"
+                    android:ellipsize="end" />
+
+                <!-- Quick result summary -->
+                <TextView
+                    android:id="@+id/historyItemDescription"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Detection summary appears here."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp"
+                    android:maxLines="2"
+                    android:ellipsize="end"
+                    android:lineSpacingExtra="2dp" />
+            </LinearLayout>
+
+            <!-- Delete -->
+            <ImageButton
+                android:id="@+id/deleteButton"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginStart="6dp"
+                android:src="@android:drawable/ic_menu_delete"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Delete"
+                app:tint="@color/error"
+                android:scaleType="centerInside"
+                android:padding="6dp"
+                android:clickable="true"
+                android:focusable="true" />
+        </LinearLayout>
+
+        <!-- Bottom footer: date/time + cultivar context -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="10dp">
 
             <TextView
-                android:id="@+id/historyItemTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Detection Title"
-                android:textColor="@color/text_primary"
-                android:textSize="17sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="6dp"
-                android:maxLines="2"
-                android:ellipsize="end" />
-
-            <TextView
-                android:id="@+id/historyItemDescription"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Detection description and details will appear here. This provides context about the detected pest or disease."
-                android:textColor="@color/text_secondary"
-                android:textSize="14sp"
-                android:maxLines="3"
-                android:ellipsize="end"
-                android:lineSpacingExtra="2dp" />
+                android:text="🕐"
+                android:textSize="11sp"
+                android:layout_marginEnd="4dp" />
 
             <TextView
                 android:id="@+id/historyItemContext"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_weight="1"
                 android:textColor="@color/text_secondary"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:maxLines="1"
                 android:ellipsize="end" />
-        </LinearLayout>
 
-        <!-- Delete Button -->
-        <ImageButton
-            android:id="@+id/deleteButton"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_marginStart="8dp"
-            android:src="@android:drawable/ic_menu_delete"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Delete"
-            app:tint="@color/error"
-            android:scaleType="centerInside"
-            android:padding="8dp"
-            android:clickable="true"
-            android:focusable="true" />
+            <!-- Confidence score -->
+            <TextView
+                android:id="@+id/confidenceText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="94% confident"
+                android:textColor="@color/muted"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+        </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>
-

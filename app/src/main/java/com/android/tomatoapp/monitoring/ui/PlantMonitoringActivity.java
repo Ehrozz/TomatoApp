@@ -49,8 +49,10 @@ public class PlantMonitoringActivity extends BaseBottomNavActivity {
     private MaterialButton btnCapture;
     private MaterialButton btnDeleteImage;
     private TextInputEditText inputNotes;
-    private ImageView capturedImageView;
-    private MaterialCardView capturedImageCard;
+    private ImageView capturedImageView; // Keep as reference to referenceImage for logic consistency
+    private MaterialCardView capturedImageCard; // Not used but kept for field compatibility if needed
+    private ImageView cameraHintIcon;
+    private TextView phaseBadge;
 
     private PlantMonitoringRepository repository;
     private ReferenceImageProvider.ReferenceImage referenceInfo;
@@ -70,8 +72,7 @@ public class PlantMonitoringActivity extends BaseBottomNavActivity {
         setupBottomNavigation();
 
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle(R.string.monitor_title);
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().hide();
         }
 
         repository = new PlantMonitoringRepository(this);
@@ -90,8 +91,11 @@ public class PlantMonitoringActivity extends BaseBottomNavActivity {
         btnCapture = findViewById(R.id.btnCapture);
         btnDeleteImage = findViewById(R.id.btnDeleteImage);
         inputNotes = findViewById(R.id.inputNotes);
-        capturedImageView = findViewById(R.id.capturedImageView);
-        capturedImageCard = findViewById(R.id.capturedImageCard);
+        // Map capturedImageView to referenceImage since we've merged them
+        capturedImageView = findViewById(R.id.referenceImage);
+        cameraHintIcon = findViewById(R.id.cameraHintIcon);
+        btnDeleteImage = findViewById(R.id.btnDeleteImage);
+        phaseBadge = findViewById(R.id.phaseBadge);
     }
 
     private void extractExtras() {
@@ -107,8 +111,17 @@ public class PlantMonitoringActivity extends BaseBottomNavActivity {
     private void setupReferenceCard() {
         referenceInfo = ReferenceImageProvider.getReference(this, cultivarName, phase);
         referenceImage.setImageDrawable(ContextCompat.getDrawable(this, referenceInfo.imageRes));
-        referencePhaseLabel.setText(referenceInfo.phaseLabel);
+        
+        // Remove "Phase X: " or "Phase X · " prefix from the title to avoid redundancy with the badge
+        String title = referenceInfo.phaseLabel;
+        if (title != null && title.toLowerCase().contains("phase")) {
+            title = title.replaceAll("(?i)Phase\\s*\\d+\\s*[:·\\-]\\s*", "");
+        }
+        referencePhaseLabel.setText(title);
         referenceDescription.setText(referenceInfo.description);
+        if (phaseBadge != null) {
+            phaseBadge.setText("PHASE " + phase);
+        }
     }
 
     private void setupActions() {
@@ -247,7 +260,7 @@ public class PlantMonitoringActivity extends BaseBottomNavActivity {
     }
     
     private void displayCapturedImage(Uri imageUri) {
-        if (capturedImageView == null || capturedImageCard == null) return;
+        if (capturedImageView == null) return;
         
         try {
             InputStream inputStream = getContentResolver().openInputStream(imageUri);
@@ -255,7 +268,17 @@ public class PlantMonitoringActivity extends BaseBottomNavActivity {
                 Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
                 inputStream.close();
                 capturedImageView.setImageBitmap(bitmap);
-                capturedImageCard.setVisibility(View.VISIBLE);
+                
+                // Dynamic UI updates for "Result" mode
+                if (cameraHintIcon != null) cameraHintIcon.setVisibility(View.GONE);
+                if (btnDeleteImage != null) btnDeleteImage.setVisibility(View.VISIBLE);
+                
+                if (referencePhaseLabel != null) {
+                    referencePhaseLabel.setText("Monitoring Photo");
+                }
+                if (referenceDescription != null) {
+                    referenceDescription.setText("Captured at " + new java.text.SimpleDateFormat("hh:mm a", java.util.Locale.getDefault()).format(new java.util.Date()));
+                }
             }
         } catch (Exception e) {
             Toast.makeText(this, "Error loading image: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -266,33 +289,21 @@ public class PlantMonitoringActivity extends BaseBottomNavActivity {
     private void deleteCapturedImage() {
         if (capturedImageUri != null) {
             try {
-                // Delete the file if it exists
                 String uriString = capturedImageUri.toString();
                 if (uriString.startsWith("file://")) {
                     File file = new File(uriString.replace("file://", ""));
-                    if (file.exists()) {
-                        file.delete();
-                    }
+                    if (file.exists()) file.delete();
                 } else {
-                    // For content URIs, try to delete via content resolver
-                    int deleted = getContentResolver().delete(capturedImageUri, null, null);
-                    if (deleted > 0) {
-                        Toast.makeText(this, "Image deleted", Toast.LENGTH_SHORT).show();
-                    }
+                    getContentResolver().delete(capturedImageUri, null, null);
                 }
-            } catch (Exception e) {
-                // Ignore deletion errors
-            }
+            } catch (Exception ignored) {}
         }
         
-        // Clear UI
+        // Restore initial state
         capturedImageUri = null;
-        if (capturedImageView != null) {
-            capturedImageView.setImageDrawable(null);
-        }
-        if (capturedImageCard != null) {
-            capturedImageCard.setVisibility(View.GONE);
-        }
+        if (cameraHintIcon != null) cameraHintIcon.setVisibility(View.VISIBLE);
+        if (btnDeleteImage != null) btnDeleteImage.setVisibility(View.GONE);
+        setupReferenceCard(); // Restore original phase hints
     }
 
     @Override

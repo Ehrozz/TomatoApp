@@ -29,6 +29,7 @@ public class DetectionResults extends BaseBottomNavActivity {
     private TextView detectionContextInfo;
     private TextView detectionDescription, detectionSymptoms, detectionCure, detectionAccuracy;
     private TextView badgeNumber;
+    private TextView recommendation1, recommendation2, recommendation3;
     private ImageView detectionImage;
 
     @Override
@@ -50,6 +51,9 @@ public class DetectionResults extends BaseBottomNavActivity {
         detectionSymptoms = findViewById(R.id.detectionSymptoms);
         detectionCure = findViewById(R.id.detectionCure);
         detectionAccuracy = findViewById(R.id.detectionAccuracy);
+        recommendation1 = findViewById(R.id.recommendation1);
+        recommendation2 = findViewById(R.id.recommendation2);
+        recommendation3 = findViewById(R.id.recommendation3);
 
         Intent intent = getIntent();
         if (intent != null) {
@@ -115,27 +119,13 @@ public class DetectionResults extends BaseBottomNavActivity {
                 }
             }
 
-            // Set score/ID tag from accuracy or topPredictions
+            // Set score/ID tag — show accuracy directly (e.g. "91%")
             String accuracy = intent.getStringExtra("accuracy");
             String topPredictions = intent.getStringExtra("topPredictions");
             if (accuracy != null && !accuracy.isEmpty()) {
-                // Extract numbers from accuracy (e.g., "85.5%" -> "85 - 5")
-                String cleanAcc = accuracy.replaceAll("[^0-9.]", "");
-                if (cleanAcc.contains(".")) {
-                    String[] parts = cleanAcc.split("\\.");
-                    if (parts.length >= 2) {
-                        scoreText.setText(String.format(Locale.getDefault(), "%s - %s", parts[0], parts[1].substring(0, Math.min(parts[1].length(), 3))));
-                    } else {
-                        scoreText.setText(String.format(Locale.getDefault(), "%s - 0", cleanAcc.substring(0, Math.min(cleanAcc.length(), 4))));
-                    }
-                } else {
-                    scoreText.setText(String.format(Locale.getDefault(), "%s - 0", cleanAcc.substring(0, Math.min(cleanAcc.length(), 4))));
-                }
-            } else if (topPredictions != null && !topPredictions.isEmpty()) {
-                // Use first prediction's confidence as score
-                scoreText.setText("1011 - 628"); // Default format
+                scoreText.setText(accuracy);
             } else {
-                scoreText.setText("1011 - 628"); // Default
+                scoreText.setText("—");
             }
 
             // Populate findings from detection results
@@ -144,33 +134,36 @@ public class DetectionResults extends BaseBottomNavActivity {
             String cause = intent.getStringExtra("cause");
             String cure = intent.getStringExtra("cure");
             String prevention = intent.getStringExtra("prevention");
-
-            // Finding 1: Description or Symptoms
-            if (description != null && !description.isEmpty()) {
-                finding1.setText(description);
-            } else if (symptoms != null && !symptoms.isEmpty()) {
-                finding1.setText(symptoms);
-            } else {
-                finding1.setText("Detection result information will appear here.");
-            }
-
-            // Finding 2: Cause or Title
             String title = intent.getStringExtra("title");
-            if (cause != null && !cause.isEmpty()) {
-                finding2.setText(cause);
-            } else if (title != null && !title.isEmpty()) {
-                finding2.setText(title);
+
+            // Finding 1 = primary AI verdict (disease name)
+            if (title != null && !title.isEmpty()) {
+                finding1.setText(title);
+            } else if (description != null && !description.isEmpty()) {
+                finding1.setText(description);
             } else {
-                finding2.setText("Additional detection details.");
+                finding1.setText("Detection result will appear here.");
             }
 
-            // Finding 3: Cure or Prevention
-            if (cure != null && !cure.isEmpty()) {
-                finding3.setText(cure);
+            // Finding 2 = fruit ripeness (from ripeness field set earlier)
+            String ripeness2 = intent.getStringExtra("ripeness");
+            if (ripeness2 != null && !ripeness2.isEmpty()) {
+                finding2.setText("Fruit ripeness: " + ripeness2);
+            } else if (cause != null && !cause.isEmpty()) {
+                finding2.setText(cause);
+            } else {
+                finding2.setText("Ripeness: Not detected");
+            }
+
+            // Finding 3 = growth stage context
+            String detectionPhaseStr = String.valueOf(intent.getIntExtra("detectionPhase", 0));
+            int dPhase = intent.getIntExtra("detectionPhase", 0);
+            if (dPhase > 0) {
+                finding3.setText("Growth stage: Phase " + dPhase);
             } else if (prevention != null && !prevention.isEmpty()) {
                 finding3.setText(prevention);
             } else {
-                finding3.setText("Treatment and prevention recommendations.");
+                finding3.setText("Growth stage: Not specified");
             }
 
             // Set detailed information
@@ -182,6 +175,26 @@ public class DetectionResults extends BaseBottomNavActivity {
             }
             if (cure != null) {
                 detectionCure.setText(cure);
+            }
+
+            // Populate actionable recommendations
+            if (recommendation1 != null) {
+                if (cure != null && !cure.isEmpty()) {
+                    // Split cure into up to 3 sentences/steps
+                    String[] steps = cure.split("\\.");
+                    if (steps.length >= 1 && !steps[0].trim().isEmpty())
+                        recommendation1.setText(steps[0].trim() + ".");
+                    if (steps.length >= 2 && !steps[1].trim().isEmpty() && recommendation2 != null)
+                        recommendation2.setText(steps[1].trim() + ".");
+                    if (prevention != null && !prevention.isEmpty() && recommendation3 != null)
+                        recommendation3.setText(prevention);
+                    else if (steps.length >= 3 && !steps[2].trim().isEmpty() && recommendation3 != null)
+                        recommendation3.setText(steps[2].trim() + ".");
+                } else {
+                    recommendation1.setText("Consult an agricultural expert for treatment.");
+                    if (recommendation2 != null) recommendation2.setText("Monitor affected plants closely.");
+                    if (recommendation3 != null) recommendation3.setText("Isolate infected plants to prevent spread.");
+                }
             }
 
             // Set accuracy with enhanced display

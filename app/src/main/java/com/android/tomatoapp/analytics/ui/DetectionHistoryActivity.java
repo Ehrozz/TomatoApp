@@ -20,6 +20,7 @@ import com.android.tomatoapp.R;
 import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import com.android.tomatoapp.detection.data.DetectionHistoryManager;
 import com.android.tomatoapp.detection.ui.DetectionResults;
+import com.google.android.material.card.MaterialCardView;
 
 import org.json.JSONObject;
 
@@ -36,6 +37,15 @@ public class DetectionHistoryActivity extends BaseBottomNavActivity {
     private HistoryAdapter adapter;
     private boolean isResumingFromOtherActivity = false;
 
+    // Filter state: null = all, otherwise keyword to match in disease name
+    private String activeFilter = null;
+    private boolean filterHealthy = false;
+    private boolean filterUnhealthy = false;
+
+    // UI refs
+    private TextView scanCountText;
+    private MaterialCardView chipAll, chipDisease, chipRipeness, chipHealthy, chipUnhealthy;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -45,6 +55,7 @@ public class DetectionHistoryActivity extends BaseBottomNavActivity {
 
         historyRecyclerView = findViewById(R.id.historyRecyclerView);
         emptyState = findViewById(R.id.emptyState);
+        scanCountText = findViewById(R.id.scanCountText);
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Detection History");
@@ -55,25 +66,107 @@ public class DetectionHistoryActivity extends BaseBottomNavActivity {
         adapter = new HistoryAdapter();
         historyRecyclerView.setAdapter(adapter);
 
+        // Bind filter chips
+        chipAll       = findViewById(R.id.filterAll);
+        chipDisease   = findViewById(R.id.filterDisease);
+        chipRipeness  = findViewById(R.id.filterRipeness);
+        chipHealthy   = findViewById(R.id.filterHealthy);
+        chipUnhealthy = findViewById(R.id.filterUnhealthy);
+        setupFilterChips();
+
         loadHistory();
+    }
+
+    private void setupFilterChips() {
+        View.OnClickListener chipListener = v -> {
+            // Reset all styling
+            setChipActive(chipAll,       false);
+            setChipActive(chipDisease,   false);
+            setChipActive(chipRipeness,  false);
+            setChipActive(chipHealthy,   false);
+            setChipActive(chipUnhealthy, false);
+
+            activeFilter   = null;
+            filterHealthy  = false;
+            filterUnhealthy = false;
+
+            if (v == chipAll) {
+                setChipActive(chipAll, true);
+            } else if (v == chipDisease) {
+                setChipActive(chipDisease, true);
+                activeFilter = "blight";
+            } else if (v == chipRipeness) {
+                setChipActive(chipRipeness, true);
+                activeFilter = "ripe";
+            } else if (v == chipHealthy) {
+                setChipActive(chipHealthy, true);
+                filterHealthy = true;
+            } else if (v == chipUnhealthy) {
+                setChipActive(chipUnhealthy, true);
+                filterUnhealthy = true;
+            }
+            applyFilter();
+        };
+
+        if (chipAll       != null) chipAll.setOnClickListener(chipListener);
+        if (chipDisease   != null) chipDisease.setOnClickListener(chipListener);
+        if (chipRipeness  != null) chipRipeness.setOnClickListener(chipListener);
+        if (chipHealthy   != null) chipHealthy.setOnClickListener(chipListener);
+        if (chipUnhealthy != null) chipUnhealthy.setOnClickListener(chipListener);
+
+        // Default: All active
+        setChipActive(chipAll, true);
+    }
+
+    private void setChipActive(MaterialCardView chip, boolean active) {
+        if (chip == null) return;
+        if (active) {
+            chip.setCardBackgroundColor(getResources().getColor(R.color.tomato_red, getTheme()));
+            chip.setStrokeWidth(0);
+        } else {
+            chip.setCardBackgroundColor(getResources().getColor(R.color.white, getTheme()));
+            chip.setStrokeWidth(1);
+        }
+    }
+
+    private void applyFilter() {
+        if (historyData == null) return;
+        ArrayList<JSONObject> filtered = new ArrayList<>();
+        for (JSONObject entry : historyData) {
+            String disease = entry.optString("disease", "").toLowerCase();
+            boolean healthy = disease.contains("healthy");
+
+            if (filterHealthy) {
+                if (healthy) filtered.add(entry);
+            } else if (filterUnhealthy) {
+                if (!healthy) filtered.add(entry);
+            } else if (activeFilter != null) {
+                if (disease.contains(activeFilter)) filtered.add(entry);
+            } else {
+                filtered.add(entry);
+            }
+        }
+        boolean hasItems = !filtered.isEmpty();
+        historyRecyclerView.setVisibility(hasItems ? View.VISIBLE : View.GONE);
+        emptyState.setVisibility(hasItems ? View.GONE : View.VISIBLE);
+        adapter.updateData(filtered);
     }
 
     private void loadHistory() {
         historyData = DetectionHistoryManager.getHistory(this);
-        
+
         // Reverse to show newest first
         if (historyData != null && !historyData.isEmpty()) {
             Collections.reverse(historyData);
         }
 
-        if (historyData == null || historyData.isEmpty()) {
-            historyRecyclerView.setVisibility(View.GONE);
-            emptyState.setVisibility(View.VISIBLE);
-        } else {
-            historyRecyclerView.setVisibility(View.VISIBLE);
-            emptyState.setVisibility(View.GONE);
-            adapter.updateData(historyData);
+        // Update count badge
+        int count = historyData != null ? historyData.size() : 0;
+        if (scanCountText != null) {
+            scanCountText.setText(count + (count == 1 ? " record" : " records"));
         }
+
+        applyFilter();
     }
 
     // RecyclerView Adapter
@@ -96,17 +189,20 @@ public class DetectionHistoryActivity extends BaseBottomNavActivity {
         public void onBindViewHolder(HistoryViewHolder holder, int position) {
             JSONObject entry = items.get(position);
             try {
-                String title = entry.getString("disease");
+                String disease    = entry.getString("disease");
                 String description = entry.optString("description", "");
-                String symptoms = entry.optString("symptoms", "");
-                String imageUri = entry.optString("imageUri", "");
-                String cultivar = entry.optString("cultivar", getString(R.string.detection_cultivar_unspecified));
-                int phase = entry.optInt("phase", 0);
-                
-                // Set title
-                holder.title.setText(title);
-                
-                // Set description (use description, symptoms, or default)
+                String symptoms   = entry.optString("symptoms", "");
+                String accuracy   = entry.optString("accuracy", "");
+                String imageUri   = entry.optString("imageUri", "");
+                String cultivar   = entry.optString("cultivar", getString(R.string.detection_cultivar_unspecified));
+                int phase         = entry.optInt("phase", 0);
+
+                boolean isHealthy = disease.toLowerCase().contains("healthy");
+
+                // Title
+                holder.title.setText(disease);
+
+                // Description snippet
                 if (!description.isEmpty()) {
                     holder.description.setText(description);
                 } else if (!symptoms.isEmpty()) {
@@ -114,28 +210,63 @@ public class DetectionHistoryActivity extends BaseBottomNavActivity {
                 } else {
                     holder.description.setText("Detection details not available.");
                 }
-                
-                // Context info
+
+                // Context / date footer
                 if (holder.context != null) {
-                    if (phase > 0) {
-                        holder.context.setText(getString(R.string.detection_context_format, cultivar, phase));
+                    String timestamp = entry.optString("timestamp", "");
+                    String ctx = timestamp.isEmpty()
+                            ? (phase > 0 ? getString(R.string.detection_context_format, cultivar, phase) : cultivar)
+                            : timestamp + (phase > 0 ? "  •  Phase " + phase : "");
+                    holder.context.setText(ctx);
+                }
+
+                // Confidence footer
+                if (holder.confidenceText != null) {
+                    holder.confidenceText.setText(accuracy.isEmpty() ? "" : accuracy + " confident");
+                }
+
+                // Scan-type tag (infer from disease name)
+                if (holder.scanTypeText != null) {
+                    String lower = disease.toLowerCase();
+                    if (lower.contains("ripe") || lower.contains("fruit")) {
+                        holder.scanTypeText.setText("Ripeness");
+                    } else if (lower.contains("pest") || lower.contains("mite") || lower.contains("fly")) {
+                        holder.scanTypeText.setText("Pest");
                     } else {
-                        holder.context.setText(cultivar);
+                        holder.scanTypeText.setText("Disease");
                     }
                 }
 
-                // Load image if available
+                // Result-status tag + accent bar
+                int accentColor = isHealthy
+                        ? getResources().getColor(R.color.fresh_green, getTheme())
+                        : getResources().getColor(R.color.tomato_red, getTheme());
+                if (holder.statusAccentBar != null) holder.statusAccentBar.setBackgroundColor(accentColor);
+                if (holder.resultStatusText != null) {
+                    holder.resultStatusText.setText(isHealthy ? "✅ Healthy" : "⚠ Infected");
+                }
+                if (holder.resultStatusTag != null) {
+                    holder.resultStatusTag.setCardBackgroundColor(
+                            isHealthy
+                                    ? getResources().getColor(R.color.green_light, getTheme())
+                                    : getResources().getColor(R.color.red_light, getTheme()));
+                }
+                if (holder.resultStatusText != null) {
+                    holder.resultStatusText.setTextColor(
+                            isHealthy
+                                    ? getResources().getColor(R.color.sidebar_dark_green, getTheme())
+                                    : getResources().getColor(R.color.tomato_red, getTheme()));
+                }
+
+                // Load image
                 if (!imageUri.isEmpty()) {
-                    try {
-                        holder.image.setImageURI(Uri.parse(imageUri));
-                    } catch (Exception e) {
-                        holder.image.setImageResource(R.mipmap.ic_logo);
-                    }
+                    try { holder.image.setImageURI(Uri.parse(imageUri)); }
+                    catch (Exception e) { holder.image.setImageResource(R.mipmap.ic_logo); }
                 } else {
                     holder.image.setImageResource(R.mipmap.ic_logo);
                 }
-                
-                // Make image circular
+
+                // Rounded image
                 holder.image.setClipToOutline(true);
                 holder.image.setOutlineProvider(new android.view.ViewOutlineProvider() {
                     @Override
@@ -235,17 +366,26 @@ public class DetectionHistoryActivity extends BaseBottomNavActivity {
 
         class HistoryViewHolder extends RecyclerView.ViewHolder {
             ImageView image;
-            TextView title, description, context;
+            TextView title, description, context, confidenceText;
+            View statusAccentBar;
+            MaterialCardView scanTypeTag, resultStatusTag;
+            TextView scanTypeText, resultStatusText;
             ImageButton deleteButton;
             private boolean isDeleteButtonClicked = false;
 
             HistoryViewHolder(View itemView) {
                 super(itemView);
-                image = itemView.findViewById(R.id.historyItemImage);
-                title = itemView.findViewById(R.id.historyItemTitle);
-                description = itemView.findViewById(R.id.historyItemDescription);
-                context = itemView.findViewById(R.id.historyItemContext);
-                deleteButton = itemView.findViewById(R.id.deleteButton);
+                image            = itemView.findViewById(R.id.historyItemImage);
+                title            = itemView.findViewById(R.id.historyItemTitle);
+                description      = itemView.findViewById(R.id.historyItemDescription);
+                context          = itemView.findViewById(R.id.historyItemContext);
+                confidenceText   = itemView.findViewById(R.id.confidenceText);
+                statusAccentBar  = itemView.findViewById(R.id.statusAccentBar);
+                scanTypeTag      = itemView.findViewById(R.id.scanTypeTag);
+                resultStatusTag  = itemView.findViewById(R.id.resultStatusTag);
+                scanTypeText     = itemView.findViewById(R.id.scanTypeText);
+                resultStatusText = itemView.findViewById(R.id.resultStatusText);
+                deleteButton     = itemView.findViewById(R.id.deleteButton);
             }
         }
     }

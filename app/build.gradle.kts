@@ -107,6 +107,17 @@ android {
             java.srcDirs("src/main/java")
         }
     }
+
+    packaging {
+        jniLibs {
+            // Ensures native libraries are aligned at 16 KB boundaries for Android 15+ compatibility
+            useLegacyPackaging = true
+        }
+        resources {
+            // Exclude build-tool binaries that are accidentally bundled and not needed on-device
+            excludes += "/dump_syms/**"
+        }
+    }
 }
 
 dependencies {
