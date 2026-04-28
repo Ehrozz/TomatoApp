@@ -15,68 +15,67 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="18dp">
+        android:orientation="vertical">
 
-        <!-- Header Row with Icon and Date -->
+        <!-- Top Content Area -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="12dp">
+            android:orientation="vertical"
+            android:padding="20dp"
+            android:gravity="center_horizontal">
 
-            <ImageView
+            <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/cultivarImage"
-                android:layout_width="56dp"
-                android:layout_height="56dp"
-                android:scaleType="centerCrop"
-                android:src="@mipmap/ic_logo"
-                android:layout_marginEnd="14dp" />
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:layout_marginBottom="16dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/tomato_placeholder"
+                android:background="@drawable/bg_circle_white"
+                android:padding="4dp"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.TomatoApp.Circle" />
 
-            <LinearLayout
-                android:layout_width="0dp"
+            <TextView
+                android:id="@+id/cultivarName"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
+                android:text="Cultivar Name"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="@color/white"
+                android:gravity="center"
+                android:maxLines="2"
+                android:ellipsize="end"
+                android:fontFamily="serif" />
 
-                <TextView
-                    android:id="@+id/cultivarName"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Cultivar Name"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/text_primary"
-                    android:maxLines="2"
-                    android:ellipsize="end"
-                    android:lineSpacingExtra="2dp" />
-
-                <TextView
-                    android:id="@+id/cultivarDate"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Started: 2025-09-23"
-                    android:textSize="13sp"
-                    android:textColor="@color/text_secondary"
-                    android:layout_marginTop="6dp" />
-            </LinearLayout>
+            <TextView
+                android:id="@+id/cultivarDate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Started: 2025-09-23"
+                android:textSize="12sp"
+                android:textColor="#E0FFFFFF"
+                android:layout_marginTop="6dp"
+                android:gravity="center" />
         </LinearLayout>
 
-        <!-- Footer with Status Indicator -->
+        <!-- Bottom Info Bar -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginTop="4dp">
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="10dp"
+            android:background="#20000000">
 
             <View
                 android:id="@+id/statusIndicator"
                 android:layout_width="10dp"
                 android:layout_height="10dp"
                 android:background="@drawable/circle_green"
-                android:layout_marginEnd="10dp" />
+                android:layout_marginEnd="8dp" />
 
             <TextView
                 android:id="@+id/statusText"
@@ -84,21 +83,20 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Active"
-                android:textSize="13sp"
-                android:textColor="@color/text_secondary"
-                android:textStyle="normal" />
+                android:textSize="12sp"
+                android:textColor="#E0FFFFFF"
+                android:textStyle="bold" />
 
             <ImageView
                 android:id="@+id/deleteButton"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
                 android:src="@android:drawable/ic_menu_delete"
-                app:tint="@android:color/white"
                 android:padding="6dp"
+                app:tint="@color/white"
                 android:clickable="true"
                 android:focusable="true"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Delete Work Program" />
+                android:background="?attr/selectableItemBackgroundBorderless" />
         </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

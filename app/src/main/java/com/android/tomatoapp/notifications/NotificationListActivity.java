@@ -28,9 +28,9 @@ import java.util.Locale;
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.common.managers.AppNotificationManager;
-import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 
-public class NotificationListActivity extends BaseDrawerActivity {
+public class NotificationListActivity extends BaseBottomNavActivity {
     
     private RecyclerView recyclerView;
     private NotificationAdapter adapter;
@@ -44,7 +44,7 @@ public class NotificationListActivity extends BaseDrawerActivity {
         try {
             setContentView(R.layout.activity_notification_list);
             
-            setupDrawer();
+            setupBottomNavigation();
         } catch (Exception e) {
             e.printStackTrace();
             Toast.makeText(this, "Error initializing notifications screen", Toast.LENGTH_LONG).show();

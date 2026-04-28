@@ -5,20 +5,20 @@ import android.os.Bundle;
 import androidx.annotation.Nullable;
 
 import com.android.tomatoapp.R;
-import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 
 /**
  * Activity displaying comprehensive user manual for TomatoApp.
  * Provides documentation for all major features and functionality.
  */
-public class UserManualActivity extends BaseDrawerActivity {
+public class UserManualActivity extends BaseBottomNavActivity {
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_user_manual);
         
-        setupDrawer();
+        setupBottomNavigation();
         
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("User Manual");

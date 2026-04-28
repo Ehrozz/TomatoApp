@@ -15,7 +15,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
+import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.financial.data.CalculationModel;
@@ -40,7 +40,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-public class Calculator extends AppCompatActivity {
+public class Calculator extends BaseBottomNavActivity {
 
     private static final String TAG = "Calculator";
     
@@ -127,6 +127,8 @@ public class Calculator extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_calculator);
+
+        setupBottomNavigation();
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Projected Income/Expenses");

@@ -1,350 +1,377 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/drawer_layout"
+    android:id="@+id/main_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/soft_cream"
+    android:background="@color/cream"
     tools:context=".AnalyticsActivity">
 
-    <!-- Main Content -->
+    <!-- Main Content Container -->
     <LinearLayout
         android:id="@+id/analyticsRoot"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-    android:padding="16dp"
+        android:layout_above="@id/bottom_navigation"
         android:fitsSystemWindows="true">
 
-        <!-- Header Card with Gradient Background -->
-        <com.google.android.material.card.MaterialCardView
+        <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="6dp"
-            app:cardBackgroundColor="@color/tomato_red"
-            app:strokeWidth="0dp">
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:clipToPadding="false"
+            android:paddingBottom="40dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="20dp">
+                android:padding="18dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                <!-- Header Section -->
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="📊 Analytics Dashboard"
-                    android:textColor="@color/white"
-                    android:textSize="24sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="8dp" />
+                    android:orientation="vertical"
+                    android:background="@drawable/bg_blue_gradient_rounded"
+                    android:padding="20dp"
+                    android:layout_marginBottom="16dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="📊"
+                        android:textSize="26sp"
+                        android:layout_marginBottom="4dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Financial Analytics"
+                        android:textColor="@color/white"
+                        android:fontFamily="serif"
+                        android:textSize="20sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="4dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Track expenses and profitability by cultivar"
+                        android:textColor="#CCFFFFFF"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- Stats Grid (Simulating HTML design) -->
+                <LinearLayout
+                    android:id="@+id/statsGrid"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Track your cultivar performance and profitability"
-                    android:textColor="@color/white"
-                    android:textSize="14sp"
-                    android:alpha="0.9" />
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="12dp"
+                    android:weightSum="2">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="6dp"
+                        app:cardCornerRadius="12dp"
+                        app:cardElevation="2dp"
+                        app:cardBackgroundColor="@color/white">
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="14dp">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="NET PROFIT"
+                                android:textColor="@color/muted"
+                                android:textSize="10sp"
+                                android:textStyle="bold" />
+                            <TextView
+                                android:id="@+id/tvNetProfitStat"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="₱0.0k"
+                                android:textColor="@color/green"
+                                android:textSize="22sp"
+                                android:textStyle="bold"
+                                android:fontFamily="serif" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="6dp"
+                        app:cardCornerRadius="12dp"
+                        app:cardElevation="2dp"
+                        app:cardBackgroundColor="@color/white">
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="14dp">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="COMPLETION"
+                                android:textColor="@color/muted"
+                                android:textSize="10sp"
+                                android:textStyle="bold" />
+                            <TextView
+                                android:id="@+id/tvCompletionStat"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="0%"
+                                android:textColor="@color/blue"
+                                android:textSize="22sp"
+                                android:textStyle="bold"
+                                android:fontFamily="serif" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+                </LinearLayout>
+
+                <!-- Filters and Controls Card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="@color/white">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="12dp">
+
+                            <Spinner
+                                android:id="@+id/viewModeSpinner"
+                                android:layout_width="0dp"
+                                android:layout_height="40dp"
+                                android:layout_weight="1"
+                                android:background="@drawable/bg_pill_input"
+                                android:layout_marginEnd="6dp"
+                                android:paddingStart="12dp"
+                                android:paddingEnd="12dp" />
+                                
+                            <Spinner
+                                android:id="@+id/seasonFilterSpinner"
+                                android:layout_width="0dp"
+                                android:layout_height="40dp"
+                                android:layout_weight="1"
+                                android:background="@drawable/bg_pill_input"
+                                android:layout_marginStart="6dp"
+                                android:paddingStart="12dp"
+                                android:paddingEnd="12dp" />
+                        </LinearLayout>
+                        
+                        <Spinner
+                            android:id="@+id/cultivarFilterSpinner"
+                            android:layout_width="match_parent"
+                            android:layout_height="40dp"
+                            android:background="@drawable/bg_pill_input"
+                            android:layout_marginBottom="12dp"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnExportPdf"
+                                android:layout_width="0dp"
+                                android:layout_height="40dp"
+                                android:layout_weight="1"
+                                android:text="Export PDF"
+                                android:layout_marginEnd="6dp"
+                                android:textColor="@color/white"
+                                android:textSize="12sp"
+                                android:textStyle="bold"
+                                android:textAllCaps="false"
+                                app:backgroundTint="@color/green"
+                                app:cornerRadius="20dp" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnExportCsv"
+                                android:layout_width="0dp"
+                                android:layout_height="40dp"
+                                android:layout_weight="1"
+                                android:text="Export CSV"
+                                android:layout_marginStart="6dp"
+                                android:textColor="@color/white"
+                                android:textSize="12sp"
+                                android:textStyle="bold"
+                                android:textAllCaps="false"
+                                app:backgroundTint="@color/blue"
+                                app:cornerRadius="20dp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Results Section -->
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <ProgressBar
+                        android:id="@+id/analyticsProgress"
+                        style="?android:attr/progressBarStyle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:visibility="gone" />
+
+                    <LinearLayout
+                        android:id="@+id/resultsLayout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <!-- Data Table / List -->
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/tableRecyclerView"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:nestedScrollingEnabled="false"
+                            android:layout_marginBottom="16dp" />
+
+                        <!-- Charts Container -->
+                        <LinearLayout
+                            android:id="@+id/chartsContainer"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical">
+
+                            <!-- Profit Chart Card -->
+                            <com.google.android.material.card.MaterialCardView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginBottom="16dp"
+                                app:cardCornerRadius="12dp"
+                                app:cardElevation="2dp"
+                                app:cardBackgroundColor="@color/white">
+                                <LinearLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="vertical"
+                                    android:padding="16dp">
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="💰 Profit per Area"
+                                        android:textStyle="bold"
+                                        android:textColor="@color/text"
+                                        android:textSize="15sp"
+                                        android:layout_marginBottom="12dp" />
+                                    <com.github.mikephil.charting.charts.BarChart
+                                        android:id="@+id/barChart"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="240dp" />
+                                </LinearLayout>
+                            </com.google.android.material.card.MaterialCardView>
+
+                            <!-- Completion Chart Card -->
+                            <com.google.android.material.card.MaterialCardView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginBottom="16dp"
+                                app:cardCornerRadius="12dp"
+                                app:cardElevation="2dp"
+                                app:cardBackgroundColor="@color/white">
+                                <LinearLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="vertical"
+                                    android:padding="16dp">
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="✅ Completion Rate Trend"
+                                        android:textStyle="bold"
+                                        android:textColor="@color/text"
+                                        android:textSize="15sp"
+                                        android:layout_marginBottom="12dp" />
+                                    <com.github.mikephil.charting.charts.LineChart
+                                        android:id="@+id/completionChart"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="240dp" />
+                                </LinearLayout>
+                            </com.google.android.material.card.MaterialCardView>
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Empty State -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/emptyStateCard"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="2dp"
+                        app:cardBackgroundColor="@color/white"
+                        android:visibility="gone">
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:padding="32dp">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="📊"
+                                android:textSize="64sp"
+                                android:layout_marginBottom="16dp" />
+                            <TextView
+                                android:id="@+id/emptyText"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="No Analytics Data Yet"
+                                android:textAlignment="center"
+                                android:textColor="@color/text"
+                                android:textSize="18sp"
+                                android:textStyle="bold"
+                                android:layout_marginBottom="8dp" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Run a calculation to see analytics here"
+                                android:textAlignment="center"
+                                android:textColor="@color/muted"
+                                android:textSize="14sp" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+                </FrameLayout>
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Filters Card -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp"
-            app:cardBackgroundColor="@color/white">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-                    android:layout_marginBottom="12dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-                        android:text="📈 View Mode"
-            android:textStyle="bold"
-            android:textColor="@color/text_primary"
-                        android:textSize="14sp"
-                        android:layout_marginEnd="12dp" />
-
-        <Spinner
-            android:id="@+id/viewModeSpinner"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:background="@android:drawable/edit_text"
-                        android:padding="8dp" />
-                </LinearLayout>
-
-        <View
-                    android:layout_width="match_parent"
-            android:layout_height="1dp"
-                    android:background="@color/divider"
-                    android:layout_marginVertical="8dp" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginBottom="12dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-                        android:text="🌱 Cultivar Filter"
-            android:textStyle="bold"
-            android:textColor="@color/text_primary"
-                        android:textSize="14sp"
-                        android:layout_marginEnd="12dp" />
-
-        <Spinner
-            android:id="@+id/cultivarFilterSpinner"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:background="@android:drawable/edit_text"
-                        android:padding="8dp" />
-                </LinearLayout>
-
-        <View
-                    android:layout_width="match_parent"
-            android:layout_height="1dp"
-                    android:background="@color/divider"
-                    android:layout_marginVertical="8dp" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginBottom="12dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-                        android:text="📅 Season Filter"
-            android:textStyle="bold"
-            android:textColor="@color/text_primary"
-                        android:textSize="14sp"
-                        android:layout_marginEnd="12dp" />
-
-        <Spinner
-            android:id="@+id/seasonFilterSpinner"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:background="@android:drawable/edit_text"
-                        android:padding="8dp" />
-                </LinearLayout>
-
-        <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginTop="8dp">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnExportPdf"
-                    android:layout_width="0dp"
-            android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="📄 PDF"
-                    android:layout_marginEnd="6dp"
-                    android:textColor="@color/white"
-            app:icon="@android:drawable/ic_menu_share"
-                    app:iconTint="@color/white"
-                    app:backgroundTint="@color/sidebar_dark_green"
-                    style="@style/Widget.Material3.Button" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnExportCsv"
-                    android:layout_width="0dp"
-            android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="📊 CSV"
-                    android:layout_marginStart="6dp"
-                    android:textColor="@color/white"
-            app:icon="@android:drawable/ic_menu_share"
-                    app:iconTint="@color/white"
-                    app:backgroundTint="@color/scan_blue"
-                    style="@style/Widget.Material3.Button" />
-                </LinearLayout>
+        </ScrollView>
     </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
 
-    <ProgressBar
-        android:id="@+id/analyticsProgress"
-        style="?android:attr/progressBarStyle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:visibility="gone" />
-
-    <!-- Enhanced Empty State -->
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/emptyStateCard"
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottom_navigation"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="4dp"
-        app:cardBackgroundColor="@color/white"
-        android:visibility="gone">
+        android:layout_alignParentBottom="true"
+        android:background="@color/white"
+        app:menu="@menu/menu_bottom_nav"
+        app:itemIconTint="@color/nav_selected"
+        app:itemTextColor="@color/nav_selected"
+        app:labelVisibilityMode="labeled"
+        app:elevation="16dp" />
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:padding="32dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="📊"
-                android:textSize="64sp"
-                android:layout_marginBottom="16dp" />
-
-            <TextView
-                android:id="@+id/emptyText"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="No Analytics Data Yet"
-                android:textAlignment="center"
-                android:textColor="@color/text_primary"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Run a calculation to see analytics here"
-        android:textAlignment="center"
-        android:textColor="@color/text_secondary"
-                android:textSize="14sp" />
-        </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/tableRecyclerView"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:paddingTop="4dp"
-        android:clipToPadding="false"
-        android:paddingBottom="8dp" />
-
-    <!-- Charts Container -->
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:fillViewport="true"
-        android:visibility="gone"
-        android:id="@+id/chartsContainer"
-        android:background="@color/soft_cream">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="8dp">
-
-            <!-- Profit Chart Card -->
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="4dp"
-                app:cardBackgroundColor="@color/white">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="💰 Profit per Area"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp"
-                        android:layout_marginBottom="12dp" />
-
-                    <com.github.mikephil.charting.charts.BarChart
-                        android:id="@+id/barChart"
-                        android:layout_width="match_parent"
-                        android:layout_height="300dp" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Completion Chart Card -->
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="4dp"
-                app:cardBackgroundColor="@color/white">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="✅ Completion Rate"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp"
-                        android:layout_marginBottom="12dp" />
-
-                    <com.github.mikephil.charting.charts.LineChart
-                        android:id="@+id/completionChart"
-                        android:layout_width="match_parent"
-                        android:layout_height="300dp" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-        </LinearLayout>
-    </ScrollView>
-
-</LinearLayout>
-
-    <!-- Navigation Drawer -->
-    <com.google.android.material.navigation.NavigationView
-        android:id="@+id/navigation_view"
-        android:layout_width="280dp"
-        android:layout_height="match_parent"
-        android:layout_gravity="start"
-        app:menu="@menu/drawer_menu"
-        app:headerLayout="@layout/nav_drawer_sidebar"
-        app:itemIconTint="@color/white"
-        app:itemTextColor="@color/white"
-        android:background="@color/sidebar_dark_green" />
-
-</androidx.drawerlayout.widget.DrawerLayout>
-
-
+</RelativeLayout>

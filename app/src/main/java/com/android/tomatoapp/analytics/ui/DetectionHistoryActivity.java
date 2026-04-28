@@ -17,7 +17,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.tomatoapp.R;
-import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import com.android.tomatoapp.detection.data.DetectionHistoryManager;
 import com.android.tomatoapp.detection.ui.DetectionResults;
 
@@ -26,7 +26,7 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.Collections;
 
-public class DetectionHistoryActivity extends BaseDrawerActivity {
+public class DetectionHistoryActivity extends BaseBottomNavActivity {
 
     private static final String TAG = "DetectionHistoryActivity";
     
@@ -41,7 +41,7 @@ public class DetectionHistoryActivity extends BaseDrawerActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_detection_history);
 
-        setupDrawer();
+        setupBottomNavigation();
 
         historyRecyclerView = findViewById(R.id.historyRecyclerView);
         emptyState = findViewById(R.id.emptyState);
@@ -245,7 +245,7 @@ public class DetectionHistoryActivity extends BaseDrawerActivity {
                 title = itemView.findViewById(R.id.historyItemTitle);
                 description = itemView.findViewById(R.id.historyItemDescription);
                 context = itemView.findViewById(R.id.historyItemContext);
-                deleteButton = findViewById(R.id.deleteButton);
+                deleteButton = itemView.findViewById(R.id.deleteButton);
             }
         }
     }

@@ -14,7 +14,7 @@ import androidx.activity.EdgeToEdge;
 import androidx.core.content.FileProvider;
 
 import com.android.tomatoapp.R;
-import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import com.android.tomatoapp.detection.data.DetectionHistoryManager;
 
 import java.io.File;
@@ -22,7 +22,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Locale;
 
-public class DetectionResults extends BaseDrawerActivity {
+public class DetectionResults extends BaseBottomNavActivity {
     private static final String TAG = "DetectionResults";
 
     private TextView identifyViewText, scoreText, finding1, finding2, finding3;
@@ -83,12 +83,32 @@ public class DetectionResults extends BaseDrawerActivity {
 
             String detectionCultivar = intent.getStringExtra("detectionCultivar");
             int detectionPhase = intent.getIntExtra("detectionPhase", 0);
+            String ripeness = intent.getStringExtra("ripeness");
+            String ripenessStage = intent.getStringExtra("ripenessStage");
+            String ripenessConfidence = intent.getStringExtra("ripenessConfidence");
             if (detectionContextInfo != null) {
+                StringBuilder ctx = new StringBuilder();
                 if (detectionCultivar != null && detectionPhase > 0) {
-                    detectionContextInfo.setText(getString(R.string.detection_context_format, detectionCultivar, detectionPhase));
-                    detectionContextInfo.setVisibility(View.VISIBLE);
+                    ctx.append(getString(R.string.detection_context_format, detectionCultivar, detectionPhase));
                 } else if (detectionCultivar != null) {
-                    detectionContextInfo.setText(detectionCultivar);
+                    ctx.append(detectionCultivar);
+                }
+
+                // Append ripeness/stage if provided (fruit scans)
+                if (ripeness != null && !ripeness.isEmpty()) {
+                    if (ctx.length() > 0) ctx.append(" • ");
+                    ctx.append("Ripeness: ").append(ripeness);
+                    if (ripenessStage != null && !ripenessStage.isEmpty()
+                            && !"Unknown".equalsIgnoreCase(ripenessStage)) {
+                        ctx.append(" (").append(ripenessStage).append(")");
+                    }
+                    if (ripenessConfidence != null && !ripenessConfidence.isEmpty()) {
+                        ctx.append(" • ").append(ripenessConfidence);
+                    }
+                }
+
+                if (ctx.length() > 0) {
+                    detectionContextInfo.setText(ctx.toString());
                     detectionContextInfo.setVisibility(View.VISIBLE);
                 } else {
                     detectionContextInfo.setVisibility(View.GONE);
@@ -201,7 +221,7 @@ public class DetectionResults extends BaseDrawerActivity {
             detectionAccuracy.setText(accuracyText.toString());
         }
 
-        setupDrawer();
+        setupBottomNavigation();
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Scan Results");

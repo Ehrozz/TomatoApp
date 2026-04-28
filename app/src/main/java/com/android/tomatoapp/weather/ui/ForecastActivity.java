@@ -32,6 +32,15 @@ public class ForecastActivity extends AppCompatActivity {
 
     private TextView locationTitle;
     private LinearLayout forecastContainer;
+    
+    // Today Card Views
+    private TextView todayDateText;
+    private TextView todayTempText;
+    private TextView todayConditionText;
+    private TextView todayRangeText;
+    private TextView todayRainChanceText;
+    private TextView weatherTipText;
+    private ImageView todayWeatherIcon;
 
     private static final String WEATHER_PREF = "WeatherPref";
     private static final String KEY_LAT = "lat";
@@ -51,6 +60,15 @@ public class ForecastActivity extends AppCompatActivity {
 
         locationTitle = findViewById(R.id.locationTitle);
         forecastContainer = findViewById(R.id.forecastContainer);
+        
+        // Initialize Today Card
+        todayDateText = findViewById(R.id.todayDateText);
+        todayTempText = findViewById(R.id.todayTempText);
+        todayConditionText = findViewById(R.id.todayConditionText);
+        todayRangeText = findViewById(R.id.todayRangeText);
+        todayRainChanceText = findViewById(R.id.todayRainChanceText);
+        weatherTipText = findViewById(R.id.weatherTipText);
+        todayWeatherIcon = findViewById(R.id.todayWeatherIcon);
 
         SharedPreferences wp = getSharedPreferences(WEATHER_PREF, MODE_PRIVATE);
         double lat = Double.longBitsToDouble(wp.getLong(KEY_LAT, Double.doubleToLongBits(0)));
@@ -129,14 +147,18 @@ public class ForecastActivity extends AppCompatActivity {
                         Row row = new Row();
                         row.date = label;
                         row.condition = mapWeatherCode(code);
-                        row.details = mn + "°/" + mx + "°" + prp;
+                        row.tempRange = mn + "°/" + mx + "°";
+                        row.rainChance = (pr != null && pr.length() > i) ? pr.optInt(i) + "% Rain" : "";
                         row.iconRes = selectIconForCode(code);
+                        row.weatherCode = code;
+                        row.maxTemp = mx;
                         rows.add(row);
                     }
 
                     List<Row> finalRows = rows;
                     runOnUiThread(() -> {
-                        displayForecast(finalRows);
+                        updateTodayCard(finalRows.get(0));
+                        displayForecast(finalRows.subList(1, finalRows.size()));
                     });
                 }
             } catch (Exception ignored) {
@@ -145,7 +167,8 @@ public class ForecastActivity extends AppCompatActivity {
                     Row r = new Row();
                     r.date = "—";
                     r.condition = "Failed to load forecast";
-                    r.details = "";
+                    r.tempRange = "";
+                    r.rainChance = "";
                     r.iconRes = android.R.drawable.ic_dialog_alert;
                     fallback.add(r);
                     displayForecast(fallback);
@@ -189,8 +212,36 @@ public class ForecastActivity extends AppCompatActivity {
     private static class Row {
         String date;
         String condition;
-        String details;
+        String tempRange;
+        String rainChance;
         int iconRes;
+        int weatherCode;
+        int maxTemp;
+    }
+
+    private void updateTodayCard(Row today) {
+        if (todayDateText != null) todayDateText.setText(today.date);
+        if (todayTempText != null) todayTempText.setText(today.tempRange.split("/")[1]);
+        if (todayConditionText != null) todayConditionText.setText(today.condition);
+        if (todayRangeText != null) todayRangeText.setText(today.tempRange);
+        if (todayRainChanceText != null) todayRainChanceText.setText(today.rainChance.replace(" Rain", ""));
+        if (todayWeatherIcon != null) todayWeatherIcon.setImageResource(today.iconRes);
+        
+        if (weatherTipText != null) {
+            weatherTipText.setText(getWeatherTip(today.weatherCode, today.maxTemp));
+        }
+    }
+
+    private String getWeatherTip(int code, int maxTemp) {
+        if (code >= 95) return "Thunderstorms expected. Secure loose equipment and avoid fieldwork.";
+        if (code >= 61) return "Heavy rain likely. Good for soil moisture, but avoid applying chemicals.";
+        if (code >= 51) return "Light drizzle. Ideal for transplanting seedlings as they won't dry out.";
+        if (code == 0) {
+            if (maxTemp > 32) return "High heat. Ensure intensive irrigation today to prevent tomato stress.";
+            return "Clear skies. Great day for harvesting or weeding.";
+        }
+        if (code <= 2) return "Mild weather. Perfect for general maintenance and monitoring.";
+        return "Normal conditions. Continue with your scheduled farming tasks.";
     }
 
     private void displayForecast(List<Row> rows) {
@@ -206,11 +257,20 @@ public class ForecastActivity extends AppCompatActivity {
             TextView date = itemView.findViewById(R.id.date);
             TextView cond = itemView.findViewById(R.id.condition);
             TextView det = itemView.findViewById(R.id.details);
+            TextView rain = itemView.findViewById(R.id.rainLabel);
             
             if (icon != null) icon.setImageResource(row.iconRes);
             if (date != null) date.setText(row.date);
             if (cond != null) cond.setText(row.condition);
-            if (det != null) det.setText(row.details);
+            if (det != null) det.setText(row.tempRange);
+            if (rain != null) {
+                if (row.rainChance != null && !row.rainChance.isEmpty()) {
+                    rain.setText(row.rainChance);
+                    rain.setVisibility(View.VISIBLE);
+                } else {
+                    rain.setVisibility(View.GONE);
+                }
+            }
             
             forecastContainer.addView(itemView);
         }

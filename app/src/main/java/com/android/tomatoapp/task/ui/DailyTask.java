@@ -39,16 +39,16 @@ import com.android.tomatoapp.R;
 import com.android.tomatoapp.auth.ui.Login;
 import com.android.tomatoapp.common.utils.CultivarImageHelper;
 import com.android.tomatoapp.core.network.LocalDataManager;
-import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import com.android.tomatoapp.financial.ui.DailyExpensesActivity;
 import com.android.tomatoapp.monitoring.ui.PlantMonitoringActivity;
 import com.android.tomatoapp.settings.data.SettingsPreferences;
 import com.android.tomatoapp.task.data.TaskModel;
 import com.android.tomatoapp.task.data.TaskSchedule;
 
-public class DailyTask extends BaseDrawerActivity {
+public class DailyTask extends BaseBottomNavActivity {
 
-    private TextView cultivarNameHeader, cultivarDescription, dateHeader, taskSectionTitle, taskCountText;
+    private TextView cultivarNameHeader, dateHeader, taskSectionTitle, taskCountText;
     private ImageView cultivarImageHeader;
     private MaterialButton btnComplete;
     private MaterialButton btnSkip;
@@ -76,7 +76,6 @@ public class DailyTask extends BaseDrawerActivity {
 
         // Initialize views
         cultivarNameHeader = findViewById(R.id.cultivarNameHeader);
-        cultivarDescription = findViewById(R.id.cultivarDescription);
         dateHeader = findViewById(R.id.dateHeader);
         cultivarImageHeader = findViewById(R.id.cultivarImageHeader);
         taskSectionTitle = findViewById(R.id.taskSectionTitle);
@@ -108,7 +107,6 @@ public class DailyTask extends BaseDrawerActivity {
         // Update header
         if (cultivar != null) {
             cultivarNameHeader.setText(cultivar);
-            cultivarDescription.setText("Off-season planting tasks for optimal growth");
             cultivarImageHeader.setImageResource(CultivarImageHelper.getCultivarImageResource(cultivar));
             // Make image circular
             cultivarImageHeader.post(() -> {
@@ -186,11 +184,7 @@ public class DailyTask extends BaseDrawerActivity {
             btnDailyExpenses.setEnabled(!isNewProgram);
         }
 
-        setupDrawer();
-
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle("Daily Tasks");
-        }
+        setupBottomNavigation();
     }
 
     private void updateTaskCount() {
@@ -203,10 +197,10 @@ public class DailyTask extends BaseDrawerActivity {
         // Update button text
         if (btnComplete != null) {
             if (checkedCount == count && count > 0) {
-                btnComplete.setText("All Tasks Completed!");
+                btnComplete.setText("Completed!");
                 btnComplete.setEnabled(false);
             } else {
-                btnComplete.setText("Mark All Tasks Complete");
+                btnComplete.setText("Complete All");
                 btnComplete.setEnabled(true);
             }
         }

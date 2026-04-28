@@ -5,6 +5,7 @@ import android.text.TextUtils;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -12,7 +13,7 @@ import androidx.annotation.Nullable;
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.auth.data.User;
-import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
@@ -26,7 +27,7 @@ import com.google.firebase.database.ValueEventListener;
 /**
  * Activity for viewing and editing user profile information.
  */
-public class ProfileActivity extends BaseDrawerActivity {
+public class ProfileActivity extends BaseBottomNavActivity {
 
     private TextInputEditText editTextFullName;
     private TextInputEditText editTextEmail;
@@ -38,6 +39,8 @@ public class ProfileActivity extends BaseDrawerActivity {
     
     private Button btnSave;
     private ProgressBar progressBar;
+    private TextView profileNameHeader;
+    private TextView profileEmailHeader;
     
     private FirebaseAuth mAuth;
     private FirebaseUser currentUser;
@@ -50,7 +53,7 @@ public class ProfileActivity extends BaseDrawerActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile);
         
-        setupDrawer();
+        setupBottomNavigation();
         
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Profile");
@@ -83,13 +86,18 @@ public class ProfileActivity extends BaseDrawerActivity {
         layoutAddress = findViewById(R.id.layoutAddress);
         btnSave = findViewById(R.id.btnSaveProfile);
         progressBar = findViewById(R.id.progressBarProfile);
+        profileNameHeader = findViewById(R.id.profileNameHeader);
+        profileEmailHeader = findViewById(R.id.profileEmailHeader);
         
         // Set email from Firebase Auth (read-only)
         if (currentUser.getEmail() != null) {
-            editTextEmail.setText(currentUser.getEmail());
+            String email = currentUser.getEmail();
+            editTextEmail.setText(email);
             editTextEmail.setEnabled(false);
             editTextEmail.setFocusable(false);
-            layoutEmail.setHint("Email (cannot be changed)");
+            if (profileEmailHeader != null) {
+                profileEmailHeader.setText(email);
+            }
         }
     }
     
@@ -147,6 +155,9 @@ public class ProfileActivity extends BaseDrawerActivity {
     private void populateFields(User user) {
         if (user.fullName != null) {
             editTextFullName.setText(user.fullName);
+            if (profileNameHeader != null) {
+                profileNameHeader.setText(user.fullName);
+            }
         }
         if (user.address != null) {
             editTextAddress.setText(user.address);

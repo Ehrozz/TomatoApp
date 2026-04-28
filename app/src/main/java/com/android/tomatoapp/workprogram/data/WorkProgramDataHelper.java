@@ -522,7 +522,7 @@ public class WorkProgramDataHelper {
         return counts;
     }
 
-    private static int getTaskCountForDay(@Nullable String cultivarName,
+    public static int getTaskCountForDay(@Nullable String cultivarName,
                                           int maturityDays,
                                           int dayNumber) {
         if (dayNumber <= 0 || dayNumber > maturityDays) {

@@ -19,17 +19,24 @@
         android:padding="18dp"
         android:gravity="center_vertical">
 
-        <!-- Circular Image -->
-        <ImageView
-            android:id="@+id/historyItemImage"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
+        <!-- Thumbnail -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="72dp"
+            android:layout_height="72dp"
             android:layout_marginEnd="16dp"
-            android:src="@mipmap/ic_logo"
-            android:scaleType="centerCrop"
-            android:contentDescription="Detection image"
-            android:clipToOutline="true"
-            android:background="@drawable/circular_image_background" />
+            app:cardCornerRadius="14dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp"
+            app:cardBackgroundColor="@color/soft_cream">
+
+            <ImageView
+                android:id="@+id/historyItemImage"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:src="@mipmap/ic_logo"
+                android:scaleType="centerCrop"
+                android:contentDescription="Detection image" />
+        </com.google.android.material.card.MaterialCardView>
 
         <!-- Text Content -->
         <LinearLayout
@@ -67,7 +74,9 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
+                android:textSize="12sp"
+                android:maxLines="1"
+                android:ellipsize="end" />
         </LinearLayout>
 
         <!-- Delete Button -->

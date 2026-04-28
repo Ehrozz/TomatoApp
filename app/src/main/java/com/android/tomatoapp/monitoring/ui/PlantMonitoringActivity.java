@@ -27,14 +27,14 @@ import java.util.UUID;
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.common.utils.ReferenceImageProvider;
 import com.android.tomatoapp.core.network.LocalDataManager;
-import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import com.android.tomatoapp.detection.ui.CameraInterface;
 import com.android.tomatoapp.detection.ui.DetectionTypeDialog;
 import com.android.tomatoapp.detection.ui.SimpleCaptureActivity;
 import com.android.tomatoapp.monitoring.data.PlantMonitoringEntity;
 import com.android.tomatoapp.monitoring.data.PlantMonitoringRepository;
 
-public class PlantMonitoringActivity extends BaseDrawerActivity {
+public class PlantMonitoringActivity extends BaseBottomNavActivity {
 
     public static final String EXTRA_PROGRAM_ID = "programId";
     public static final String EXTRA_CULTIVAR = "cultivar";
@@ -67,7 +67,7 @@ public class PlantMonitoringActivity extends BaseDrawerActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_plant_monitoring);
 
-        setupDrawer();
+        setupBottomNavigation();
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle(R.string.monitor_title);
@@ -212,6 +212,36 @@ public class PlantMonitoringActivity extends BaseDrawerActivity {
             if (imageUriString != null) {
                 capturedImageUri = Uri.parse(imageUriString);
                 displayCapturedImage(capturedImageUri);
+            }
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // If user scanned a disease (CameraInterface -> DetectionResults) and comes back here,
+        // show the latest scan image for this program in the white card.
+        if (capturedImageUri == null && programId != null && !programId.isEmpty()) {
+            try {
+                java.util.ArrayList<org.json.JSONObject> history =
+                        com.android.tomatoapp.detection.data.DetectionHistoryManager.getHistory(this);
+                long latestTs = -1L;
+                String latestUri = null;
+                for (org.json.JSONObject entry : history) {
+                    String entryProgramId = entry.optString("programId", "");
+                    if (!programId.equals(entryProgramId)) continue;
+                    long ts = entry.optLong("timestamp", 0L);
+                    if (ts > latestTs) {
+                        latestTs = ts;
+                        latestUri = entry.optString("imageUri", null);
+                    }
+                }
+                if (latestUri != null && !latestUri.isEmpty()) {
+                    capturedImageUri = Uri.parse(latestUri);
+                    displayCapturedImage(capturedImageUri);
+                }
+            } catch (Exception ignored) {
+                // keep silent; monitoring can still be used without an image
             }
         }
     }

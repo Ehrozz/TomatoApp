@@ -1,5 +1,13 @@
 package com.android.tomatoapp.common.models;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Arrays;
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -8,20 +16,14 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import androidx.annotation.NonNull;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-
 import com.android.tomatoapp.R;
-import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import com.android.tomatoapp.detection.ui.DiseaseView;
+import com.android.tomatoapp.common.models.DiseaseData;
+import com.android.tomatoapp.common.models.DiseaseInfo;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
+public class InformationInterface extends BaseBottomNavActivity {
 
-public class InformationInterface extends BaseDrawerActivity {
 
     private RecyclerView diseaseRecyclerView;
     private DiseaseAdapter adapter;
@@ -64,7 +66,7 @@ public class InformationInterface extends BaseDrawerActivity {
         adapter = new DiseaseAdapter(diseaseList);
         diseaseRecyclerView.setAdapter(adapter);
 
-        setupDrawer();
+        setupBottomNavigation();
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle(R.string.information_section);
@@ -183,3 +185,4 @@ public class InformationInterface extends BaseDrawerActivity {
         }
     }
 }
+

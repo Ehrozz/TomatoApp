@@ -23,7 +23,7 @@ import com.android.tomatoapp.R;
 import com.android.tomatoapp.analytics.data.AnalyticsManager;
 import com.android.tomatoapp.analytics.data.AnalyticsPdfExporter;
 import com.android.tomatoapp.analytics.data.ResearchExporter;
-import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import com.android.tomatoapp.workprogram.data.WorkProgramDataHelper;
 import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
 import com.android.tomatoapp.workprogram.data.WorkProgramRepository;
@@ -48,7 +48,7 @@ import java.util.Locale;
 /**
  * Analytics screen showing cultivar productivity in table and chart form.
  */
-public class AnalyticsActivity extends BaseDrawerActivity {
+public class AnalyticsActivity extends BaseBottomNavActivity {
 
     private Spinner viewModeSpinner;
     private Spinner cultivarFilterSpinner;
@@ -71,7 +71,7 @@ public class AnalyticsActivity extends BaseDrawerActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_analytics);
 
-        setupDrawer();
+        setupBottomNavigation();
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Cultivar Analytics");

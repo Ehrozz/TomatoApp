@@ -33,7 +33,7 @@ import java.util.Map;
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.auth.ui.Login;
-import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import com.android.tomatoapp.settings.data.SettingsPreferences;
 
 // Data Model Classes
@@ -97,7 +97,7 @@ class MiscellaneousItem {
     }
 }
 
-public class DailyExpensesActivity extends BaseDrawerActivity {
+public class DailyExpensesActivity extends BaseBottomNavActivity {
 
     // Header views
     private TextView dateHeader;
@@ -150,7 +150,7 @@ public class DailyExpensesActivity extends BaseDrawerActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_daily_expenses);
 
-        setupDrawer();
+        setupBottomNavigation();
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Daily Expenses");

@@ -1,7 +1,9 @@
 package com.android.tomatoapp.settings.ui;
 
 import android.app.TimePickerDialog;
+import android.content.Intent;
 import android.os.Bundle;
+import com.google.firebase.auth.FirebaseAuth;
 import android.view.View;
 import android.widget.Toast;
 
@@ -14,8 +16,9 @@ import com.google.android.material.textfield.TextInputLayout;
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.common.managers.TutorialManager;
+import com.android.tomatoapp.auth.ui.Login;
 import com.android.tomatoapp.core.network.LocalDataManager;
-import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import com.android.tomatoapp.notifications.GeneralUpdateScheduler;
 import com.android.tomatoapp.notifications.NotificationHelper;
 import com.android.tomatoapp.notifications.NotificationPermissionHelper;
@@ -28,7 +31,7 @@ import java.util.List;
 /**
  * Activity for managing app settings and preferences.
  */
-public class SettingsActivity extends BaseDrawerActivity {
+public class SettingsActivity extends BaseBottomNavActivity {
 
     private TextInputEditText editTextLanguage;
     private TextInputEditText editTextTheme;
@@ -63,6 +66,7 @@ public class SettingsActivity extends BaseDrawerActivity {
     private com.google.android.material.button.MaterialButton btnExportData;
     private com.google.android.material.button.MaterialButton btnImportData;
     private com.google.android.material.button.MaterialButton btnClearLocalData;
+    private com.google.android.material.button.MaterialButton btnLogout;
 
     // Cultivar list (from Workprogram.java)
     private final String[] cultivars = {
@@ -80,7 +84,7 @@ public class SettingsActivity extends BaseDrawerActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
         
-        setupDrawer();
+        setupBottomNavigation();
         
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Settings");
@@ -125,6 +129,7 @@ public class SettingsActivity extends BaseDrawerActivity {
         btnExportData = findViewById(R.id.btnExportData);
         btnImportData = findViewById(R.id.btnImportData);
         btnClearLocalData = findViewById(R.id.btnClearLocalData);
+        btnLogout = findViewById(R.id.btnLogout);
     }
     
     private void loadSettings() {
@@ -327,6 +332,21 @@ public class SettingsActivity extends BaseDrawerActivity {
                         .show();
             });
         }
+
+        btnLogout.setOnClickListener(v -> {
+            new AlertDialog.Builder(this)
+                    .setTitle("Logout")
+                    .setMessage("Are you sure you want to logout?")
+                    .setPositiveButton("Logout", (dialog, which) -> {
+                        FirebaseAuth.getInstance().signOut();
+                        Intent intent = new Intent(this, Login.class);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                        startActivity(intent);
+                        finish();
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+        });
     }
     
     private void showLanguageDialog() {

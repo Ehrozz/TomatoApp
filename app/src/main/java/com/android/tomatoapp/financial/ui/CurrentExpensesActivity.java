@@ -41,11 +41,11 @@ import java.util.Map;
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.common.utils.PhaseHelper;
-import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import com.android.tomatoapp.settings.data.SettingsPreferences;
 import com.android.tomatoapp.task.data.TaskSchedule;
 
-public class CurrentExpensesActivity extends BaseDrawerActivity {
+public class CurrentExpensesActivity extends BaseBottomNavActivity {
 
     private TextView cultivarHeader;
     private TextView dateRangeHeader;
@@ -64,7 +64,7 @@ public class CurrentExpensesActivity extends BaseDrawerActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_current_expenses);
 
-        setupDrawer();
+        setupBottomNavigation();
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Current Expenses");

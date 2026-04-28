@@ -31,10 +31,10 @@ import java.util.Locale;
 import java.util.Set;
 
 import com.android.tomatoapp.R;
-import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import com.android.tomatoapp.settings.data.SettingsPreferences;
 
-public class DailyExpensesHistoryActivity extends BaseDrawerActivity {
+public class DailyExpensesHistoryActivity extends BaseBottomNavActivity {
 
     private static final String TAG = "DailyExpensesHistoryActivity";
     
@@ -54,7 +54,7 @@ public class DailyExpensesHistoryActivity extends BaseDrawerActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_daily_expenses_history);
 
-        setupDrawer();
+        setupBottomNavigation();
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Daily Expenses History");

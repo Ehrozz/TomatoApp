@@ -53,6 +53,7 @@ public class WorkProgramEntity {
     public double actualYield; // kg/hectare
     public double totalYield; // total kg harvested
     public String harvestDate; // Date when harvest was completed
+    public long lastUpdated; // Timestamp for conflict resolution
 
     /**
      * Default constructor required for Room.
@@ -125,6 +126,7 @@ public class WorkProgramEntity {
         this.actualYield = 0.0;
         this.totalYield = 0.0;
         this.harvestDate = null;
+        this.lastUpdated = System.currentTimeMillis();
     }
     
     /**
@@ -186,6 +188,7 @@ public class WorkProgramEntity {
         this.actualYield = actualYield;
         this.totalYield = totalYield;
         this.harvestDate = harvestDate;
+        this.lastUpdated = System.currentTimeMillis();
     }
 }
 

@@ -3,49 +3,57 @@
     <!-- Core Colors -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="red">#F44336</color>
-    <color name="green">#4CAF50</color>
-
-    <!-- Tomato Theme Colors -->
-    <color name="tomato_red">#FF6347</color>
-    <color name="fresh_green">#4CAF50</color>
-    <color name="soft_cream">#FFF8F6</color>
-    <color name="warm_orange">#FFB347</color>
-    <color name="dark_gray">#444444</color>
-    <color name="ripe_orange">#FB8C00</color>
-    <color name="golden_yellow">#FDD835</color>
     
-    <!-- Semantic Colors -->
-    <color name="primary">#FF6347</color>
-    <color name="primary_dark">#E53935</color>
-    <color name="accent">#4CAF50</color>
-    <color name="background">#FFF8F6</color>
+    <!-- Figma Theme Colors (from tomatoapp_7screen_ui.html) -->
+    <color name="red">#D93025</color>
+    <color name="red_dark">#9B1C1C</color>
+    <color name="red_light">#FDECEA</color>
+    <color name="green">#2D7A3A</color>
+    <color name="green_accent">#3DBE5A</color>
+    <color name="green_light">#E6F4EA</color>
+    <color name="green_save">#38a315</color>
+    <color name="orange">#E67E22</color>
+    <color name="orange_light">#FEF3E2</color>
+    <color name="blue">#1976D2</color>
+    <color name="blue_light">#E3F2FD</color>
+    <color name="cream">#FFF9F5</color>
     <color name="surface">#FFFFFF</color>
-    <color name="text_primary">#212121</color>
-    <color name="text_secondary">#757575</color>
-    <color name="divider">#E0E0E0</color>
-    <color name="divider_dark">#CCCCCC</color>
-    <color name="error">#F44336</color>
-    <color name="success">#4CAF50</color>
-    <color name="warning">#FFB347</color>
+    
+    <color name="text">#1A1A1A</color>
+    <color name="muted">#6B7280</color>
+    <color name="border">#14000000</color> <!-- rgba(0,0,0,0.08) -->
+
+    <!-- Legacy mapped colors to prevent breaking existing views -->
+    <color name="tomato_red">#D93025</color>
+    <color name="fresh_green">#3DBE5A</color>
+    <color name="soft_cream">#FFF9F5</color>
+    <color name="bg_light_gray">#FFF9F5</color>
+    <color name="nav_unselected">#6B7280</color>
+    <color name="nav_selected">#D93025</color>
+    <color name="warm_orange">#E67E22</color>
+    <color name="dark_gray">#1A1A1A</color>
+    <color name="text_primary">#1A1A1A</color>
+    <color name="text_secondary">#6B7280</color>
+    <color name="divider">#14000000</color>
+    <color name="error">#D93025</color>
+    <color name="success">#3DBE5A</color>
+    <color name="primary">#D93025</color>
+    <color name="light_green">#E6F4EA</color>
+    <color name="warning">#E67E22</color>
+    <color name="ripe_orange">#F39C12</color>
     
     <!-- Status Colors -->
-    <color name="confidence_high">#4CAF50</color>
-    <color name="confidence_medium">#FFB347</color>
-    <color name="confidence_low">#F44336</color>
+    <color name="confidence_high">#3DBE5A</color>
+    <color name="confidence_medium">#E67E22</color>
+    <color name="confidence_low">#D93025</color>
     
     <!-- Dashboard Colors -->
-    <color name="sidebar_dark_green">#2E7D32</color>
-    <color name="financial_green">#4CAF50</color>
-    <color name="chart_orange">#FF9800</color>
+    <color name="sidebar_dark_green">#2D7A3A</color>
+    <color name="financial_green">#2D7A3A</color>
+    <color name="chart_orange">#E67E22</color>
     
     <!-- IPM Colors -->
-    <color name="scan_blue">#29B6F6</color>
-    <color name="info_green">#4CAF50</color>
-    
-    <!-- Calculator Colors -->
-    <color name="coral_red">#FF6B6B</color>
-    <color name="coral_red_dark">#E55555</color>
-    <color name="light_green">#81C784</color>
+    <color name="scan_blue">#1976D2</color>
+    <color name="info_green">#3DBE5A</color>
+    <color name="fresh_green_light">#E6F4EA</color>
 </resources>
-

@@ -8,6 +8,8 @@ import androidx.room.RoomDatabase;
 
 import com.android.tomatoapp.detection.data.DetectionHistoryDao;
 import com.android.tomatoapp.detection.data.DetectionHistoryEntity;
+import com.android.tomatoapp.common.models.UserLocationDao;
+import com.android.tomatoapp.common.models.UserLocationEntity;
 import com.android.tomatoapp.financial.data.CalculationDao;
 import com.android.tomatoapp.financial.data.CalculationEntity;
 import com.android.tomatoapp.monitoring.data.PlantMonitoringDao;
@@ -20,16 +22,20 @@ import com.android.tomatoapp.weather.data.WeatherData;
 import com.android.tomatoapp.weather.data.WeatherDataDao;
 import com.android.tomatoapp.workprogram.data.WorkProgramDao;
 import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
+import com.android.tomatoapp.core.sync.SyncActionDao;
+import com.android.tomatoapp.core.sync.SyncActionEntity;
 
 @Database(entities = {
         WorkProgramEntity.class,
         PlantMonitoringEntity.class,
+        UserLocationEntity.class,
         WeatherData.class,
         CalculationEntity.class,
         DetectionHistoryEntity.class,
         TaskEntity.class,
-        SettingsEntity.class
-}, version = 5, exportSchema = false)
+        SettingsEntity.class,
+        SyncActionEntity.class
+}, version = 6, exportSchema = false)
 public abstract class AppDatabase extends RoomDatabase {
 
     private static volatile AppDatabase INSTANCE;
@@ -41,6 +47,8 @@ public abstract class AppDatabase extends RoomDatabase {
     public abstract DetectionHistoryDao detectionHistoryDao();
     public abstract TaskDao taskDao();
     public abstract SettingsDao settingsDao();
+    public abstract SyncActionDao syncActionDao();
+    public abstract UserLocationDao userLocationDao();
 
     public static AppDatabase getInstance(Context context) {
         if (INSTANCE == null) {

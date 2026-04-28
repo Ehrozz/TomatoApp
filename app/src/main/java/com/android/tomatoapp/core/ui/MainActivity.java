@@ -13,8 +13,10 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.tomatoapp.common.models.UserLocation;
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.cardview.widget.CardView;
 import androidx.core.graphics.Insets;
@@ -34,6 +36,7 @@ import com.google.firebase.database.ValueEventListener;
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.auth.ui.Login;
+import com.android.tomatoapp.auth.ui.ProfileActivity;
 import com.android.tomatoapp.common.managers.TutorialManager;
 import com.android.tomatoapp.common.models.IPM;
 import com.android.tomatoapp.common.ui.dialogs.TermsDialog;
@@ -48,38 +51,59 @@ import com.android.tomatoapp.settings.data.SettingsPreferences;
 import com.android.tomatoapp.settings.ui.SettingsActivity;
 import com.android.tomatoapp.weather.data.WeatherDataCollector;
 import com.android.tomatoapp.weather.ui.ForecastActivity;
+import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
 import com.android.tomatoapp.workprogram.ui.WorkProgramSelection;
+import com.android.tomatoapp.workprogram.ui.Workprogram;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
+import android.widget.AutoCompleteTextView;
+import android.widget.PopupMenu;
 import android.location.Location;
 import android.location.Geocoder;
 import android.location.Address;
 import java.util.Locale;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Collections;
+import java.util.Comparator;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import org.json.JSONObject;
 import org.json.JSONArray;
+import com.android.tomatoapp.weather.ui.CityManagementActivity;
+import com.github.mikephil.charting.charts.HorizontalBarChart;
+import com.github.mikephil.charting.data.BarData;
+import com.github.mikephil.charting.data.BarDataSet;
+import com.github.mikephil.charting.data.BarEntry;
+import com.github.mikephil.charting.animation.Easing;
+import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.components.YAxis;
+import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
+import com.github.mikephil.charting.formatter.ValueFormatter;
 
-public class MainActivity extends BaseDrawerActivity {
+public class MainActivity extends BaseBottomNavActivity {
 
     private static final String TAG = "MainActivity";
 
     FirebaseAuth mAuth;
     FirebaseUser user;
-    TextView textView;
-    CardView workprogramselectionCard;
-    CardView IPMCard;
-    CardView projectedIncomeCard;
+    View workprogramselectionCard;
+    View IPMCard;
+    View projectedIncomeCard;
+    com.google.android.material.button.MaterialButton btnViewWorkprogram;
 
     // Weather UI
     private TextView weatherCondition;
     private TextView weatherTemp;
     private TextView weatherLocation;
     private ImageView weatherIcon;
-    private CardView weatherCard;
+    private View weatherCard;
+
+    // Charts
+    private com.github.mikephil.charting.charts.HorizontalBarChart expensesBarChart;
 
     private FusedLocationProviderClient fusedLocationClient;
     private static final int REQ_LOCATION = 2001;
@@ -87,6 +111,11 @@ public class MainActivity extends BaseDrawerActivity {
     private static final String KEY_LAT = "lat";
     private static final String KEY_LON = "lon";
     private static final String KEY_NAME = "name";
+
+    private TextView activeCultivarName, activeStageName, activeDayCount;
+    private android.widget.ProgressBar stageProgress;
+    private List<com.android.tomatoapp.workprogram.data.WorkProgramEntity> workProgramList = new ArrayList<>();
+    private String activeProgramId;
 
     @SuppressLint("SetTextI18n")
     protected void onCreate(Bundle savedInstanceState) {
@@ -100,10 +129,14 @@ public class MainActivity extends BaseDrawerActivity {
 
         mAuth = FirebaseAuth.getInstance();
         user = mAuth.getCurrentUser();
-        workprogramselectionCard = findViewById(R.id.wpsCard);
+        
+        // Setup Bottom Navigation
+        setupBottomNavigation();
+
+        workprogramselectionCard = findViewById(R.id.monitorCard);
         IPMCard = findViewById(R.id.ipmCard);
         projectedIncomeCard = findViewById(R.id.projectedIncomeCard);
-
+        btnViewWorkprogram = findViewById(R.id.btnViewWorkprogram);
 
         // Weather views
         weatherCondition = findViewById(R.id.weatherCondition);
@@ -112,16 +145,29 @@ public class MainActivity extends BaseDrawerActivity {
         weatherIcon = findViewById(R.id.weatherIcon);
         weatherCard = findViewById(R.id.weatherCard);
 
+        // Active Program Monitoring
+        activeCultivarName = findViewById(R.id.activeCultivarName);
+        activeStageName = findViewById(R.id.activeStageName);
+        activeDayCount = findViewById(R.id.activeDayCount);
+        stageProgress = findViewById(R.id.stageProgress);
+        View programSelector = findViewById(R.id.programSelector);
+        if (programSelector != null) {
+            programSelector.setOnClickListener(v -> showProgramSelectionDialog());
+        }
+        setupActiveProgramMonitoring();
+        
+        // Add a manage locations button/icon in code if not in layout, 
+        // but for now we'll use long-press on weather card to offer choice
+
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         requestWeather();
         
         // Setup bell icon click listener
-        ImageView notificationBellIcon = findViewById(R.id.notificationBellIcon);
-        if (notificationBellIcon != null) {
-            notificationBellIcon.setOnClickListener(v -> {
+        View bell = findViewById(R.id.notificationBellIcon);
+        if (bell != null) {
+            bell.setOnClickListener(v -> {
                 try {
-                    Intent intent = new Intent(MainActivity.this, NotificationListActivity.class);
-                    startActivity(intent);
+                    startActivity(new Intent(MainActivity.this, com.android.tomatoapp.notifications.NotificationListActivity.class));
                 } catch (Exception e) {
                     Log.e(TAG, "Failed to open notifications", e);
                     Toast.makeText(MainActivity.this, "Unable to open notifications", Toast.LENGTH_SHORT).show();
@@ -129,30 +175,71 @@ public class MainActivity extends BaseDrawerActivity {
             });
         }
         
-        // Sync all data from Firebase to local database
+        // Setup profile click listener
+        View profileCard = findViewById(R.id.profileCard);
+        if (profileCard != null) profileCard.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, ProfileActivity.class)));
+
         if (user != null) {
+            // Update UI with user info
+            TextView userNameText = findViewById(R.id.userName);
+            TextView userInitials = findViewById(R.id.userInitials); 
+            
+            String name = user.getDisplayName();
+            if (!name.isEmpty()) {
+                userNameText.setText(name);
+                userInitials.setText(getInitials(name));
+            } else {
+                // Fetch from Database if DisplayName is not set
+                DatabaseReference ref = FirebaseDatabase.getInstance().getReference("Users").child(user.getUid());
+                ref.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if (snapshot.exists()) {
+                            String dbName = snapshot.child("fullName").getValue(String.class);
+                            if (dbName != null) {
+                                userNameText.setText(dbName);
+                                userInitials.setText(getInitials(dbName));
+                            }
+                        }
+                    }
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {}
+                });
+            }
+
             LocalDataManager manager = LocalDataManager.getInstance(this);
             manager.syncWorkProgramsFromFirebase(user.getUid());
             manager.syncCalculationsFromFirebase(user.getUid());
             manager.syncDetectionHistoryFromFirebase(this, user.getUid());
             manager.syncSettingsToLocal(this, user.getUid());
-            
-            // Update weather data for all active work programs (runs in background)
-            // This ensures weather data stays current for research purposes
             WeatherDataCollector.updateWeatherForAllActivePrograms(this);
+            
+            expensesBarChart = findViewById(R.id.expensesBarChart);
+            setupExpensesOverviewChart();
         }
 
         if (weatherCard != null) {
             weatherCard.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, ForecastActivity.class)));
-            weatherCard.setOnLongClickListener(v -> { openPhilippinesLocationPicker(); return true; });
-        }
-
-        if (workprogramselectionCard != null) {
-            workprogramselectionCard.setOnClickListener(v -> {
-                Intent intent = new Intent(MainActivity.this, WorkProgramSelection.class);
-                startActivity(intent);
+            weatherCard.setOnLongClickListener(v -> {
+                PopupMenu popup = new PopupMenu(MainActivity.this, v);
+                popup.getMenu().add("Manage Cities");
+                popup.getMenu().add("Change Location");
+                popup.setOnMenuItemClickListener(item -> {
+                    if (item.getTitle().equals("Manage Cities")) {
+                        startActivity(new Intent(MainActivity.this, CityManagementActivity.class));
+                    } else {
+                        openPhilippinesLocationPicker();
+                    }
+                    return true;
+                });
+                popup.show();
+                return true;
             });
         }
+
+        if (workprogramselectionCard != null) workprogramselectionCard.setOnClickListener(v -> navigateToWorkProgram());
+
+        if (btnViewWorkprogram != null) btnViewWorkprogram.setOnClickListener(v -> navigateToWorkProgram());
 
         if (IPMCard != null) {
             IPMCard.setOnClickListener(v -> {
@@ -172,59 +259,16 @@ public class MainActivity extends BaseDrawerActivity {
             Intent intent = new Intent(getApplicationContext(), Login.class);
             startActivity(intent);
             finish();
-        } else {
-            SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
-            boolean isFirstLogin = prefs.getBoolean("isFirstLogin_" + user.getUid(), true);
-
-            if (isFirstLogin) {
-                // First-time login → show "Welcome"
-                // Note: textView may not exist in layout, so check for null
-                if (textView != null) {
-                    textView.setText("Welcome " + user.getEmail());
-                }
-
-                // Mark as not first login anymore
-                SharedPreferences.Editor editor = prefs.edit();
-                editor.putBoolean("isFirstLogin_" + user.getUid(), false);
-                editor.apply();
-            } else {
-                // Re-login → show random greeting
-                // Note: textView may not exist in layout, so check for null
-                if (textView != null) {
-                    String[] greetings = {
-                            "Good morning",
-                            "Good day",
-                            "Hello",
-                            "Hi there",
-                            "Glad to see you back"
-                    };
-
-                    java.util.Random random = new java.util.Random();
-                    int index = random.nextInt(greetings.length);
-                    textView.setText(greetings[index] + " " + user.getDisplayName());
-                }
-            }
         }
 
-
-
-        // Right-side drawer toggle
-        setupDrawer();
-
-        if (getSupportActionBar() != null) {
-            if (toggle != null) {
-            toggle.getDrawerArrowDrawable().setDirection(
-                    androidx.appcompat.graphics.drawable.DrawerArrowDrawable.ARROW_DIRECTION_END
-            );
-            getSupportActionBar().setHomeAsUpIndicator(toggle.getDrawerArrowDrawable());
+        View mainView = findViewById(R.id.main);
+        if (mainView != null) {
+            ViewCompat.setOnApplyWindowInsetsListener(mainView, (v, insets) -> {
+                Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+                return insets;
+            });
         }
-        }
-
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
 
         // Show User Agreement if not accepted yet
         SharedPreferences prefs = getSharedPreferences("AppPrefs", MODE_PRIVATE);
@@ -244,9 +288,7 @@ public class MainActivity extends BaseDrawerActivity {
             Location saved = new Location("");
             saved.setLatitude(lat);
             saved.setLongitude(lon);
-            // Display saved name immediately
             if (weatherLocation != null && name != null && !name.isEmpty()) weatherLocation.setText(name);
-            // Pass the saved name to use instead of reverse geocoding
             fetchAndDisplayWeather(saved, name);
             return;
         }
@@ -260,18 +302,16 @@ public class MainActivity extends BaseDrawerActivity {
             if (location != null) {
                 fetchAndDisplayWeather(location, null);
             } else {
-                // Fallback: Lopez, Quezon (approx)
                 Location fallback = new Location("");
-                fallback.setLatitude(13.8840);
-                fallback.setLongitude(122.2633);
-                fetchAndDisplayWeather(fallback, null);
+                fallback.setLatitude(14.5995);
+                fallback.setLongitude(120.9842);
+                fetchAndDisplayWeather(fallback, "Manila, Philippines");
             }
         }).addOnFailureListener(e -> {
-            // On failure, use fallback
             Location fallback = new Location("");
-            fallback.setLatitude(13.8840);
-            fallback.setLongitude(122.2633);
-            fetchAndDisplayWeather(fallback, null);
+            fallback.setLatitude(14.5995);
+            fallback.setLongitude(120.9842);
+            fetchAndDisplayWeather(fallback, "Manila, Philippines");
         });
     }
 
@@ -279,16 +319,13 @@ public class MainActivity extends BaseDrawerActivity {
         final double lat = location.getLatitude();
         final double lon = location.getLongitude();
 
-        // If we have a saved name, use it instead of reverse geocoding
         if (savedName != null && !savedName.isEmpty()) {
-            // Still need to run network operation on background thread
             new Thread(() -> {
                 fetchWeatherFromOpenMeteo(lat, lon, savedName);
             }).start();
             return;
         }
 
-        // Resolve locality name via reverse geocoding only if no saved name
         new Thread(() -> {
             String locality = "";
             try {
@@ -337,19 +374,15 @@ public class MainActivity extends BaseDrawerActivity {
                 int wcode = current.optInt("weather_code", -1);
 
                 String condition = mapWeatherCode(wcode);
-                
-                // Get weather unit setting
                 String weatherUnit = SettingsPreferences.getWeatherUnit(MainActivity.this);
                 boolean useFahrenheit = weatherUnit.equals(SettingsPreferences.WEATHER_UNIT_FAHRENHEIT);
                 
-                // Convert temperature if needed
                 double displayTemp = tempC;
                 if (useFahrenheit && !Double.isNaN(tempC)) {
                     displayTemp = (tempC * 9.0 / 5.0) + 32.0;
                 }
                 String tempUnit = useFahrenheit ? "°F" : "°C";
                 
-                // Daily min/max
                 String extra = "";
                 try {
                     JSONObject daily = root.getJSONObject("daily");
@@ -370,16 +403,19 @@ public class MainActivity extends BaseDrawerActivity {
                     }
                 } catch (Exception ignored) {}
 
-                String tempText = (Double.isNaN(displayTemp) ? "--" : Math.round(displayTemp) + tempUnit) + extra;
+                String tempText = (Double.isNaN(displayTemp) ? "--" : Math.round(displayTemp) + tempUnit);
+                String subText = condition + extra;
 
                 runOnUiThread(() -> {
-                    if (weatherCondition != null) weatherCondition.setText(condition);
+                    if (weatherCondition != null) weatherCondition.setText(subText);
                     if (weatherTemp != null) weatherTemp.setText(tempText);
-                    if (weatherLocation != null) weatherLocation.setText(locality == null || locality.isEmpty() ? (lat + ", " + lon) : locality);
+                    if (weatherLocation != null) {
+                        weatherLocation.setText(locality == null || locality.isEmpty() ? (lat + ", " + lon) : locality);
+                        weatherLocation.setSelected(true); // For marquee if needed
+                    }
                     if (weatherIcon != null) weatherIcon.setImageResource(selectIconForCode(wcode));
                 });
             } else {
-                // Handle non-200 response codes
                 runOnUiThread(() -> {
                     if (weatherCondition != null) weatherCondition.setText("Weather unavailable");
                     if (weatherTemp != null) weatherTemp.setText("--");
@@ -396,193 +432,266 @@ public class MainActivity extends BaseDrawerActivity {
     }
 
     private void openPhilippinesLocationPicker() {
-        // First show region selection
-        String[] regions = {"Region 1 (Ilocos)", "Region 2 (Cagayan Valley)", "Region 3 (Central Luzon)", "Region 4A (CALABARZON)", "Region 4B (MIMAROPA)", "Region 5 (Bicol)", "Region 6 (Western Visayas)", "Region 7 (Central Visayas)", "Region 8 (Eastern Visayas)", "Region 9 (Zamboanga Peninsula)", "Region 10 (Northern Mindanao)", "Region 11 (Davao)", "Region 12 (Soccsksargen)", "Region 13 (Caraga)", "Region 14 (NCR - Metro Manila)", "Region 15 (CAR)", "Region 16 (BARMM)", "Region 17"};
+        showStructuredLocationDialog();
+    }
+
+    private void showStructuredLocationDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this, R.style.CustomAlertDialog);
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_location_picker, null);
+        AlertDialog dialog = builder.setView(dialogView).create();
+
+        AutoCompleteTextView provinceSpinner = dialogView.findViewById(R.id.provinceAutoComplete);
+        AutoCompleteTextView citySpinner = dialogView.findViewById(R.id.cityAutoComplete);
+        AutoCompleteTextView brgySpinner = dialogView.findViewById(R.id.brgyAutoComplete);
         
-        new AlertDialog.Builder(this)
-                .setTitle("Select Region")
-                .setItems(regions, (dialog, regionIndex) -> {
-                    String[] labels;
-                    double[] lats;
-                    double[] lons;
-                    String regionTitle;
-                    
-                    if (regionIndex == 0) {
-                        // Region 1
-                        labels = PhilippineLocations.getRegion1Labels();
-                        lats = PhilippineLocations.getRegion1Lats();
-                        lons = PhilippineLocations.getRegion1Lons();
-                        regionTitle = "Region 1 (Ilocos)";
-                    } else if (regionIndex == 1) {
-                        // Region 2
-                        labels = PhilippineLocations.getRegion2Labels();
-                        lats = PhilippineLocations.getRegion2Lats();
-                        lons = PhilippineLocations.getRegion2Lons();
-                        regionTitle = "Region 2 (Cagayan Valley)";
-                    } else if (regionIndex == 2) {
-                        // Region 3
-                        labels = PhilippineLocations.getRegion3Labels();
-                        lats = PhilippineLocations.getRegion3Lats();
-                        lons = PhilippineLocations.getRegion3Lons();
-                        regionTitle = "Region 3 (Central Luzon)";
-                    } else if (regionIndex == 3) {
-                        // Region 4A
-                        labels = PhilippineLocations.getRegion4Labels();
-                        lats = PhilippineLocations.getRegion4Lats();
-                        lons = PhilippineLocations.getRegion4Lons();
-                        regionTitle = "Region 4A (CALABARZON)";
-                    } else if (regionIndex == 4) {
-                        // Region 4B
-                        labels = PhilippineLocations.getRegion4BLabels();
-                        lats = PhilippineLocations.getRegion4BLats();
-                        lons = PhilippineLocations.getRegion4BLons();
-                        regionTitle = "Region 4B (MIMAROPA)";
-                    } else if (regionIndex == 5) {
-                        // Region 5
-                        labels = PhilippineLocations.getRegion5Labels();
-                        lats = PhilippineLocations.getRegion5Lats();
-                        lons = PhilippineLocations.getRegion5Lons();
-                        regionTitle = "Region 5 (Bicol)";
-                    } else if (regionIndex == 6) {
-                        // Region 6
-                        labels = PhilippineLocations.getRegion6Labels();
-                        lats = PhilippineLocations.getRegion6Lats();
-                        lons = PhilippineLocations.getRegion6Lons();
-                        regionTitle = "Region 6 (Western Visayas)";
-                    } else if (regionIndex == 7) {
-                        // Region 7
-                        labels = PhilippineLocations.getRegion7Labels();
-                        lats = PhilippineLocations.getRegion7Lats();
-                        lons = PhilippineLocations.getRegion7Lons();
-                        regionTitle = "Region 7 (Central Visayas)";
-                    } else if (regionIndex == 8) {
-                        // Region 8
-                        labels = PhilippineLocations.getRegion8Labels();
-                        lats = PhilippineLocations.getRegion8Lats();
-                        lons = PhilippineLocations.getRegion8Lons();
-                        regionTitle = "Region 8 (Eastern Visayas)";
-                    } else if (regionIndex == 9) {
-                        // Region 9
-                        labels = PhilippineLocations.getRegion9Labels();
-                        lats = PhilippineLocations.getRegion9Lats();
-                        lons = PhilippineLocations.getRegion9Lons();
-                        regionTitle = "Region 9 (Zamboanga Peninsula)";
-                    } else if (regionIndex == 10) {
-                        // Region 10
-                        labels = PhilippineLocations.getRegion10Labels();
-                        lats = PhilippineLocations.getRegion10Lats();
-                        lons = PhilippineLocations.getRegion10Lons();
-                        regionTitle = "Region 10 (Northern Mindanao)";
-                    } else if (regionIndex == 11) {
-                        // Region 11
-                        labels = PhilippineLocations.getRegion11Labels();
-                        lats = PhilippineLocations.getRegion11Lats();
-                        lons = PhilippineLocations.getRegion11Lons();
-                        regionTitle = "Region 11 (Davao)";
-                    } else if (regionIndex == 12) {
-                        // Region 12
-                        labels = PhilippineLocations.getRegion12Labels();
-                        lats = PhilippineLocations.getRegion12Lats();
-                        lons = PhilippineLocations.getRegion12Lons();
-                        regionTitle = "Region 12 (Soccsksargen)";
-                    } else if (regionIndex == 13) {
-                        // Region 13
-                        labels = PhilippineLocations.getRegion13Labels();
-                        lats = PhilippineLocations.getRegion13Lats();
-                        lons = PhilippineLocations.getRegion13Lons();
-                        regionTitle = "Region 13 (Caraga)";
-                    } else if (regionIndex == 14) {
-                        // Region 14
-                        labels = PhilippineLocations.getRegion14Labels();
-                        lats = PhilippineLocations.getRegion14Lats();
-                        lons = PhilippineLocations.getRegion14Lons();
-                        regionTitle = "Region 14 (NCR - Metro Manila)";
-                    } else if (regionIndex == 15) {
-                        // Region 15
-                        labels = PhilippineLocations.getRegion15Labels();
-                        lats = PhilippineLocations.getRegion15Lats();
-                        lons = PhilippineLocations.getRegion15Lons();
-                        regionTitle = "Region 15 (CAR)";
-                    } else if (regionIndex == 16) {
-                        // Region 16
-                        labels = PhilippineLocations.getRegion16Labels();
-                        lats = PhilippineLocations.getRegion16Lats();
-                        lons = PhilippineLocations.getRegion16Lons();
-                        regionTitle = "Region 16 (BARMM)";
-                    } else {
-                        // Region 17
-                        labels = PhilippineLocations.getRegion17Labels();
-                        lats = PhilippineLocations.getRegion17Lats();
-                        lons = PhilippineLocations.getRegion17Lons();
-                        regionTitle = "Region 17";
+        com.google.android.material.textfield.TextInputLayout cityLayout = dialogView.findViewById(R.id.cityLayout);
+        com.google.android.material.textfield.TextInputLayout brgyLayout = dialogView.findViewById(R.id.brgyLayout);
+        
+        android.widget.Button btnApply = dialogView.findViewById(R.id.btnApply);
+        android.widget.Button btnCancel = dialogView.findViewById(R.id.btnCancel);
+
+        // State variables
+        final String[] provinceSelected = {""};
+        final String[] citySelected = {""};
+        final String[] brgySelected = {""};
+        final int[] finalRegionIndex = {-1};
+
+        // Populate Provinces
+        List<String> allProvincesList = new ArrayList<>();
+        for (int i = 0; i <= 17; i++) {
+            String[] labels = getLabelsForRegion(i);
+            for (String label : labels) {
+                String[] parts = label.split(", ");
+                if (parts.length > 1) {
+                    if (!allProvincesList.contains(parts[1])) {
+                        allProvincesList.add(parts[1]);
                     }
-                    
-                    // Show location picker for selected region
-                    if (labels == null || labels.length == 0 || lats == null || lats.length == 0 || lons == null || lons.length == 0) {
-                        new AlertDialog.Builder(MainActivity.this)
-                                .setTitle("No Locations Available")
-                                .setMessage("No locations are available for " + regionTitle + " at this time.")
-                                .setPositiveButton("OK", null)
-                                .show();
-                        return;
+                }
+            }
+        }
+        Collections.sort(allProvincesList);
+        android.widget.ArrayAdapter<String> provinceAdapter = new android.widget.ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, allProvincesList);
+        provinceSpinner.setAdapter(provinceAdapter);
+
+        // Province Listener
+        provinceSpinner.setOnItemClickListener((parent, view, position, id) -> {
+            provinceSelected[0] = (String) parent.getItemAtPosition(position);
+            citySelected[0] = "";
+            brgySelected[0] = "";
+            
+            citySpinner.setText("");
+            brgySpinner.setText("");
+            cityLayout.setEnabled(true);
+            brgyLayout.setEnabled(false);
+            btnApply.setEnabled(false);
+
+            // Find cities for this province
+            List<String> citiesInProvince = new ArrayList<>();
+            for (int i = 0; i <= 17; i++) {
+                String[] labels = getLabelsForRegion(i);
+                for (String label : labels) {
+                    if (label.contains(provinceSelected[0])) {
+                        citiesInProvince.add(label.split(", ")[0]);
+                        finalRegionIndex[0] = i; // Store region for coordinate lookup
                     }
-                    
-                    new AlertDialog.Builder(MainActivity.this)
-                            .setTitle("Select Location - " + regionTitle)
-                            .setItems(labels, (dialog2, which) -> {
-                                if (which < 0 || which >= labels.length || which >= lats.length || which >= lons.length) {
-                                    Toast.makeText(MainActivity.this, "Invalid selection", Toast.LENGTH_SHORT).show();
-                                    return;
+                }
+            }
+            Collections.sort(citiesInProvince);
+            android.widget.ArrayAdapter<String> cityAdapter = new android.widget.ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, citiesInProvince);
+            citySpinner.setAdapter(cityAdapter);
+        });
+
+        // City Listener
+        citySpinner.setOnItemClickListener((parent, view, position, id) -> {
+            citySelected[0] = (String) parent.getItemAtPosition(position);
+            brgySelected[0] = "";
+            brgySpinner.setText("");
+            brgyLayout.setEnabled(true);
+            btnApply.setEnabled(false);
+
+            // Populate mock Barangays
+            String[] barangays = getMockBarangays(citySelected[0]);
+            android.widget.ArrayAdapter<String> brgyAdapter = new android.widget.ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, barangays);
+            brgySpinner.setAdapter(brgyAdapter);
+        });
+
+        // Barangay Listener
+        brgySpinner.setOnItemClickListener((parent, view, position, id) -> {
+            brgySelected[0] = (String) parent.getItemAtPosition(position);
+            btnApply.setEnabled(true);
+        });
+
+        btnApply.setOnClickListener(v -> {
+            String fullLocation = brgySelected[0] + ", " + citySelected[0] + ", " + provinceSelected[0];
+            
+            // Calculate coordinates (simplified lookup)
+            double lat = 14.5995;
+            double lon = 120.9842;
+            String[] labels = getLabelsForRegion(finalRegionIndex[0]);
+            for (int i = 0; i < labels.length; i++) {
+                if (labels[i].startsWith(citySelected[0])) {
+                    lat = getLatsForRegion(finalRegionIndex[0])[i];
+                    lon = getLonsForRegion(finalRegionIndex[0])[i];
+                    break;
+                }
+            }
+
+            // Save to Firebase for persistence
+            if (user != null) {
+                String locId = FirebaseDatabase.getInstance().getReference().push().getKey();
+                if (locId != null) {
+                    UserLocation newLoc = new UserLocation(locId, provinceSelected[0], citySelected[0], brgySelected[0], lat, lon, true);
+                    FirebaseDatabase.getInstance().getReference("users").child(user.getUid()).child("locations").child(locId).setValue(newLoc);
+                    // Set others to not default
+                    FirebaseDatabase.getInstance().getReference("users").child(user.getUid()).child("locations").addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot snapshot) {
+                            for (DataSnapshot ds : snapshot.getChildren()) {
+                                String key = ds.getKey();
+                                if (key != null && !key.equals(locId)) {
+                                    ds.getRef().child("isDefault").setValue(false);
                                 }
-                                double lat = lats[which];
-                                double lon = lons[which];
-                                String label = labels[which];
-                                SharedPreferences wp = getSharedPreferences(WEATHER_PREF, MODE_PRIVATE);
-                                wp.edit()
-                                        .putLong(KEY_LAT, Double.doubleToLongBits(lat))
-                                        .putLong(KEY_LON, Double.doubleToLongBits(lon))
-                                        .putString(KEY_NAME, label)
-                                        .apply();
-                                if (weatherLocation != null) weatherLocation.setText(label);
-                                Location loc = new Location("");
-                                loc.setLatitude(lat);
-                                loc.setLongitude(lon);
-                                // Pass the selected label to preserve the exact location name
-                                fetchAndDisplayWeather(loc, label);
-                            })
-                            .setNegativeButton("Cancel", null)
-                            .show();
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+                            }
+                        }
+                        @Override public void onCancelled(@NonNull DatabaseError error) {}
+                    });
+                }
+            }
+
+            saveAndApplyLocation(finalRegionIndex[0], citySelected[0], fullLocation);
+            dialog.dismiss();
+        });
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
+    }
+
+    private String[] getMockBarangays(String city) {
+        return new String[]{"Poblacion", "San Jose", "Santa Maria", "San Pedro", "Santo Niño", "San Juan", "Santa Cruz", "San Roque", "Maligaya", "Bagong Pag-asa"};
+    }
+
+    private String[] getLabelsForRegion(int index) {
+        switch (index) {
+            case 0: return PhilippineLocations.getRegion1Labels();
+            case 1: return PhilippineLocations.getRegion2Labels();
+            case 2: return PhilippineLocations.getRegion3Labels();
+            case 3: return PhilippineLocations.getRegion4Labels();
+            case 4: return PhilippineLocations.getRegion4BLabels();
+            case 5: return PhilippineLocations.getRegion5Labels();
+            case 6: return PhilippineLocations.getRegion6Labels();
+            case 7: return PhilippineLocations.getRegion7Labels();
+            case 8: return PhilippineLocations.getRegion8Labels();
+            case 9: return PhilippineLocations.getRegion9Labels();
+            case 10: return PhilippineLocations.getRegion10Labels();
+            case 11: return PhilippineLocations.getRegion11Labels();
+            case 12: return PhilippineLocations.getRegion12Labels();
+            case 13: return PhilippineLocations.getRegion13Labels();
+            case 14: return PhilippineLocations.getRegion14Labels();
+            case 15: return PhilippineLocations.getRegion15Labels();
+            case 16: return PhilippineLocations.getRegion16Labels();
+            default: return PhilippineLocations.getRegion17Labels();
+        }
+    }
+
+    private void saveAndApplyLocation(int regionIndex, String city, String fullLabel) {
+        String[] labels = getLabelsForRegion(regionIndex);
+        double lat = 14.5995;
+        double lon = 120.9842;
+        
+        // Try to find original coordinates from city
+        for (int i = 0; i < labels.length; i++) {
+            if (labels[i].startsWith(city)) {
+                double[] lats = getLatsForRegion(regionIndex);
+                double[] lons = getLonsForRegion(regionIndex);
+                lat = lats[i];
+                lon = lons[i];
+                break;
+            }
+        }
+
+        SharedPreferences wp = getSharedPreferences(WEATHER_PREF, MODE_PRIVATE);
+        wp.edit()
+                .putLong(KEY_LAT, Double.doubleToLongBits(lat))
+                .putLong(KEY_LON, Double.doubleToLongBits(lon))
+                .putString(KEY_NAME, fullLabel)
+                .apply();
+        if (weatherLocation != null) weatherLocation.setText(fullLabel);
+        Location loc = new Location("");
+        loc.setLatitude(lat);
+        loc.setLongitude(lon);
+        fetchAndDisplayWeather(loc, fullLabel);
+    }
+
+    private double[] getLatsForRegion(int index) {
+        switch (index) {
+            case 0: return PhilippineLocations.getRegion1Lats();
+            case 1: return PhilippineLocations.getRegion2Lats();
+            case 2: return PhilippineLocations.getRegion3Lats();
+            case 3: return PhilippineLocations.getRegion4Lats();
+            case 4: return PhilippineLocations.getRegion4BLats();
+            case 5: return PhilippineLocations.getRegion5Lats();
+            case 6: return PhilippineLocations.getRegion6Lats();
+            case 7: return PhilippineLocations.getRegion7Lats();
+            case 8: return PhilippineLocations.getRegion8Lats();
+            case 9: return PhilippineLocations.getRegion9Lats();
+            case 10: return PhilippineLocations.getRegion10Lats();
+            case 11: return PhilippineLocations.getRegion11Lats();
+            case 12: return PhilippineLocations.getRegion12Lats();
+            case 13: return PhilippineLocations.getRegion13Lats();
+            case 14: return PhilippineLocations.getRegion14Lats();
+            case 15: return PhilippineLocations.getRegion15Lats();
+            case 16: return PhilippineLocations.getRegion16Lats();
+            default: return PhilippineLocations.getRegion17Lats();
+        }
+    }
+
+    private double[] getLonsForRegion(int index) {
+        switch (index) {
+            case 0: return PhilippineLocations.getRegion1Lons();
+            case 1: return PhilippineLocations.getRegion2Lons();
+            case 2: return PhilippineLocations.getRegion3Lons();
+            case 3: return PhilippineLocations.getRegion4Lons();
+            case 4: return PhilippineLocations.getRegion4BLons();
+            case 5: return PhilippineLocations.getRegion5Lons();
+            case 6: return PhilippineLocations.getRegion6Lons();
+            case 7: return PhilippineLocations.getRegion7Lons();
+            case 8: return PhilippineLocations.getRegion8Lons();
+            case 9: return PhilippineLocations.getRegion9Lons();
+            case 10: return PhilippineLocations.getRegion10Lons();
+            case 11: return PhilippineLocations.getRegion11Lons();
+            case 12: return PhilippineLocations.getRegion12Lons();
+            case 13: return PhilippineLocations.getRegion13Lons();
+            case 14: return PhilippineLocations.getRegion14Lons();
+            case 15: return PhilippineLocations.getRegion15Lons();
+            case 16: return PhilippineLocations.getRegion16Lons();
+            default: return PhilippineLocations.getRegion17Lons();
+        }
     }
 
     private String mapWeatherCode(int code) {
-        // Minimal mapping per Open-Meteo weather codes
-        if (code == 0) return "Clear";
-        if (code == 1 || code == 2) return "Partly cloudy";
-        if (code == 3) return "Overcast";
-        if (code >= 45 && code <= 48) return "Fog";
-        if (code >= 51 && code <= 57) return "Drizzle";
-        if (code >= 61 && code <= 67) return "Rain";
-        if (code >= 71 && code <= 77) return "Snow";
-        if (code >= 80 && code <= 82) return "Rain showers";
-        if (code >= 85 && code <= 86) return "Snow showers";
-        if (code >= 95) return "Thunderstorm";
-        return "Unknown";
+        if (code == 0) return "Fair Weather";
+        if (code == 1 || code == 2) return "Partly Cloudy to Cloudy";
+        if (code == 3) return "Cloudy Skies";
+        if (code >= 45 && code <= 48) return "Foggy";
+        if (code >= 51 && code <= 57) return "Rainshowers / Drizzle";
+        if (code >= 61 && code <= 67) return "Scattered Rainshowers";
+        if (code >= 71 && code <= 77) return "Light Snow (N/A)";
+        if (code >= 80 && code <= 82) return "Monsoon Rains / Showers";
+        if (code >= 85 && code <= 86) return "Occasional Rains";
+        if (code >= 95) return "Severe Thunderstorms";
+        return "Fair Weather";
     }
 
     private int selectIconForCode(int code) {
-        // Use cloud icons based on weather code
         if (code == 0) return R.drawable.ic_weather_clear;
         if (code == 1 || code == 2) return R.drawable.ic_weather_partly_cloudy;
         if (code == 3) return R.drawable.ic_weather_overcast;
         if (code >= 45 && code <= 48) return R.drawable.ic_weather_fog;
         if (code >= 51 && code <= 57) return R.drawable.ic_weather_drizzle;
         if (code >= 61 && code <= 67) return R.drawable.ic_weather_rain;
-        if (code >= 71 && code <= 77) return R.drawable.ic_weather_overcast; // Snow - use overcast
+        if (code >= 71 && code <= 77) return R.drawable.ic_weather_overcast;
         if (code >= 80 && code <= 82) return R.drawable.ic_weather_rain_showers;
-        if (code >= 85 && code <= 86) return R.drawable.ic_weather_overcast; // Snow showers - use overcast
+        if (code >= 85 && code <= 86) return R.drawable.ic_weather_overcast;
         if (code >= 95) return R.drawable.ic_weather_thunderstorm;
         return R.drawable.ic_weather_clear;
     }
@@ -598,71 +707,31 @@ public class MainActivity extends BaseDrawerActivity {
             if (granted) {
                 requestWeather();
             } else {
-                // Use fallback location
                 Location fallback = new Location("");
-                fallback.setLatitude(13.8840);
-                fallback.setLongitude(122.2633);
-                fetchAndDisplayWeather(fallback, null);
+                fallback.setLatitude(14.5995);
+                fallback.setLongitude(120.9842);
+                fetchAndDisplayWeather(fallback, "Manila, Philippines");
             }
         }
     }
 
-    // Show the Agreement Popup
     private void showUserAgreementDialog(SharedPreferences prefs) {
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_user_agreement, null);
-
         com.google.android.material.checkbox.MaterialCheckBox chkAgree = dialogView.findViewById(R.id.chkAgree);
         com.google.android.material.button.MaterialButton btnAccept = dialogView.findViewById(R.id.btnAccept);
 
-        if (chkAgree == null || btnAccept == null) {
-            // If views are not found, the dialog layout might have changed
-            return;
-        }
+        if (chkAgree == null || btnAccept == null) return;
 
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setView(dialogView)
-                .setCancelable(false) // must accept
+                .setCancelable(false)
                 .create();
 
-        chkAgree.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            btnAccept.setEnabled(isChecked);
-        });
-
+        chkAgree.setOnCheckedChangeListener((buttonView, isChecked) -> btnAccept.setEnabled(isChecked));
         btnAccept.setOnClickListener(v -> {
             if (chkAgree.isChecked()) {
                 prefs.edit().putBoolean("UserAgreementAccepted", true).apply();
-                dialog.dismiss(); // allow user to continue
-            }
-        });
-
-        dialog.show();
-    }
-    
-    // Show Terms Dialog on First Login
-    private void showTermsDialogOnFirstLogin(String userId) {
-        TermsDialog dialog = new TermsDialog(this, userId, new TermsDialog.OnTermsAcceptedListener() {
-            @Override
-            public void onTermsAccepted() {
-                // Terms accepted, user can continue using the app
-                Toast.makeText(MainActivity.this, getString(R.string.success_login), Toast.LENGTH_SHORT).show();
-                
-                // Show tutorial after terms acceptance
-                if (TutorialManager.shouldShowTutorial(MainActivity.this, userId)) {
-                    // Use post to ensure terms dialog is fully dismissed first
-                    findViewById(android.R.id.content).post(() -> {
-                        TutorialManager.startTutorial(MainActivity.this, userId);
-                    });
-                }
-            }
-            
-            @Override
-            public void onTermsDeclined() {
-                // User must accept terms - sign them out
-                Toast.makeText(MainActivity.this, getString(R.string.terms_must_accept), Toast.LENGTH_LONG).show();
-                FirebaseAuth.getInstance().signOut();
-                Intent intent = new Intent(getApplicationContext(), Login.class);
-                startActivity(intent);
-                finish();
+                dialog.dismiss();
             }
         });
         dialog.show();
@@ -670,30 +739,269 @@ public class MainActivity extends BaseDrawerActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == android.R.id.home) {
-            if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
-                drawerLayout.closeDrawer(GravityCompat.START);
-            } else {
-                drawerLayout.openDrawer(GravityCompat.START);
-            }
-            return true;
-        }
         return super.onOptionsItemSelected(item);
     }
 
-    /**
-     * Initialize Financial Overview with donut chart
-     * Fetches data from Firebase and calculates income, expenses, and net income
-     */
-    
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Save all data before app closes
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser != null) {
             LocalDataManager manager = LocalDataManager.getInstance(this);
             manager.syncSettingsToLocal(this, currentUser.getUid());
         }
+    }
+
+    private void setupExpensesOverviewChart() {
+        if (expensesBarChart == null || user == null) return;
+
+        expensesBarChart.setNoDataText("Loading expense data...");
+        expensesBarChart.setNoDataTextColor(ContextCompat.getColor(this, R.color.muted));
+
+        DatabaseReference programsRef = FirebaseDatabase.getInstance()
+                .getReference("users")
+                .child(user.getUid())
+                .child("workPrograms");
+
+        programsRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                // Aggregate expenses by cultivar
+                java.util.TreeMap<String, Double> cultivarTotals = new java.util.TreeMap<>();
+
+                for (DataSnapshot programSnapshot : snapshot.getChildren()) {
+                    String cultivar = programSnapshot.child("cultivarName").getValue(String.class);
+                    if (cultivar == null) cultivar = programSnapshot.child("cultivar").getValue(String.class);
+                    if (cultivar == null) continue;
+
+                    double programDailyTotal = 0;
+                    DataSnapshot dailyExpensesSnapshot = programSnapshot.child("dailyExpenses");
+                    if (dailyExpensesSnapshot.exists()) {
+                        for (DataSnapshot dateSnapshot : dailyExpensesSnapshot.getChildren()) {
+                            programDailyTotal += sumCategoryCosts(dateSnapshot.child("labor"));
+                            programDailyTotal += sumCategoryCosts(dateSnapshot.child("material"));
+                            programDailyTotal += sumCategoryCosts(dateSnapshot.child("equipment"));
+                            programDailyTotal += sumCategoryCosts(dateSnapshot.child("miscellaneous"));
+                        }
+                    }
+
+                    Double existing = cultivarTotals.get(cultivar);
+                    double existingVal = (existing != null) ? existing : 0.0;
+                    cultivarTotals.put(cultivar, existingVal + programDailyTotal);
+                }
+
+                if (cultivarTotals.isEmpty()) {
+                    expensesBarChart.setNoDataText("No daily expenses logged yet");
+                    expensesBarChart.invalidate();
+                    return;
+                }
+
+                renderExpensesBarChart(cultivarTotals);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
+        });
+    }
+
+    private double sumCategoryCosts(DataSnapshot snapshot) {
+        double total = 0;
+        for (DataSnapshot item : snapshot.getChildren()) {
+            Double cost = item.child("totalCost").getValue(Double.class);
+            if (cost == null) cost = item.child("cost").getValue(Double.class);
+            if (cost != null) total += cost;
+        }
+        return total;
+    }
+
+    private void renderExpensesBarChart(java.util.TreeMap<String, Double> cultivarTotals) {
+        if (expensesBarChart == null) return;
+
+        List<com.github.mikephil.charting.data.BarEntry> entries = new ArrayList<>();
+        List<String> labels = new ArrayList<>();
+        
+        int index = 0;
+        // Reversed for better display in HorizontalBarChart (top to bottom)
+        for (java.util.Map.Entry<String, Double> entry : cultivarTotals.entrySet()) {
+            entries.add(new com.github.mikephil.charting.data.BarEntry(index, entry.getValue().floatValue()));
+            labels.add(entry.getKey());
+            index++;
+        }
+
+        com.github.mikephil.charting.data.BarDataSet dataSet = new com.github.mikephil.charting.data.BarDataSet(entries, "Total Expenses (₱)");
+        
+        // ApexCharts inspired styling: Clean solid color, no labels
+        dataSet.setColor(ContextCompat.getColor(this, R.color.sidebar_dark_green));
+        dataSet.setDrawValues(false); // Matches dataLabels: { enabled: false }
+
+        com.github.mikephil.charting.data.BarData barData = new com.github.mikephil.charting.data.BarData(dataSet);
+        barData.setBarWidth(0.6f);
+        expensesBarChart.setData(barData);
+
+        // Chart Configuration
+        expensesBarChart.getDescription().setEnabled(false);
+        expensesBarChart.getLegend().setEnabled(false);
+        expensesBarChart.setExtraLeftOffset(50f); // More space for cultivar names
+        expensesBarChart.setDrawGridBackground(false);
+        expensesBarChart.animateY(800, Easing.EaseOutQuart);
+        expensesBarChart.setFitBars(true);
+        expensesBarChart.setTouchEnabled(true);
+        expensesBarChart.setScaleEnabled(false);
+
+        XAxis xAxis = expensesBarChart.getXAxis();
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setDrawGridLines(false);
+        xAxis.setDrawAxisLine(true);
+        xAxis.setGranularity(1f);
+        xAxis.setValueFormatter(new IndexAxisValueFormatter(labels));
+        xAxis.setTextColor(ContextCompat.getColor(this, R.color.text));
+        xAxis.setTextSize(11f);
+        xAxis.setLabelCount(labels.size());
+
+        YAxis leftAxis = expensesBarChart.getAxisLeft();
+        leftAxis.setDrawGridLines(true);
+        leftAxis.setGridColor(ContextCompat.getColor(this, R.color.border));
+        leftAxis.setTextColor(ContextCompat.getColor(this, R.color.muted));
+        leftAxis.setAxisMinimum(0f);
+        leftAxis.setLabelCount(5);
+        leftAxis.setValueFormatter(new com.github.mikephil.charting.formatter.ValueFormatter() {
+            @Override
+            public String getFormattedValue(float value) {
+                return "₱" + Math.round(value);
+            }
+        });
+
+        expensesBarChart.getAxisRight().setEnabled(false);
+        expensesBarChart.invalidate();
+    }
+
+    private String getInitials(String name) {
+        if (name == null || name.isEmpty()) return "U";
+        String[] parts = name.trim().split("\\s+");
+        if (parts.length > 1) {
+            return (Character.toUpperCase(parts[0].charAt(0)) + "" + Character.toUpperCase(parts[parts.length - 1].charAt(0)));
+        }
+        return String.valueOf(Character.toUpperCase(parts[0].charAt(0)));
+    }
+
+    private void navigateToWorkProgram() {
+        if (user == null) return;
+
+        // Prefer the currently selected "active program" from the Current Stage card.
+        if (activeProgramId != null && !activeProgramId.isEmpty() && workProgramList != null && !workProgramList.isEmpty()) {
+            WorkProgramEntity active = null;
+            for (WorkProgramEntity wp : workProgramList) {
+                if (wp != null && activeProgramId.equals(wp.id)) {
+                    active = wp;
+                    break;
+                }
+            }
+            if (active != null) {
+                Intent intent = new Intent(MainActivity.this, Workprogram.class);
+                intent.putExtra("programId", active.id);
+                intent.putExtra("cultivar", active.cultivarName);
+                intent.putExtra("startDate", active.startingDate);
+                startActivity(intent);
+                return;
+            }
+        }
+
+        // Fallback: open selection/creation.
+        Intent intent = new Intent(MainActivity.this, WorkProgramSelection.class);
+        startActivity(intent);
+    }
+    private void setupActiveProgramMonitoring() {
+        if (user == null) return;
+        DatabaseReference wpRef = FirebaseDatabase.getInstance().getReference("users").child(user.getUid()).child("workPrograms");
+        wpRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                workProgramList.clear();
+                for (DataSnapshot ds : snapshot.getChildren()) {
+                    com.android.tomatoapp.workprogram.data.WorkProgramEntity wp = ds.getValue(com.android.tomatoapp.workprogram.data.WorkProgramEntity.class);
+                    if (wp != null) {
+                        wp.id = ds.getKey();
+                        workProgramList.add(wp);
+                    }
+                }
+                
+                if (activeProgramId == null && !workProgramList.isEmpty()) {
+                    activeProgramId = workProgramList.get(0).id;
+                }
+                updateMonitoringUI();
+            }
+            @Override public void onCancelled(@NonNull DatabaseError error) {}
+        });
+    }
+
+    private void updateMonitoringUI() {
+        if (activeProgramId == null || workProgramList.isEmpty()) {
+            if (activeCultivarName != null) activeCultivarName.setText("No Active Program");
+            if (activeStageName != null) activeStageName.setText("Start a work program to monitor progress");
+            if (activeDayCount != null) activeDayCount.setText("Day -- of --");
+            if (stageProgress != null) stageProgress.setProgress(0);
+            return;
+        }
+
+        com.android.tomatoapp.workprogram.data.WorkProgramEntity activeWP = null;
+        for (com.android.tomatoapp.workprogram.data.WorkProgramEntity wp : workProgramList) {
+            if (wp.id.equals(activeProgramId)) {
+                activeWP = wp;
+                break;
+            }
+        }
+
+        if (activeWP != null) {
+            if (activeCultivarName != null) activeCultivarName.setText(activeWP.cultivarName);
+            
+            // Calculate progress and stage
+            try {
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+                java.util.Date start = sdf.parse(activeWP.startingDate);
+                if (start != null) {
+                    long diff = new java.util.Date().getTime() - start.getTime();
+                    int days = (int) (diff / (1000 * 60 * 60 * 24)) + 1;
+                    int totalDays = 90; // Default or fetch from cultivar data
+                    
+                    days = Math.max(1, days);
+                    if (activeDayCount != null) activeDayCount.setText(String.format(Locale.getDefault(), "Day %d of %d", days, totalDays));
+                    
+                    int progress = (int) ((days / (float) totalDays) * 100);
+                    if (stageProgress != null) stageProgress.setProgress(Math.min(100, progress));
+                    
+                    // Determine stage name based on crop duration
+                    if (activeStageName != null) {
+                        if (days <= 7) activeStageName.setText("Land and Soil Preparation");
+                        else if (days <= 40) activeStageName.setText("Vegetative Stage");
+                        else if (days <= 60) activeStageName.setText("Flowering Stage");
+                        else if (days <= 90) activeStageName.setText("Maturity Stage");
+                        else activeStageName.setText("Post-Harvest");
+                    }
+                }
+            } catch (Exception e) {
+                if (activeStageName != null) activeStageName.setText("Stage tracking unavailable");
+            }
+        }
+    }
+
+    private void showProgramSelectionDialog() {
+        if (workProgramList.isEmpty()) {
+            Toast.makeText(this, "No work programs found", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String[] programNames = new String[workProgramList.size()];
+        for (int i = 0; i < workProgramList.size(); i++) {
+            programNames[i] = workProgramList.get(i).cultivarName + " (" + workProgramList.get(i).startingDate + ")";
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("Switch Active Program")
+                .setItems(programNames, (dialog, which) -> {
+                    activeProgramId = workProgramList.get(which).id;
+                    updateMonitoringUI();
+                    Toast.makeText(this, "Switched to " + workProgramList.get(which).cultivarName, Toast.LENGTH_SHORT).show();
+                })
+                .show();
     }
 }

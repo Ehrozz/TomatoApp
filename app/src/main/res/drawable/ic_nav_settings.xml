@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp"
+    android:height="28dp"
+    android:viewportWidth="256"
+    android:viewportHeight="256">
+    <!-- Secondary (Duotone) Path -->
+    <path
+        android:fillColor="#0a0a0a"
+        android:alpha="0.2"
+        android:pathData="M128,128m-40,0a40,40,0,1,0,80,0a40,40,0,1,0,-80,0" />
+    <!-- Primary Path (Gear/Cog) -->
+    <path
+        android:fillColor="#0a0a0a"
+        android:pathData="M232,128a12,12,0,0,1-12,12H202.7a72.6,72.6,0,0,1-10.4,25.2l13.7,13.7a12,12,0,1,1-17,17l-13.7-13.7a72.6,72.6,0,0,1-25.2,10.4V220a12,12,0,0,1-24,0V205.3a72.6,72.6,0,0,1-25.2-10.4L87.2,208.6a12,12,0,1,1-17-17l13.7-13.7a72.6,72.6,0,0,1-10.4-25.2H36a12,12,0,0,1,0-24h17.5a72.6,72.6,0,0,1,10.4-25.2L50.2,90.8a12,12,0,0,1,17-17l13.7,13.7a72.6,72.6,0,0,1,25.2-10.4V36a12,12,0,0,1,24,0V50.7a72.6,72.6,0,0,1,25.2,10.4l13.7-13.7a12,12,0,1,1,17,17L207.1,88.1a72.6,72.6,0,0,1,10.4,25.2H220A12,12,0,0,1,232,128ZM128,80a48,48,0,1,0,48,48A48,48,0,0,0,128,80Z" />
+</vector>

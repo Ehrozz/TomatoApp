@@ -12,7 +12,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.analytics.ui.DetectionHistoryActivity;
-import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import com.android.tomatoapp.detection.ui.CameraInterface;
 import com.android.tomatoapp.detection.ui.DetectionTypeDialog;
 import com.android.tomatoapp.task.data.TaskSchedule;
@@ -23,7 +23,7 @@ import com.android.tomatoapp.workprogram.ui.WorkProgramSelectionDialog;
 
 import java.util.List;
 
-public class IPM extends BaseDrawerActivity {
+public class IPM extends BaseBottomNavActivity {
 
     CardView ScanCard;
     CardView HistoryCard;
@@ -61,7 +61,7 @@ public class IPM extends BaseDrawerActivity {
             return insets;
         });
 
-        setupDrawer();
+        setupBottomNavigation();
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle(R.string.integrated_pest_management);

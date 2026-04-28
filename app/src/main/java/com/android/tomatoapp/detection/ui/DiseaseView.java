@@ -1,7 +1,15 @@
 package com.android.tomatoapp.detection.ui;
 
+import java.util.HashMap;
+import androidx.annotation.NonNull;
+import java.util.List;
+import com.android.tomatoapp.R;
+import com.android.tomatoapp.common.models.DiseaseData;
+import com.android.tomatoapp.common.models.DiseaseInfo;
+
 import android.content.Intent;
 import android.os.Bundle;
+import androidx.activity.EdgeToEdge;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -11,28 +19,9 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-import androidx.activity.EdgeToEdge;
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.ActionBarDrawerToggle;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.drawerlayout.widget.DrawerLayout;
+import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 
-import com.google.android.material.navigation.NavigationView;
-import com.google.firebase.auth.FirebaseAuth;
-
-import java.util.HashMap;
-
-import com.android.tomatoapp.R;
-import com.android.tomatoapp.auth.ui.Login;
-import com.android.tomatoapp.common.models.DiseaseData;
-import com.android.tomatoapp.common.models.DiseaseInfo;
-import com.android.tomatoapp.core.ui.MainActivity;
-
-public class DiseaseView extends AppCompatActivity {
-
-    DrawerLayout drawerLayout;
-    NavigationView navigationView;
-    ActionBarDrawerToggle toggle;
+public class DiseaseView extends BaseBottomNavActivity {
 
     TextView diseaseTitle, diseaseDescription, diseaseSymptoms, diseaseCause, diseaseCure, diseasePrevention, pestDescription, pestCommonName, pestScientificName, scientificName;
     ImageView diseaseImage, pestImage;
@@ -136,14 +125,20 @@ public class DiseaseView extends AppCompatActivity {
         ImageButton backButton = findViewById(R.id.backButton);
         backButton.setOnClickListener(v -> finish());
 
-        // Action buttons - scroll to sections
+        // Action tabs/buttons - support both new visible tabs and hidden fallback IDs
         LinearLayout symptomsButton = findViewById(R.id.symptomsButton);
         LinearLayout treatmentButton = findViewById(R.id.treatmentButton);
         LinearLayout preventionButton = findViewById(R.id.preventionButton);
+        LinearLayout tabSymptoms = findViewById(R.id.tabSymptoms);
+        LinearLayout tabTreatment = findViewById(R.id.tabTreatment);
+        LinearLayout tabPrevention = findViewById(R.id.tabPrevention);
 
-        symptomsButton.setOnClickListener(v -> scrollToView(diseaseSymptoms));
-        treatmentButton.setOnClickListener(v -> scrollToView(diseaseCure));
-        preventionButton.setOnClickListener(v -> scrollToView(diseasePrevention));
+        if (symptomsButton != null) symptomsButton.setOnClickListener(v -> scrollToView(diseaseSymptoms));
+        if (treatmentButton != null) treatmentButton.setOnClickListener(v -> scrollToView(diseaseCure));
+        if (preventionButton != null) preventionButton.setOnClickListener(v -> scrollToView(diseasePrevention));
+        if (tabSymptoms != null) tabSymptoms.setOnClickListener(v -> scrollToView(diseaseSymptoms));
+        if (tabTreatment != null) tabTreatment.setOnClickListener(v -> scrollToView(diseaseCure));
+        if (tabPrevention != null) tabPrevention.setOnClickListener(v -> scrollToView(diseasePrevention));
 
         // Load disease data
         Intent intent = getIntent();
@@ -154,25 +149,7 @@ public class DiseaseView extends AppCompatActivity {
             }
         }
 
-        drawerLayout = findViewById(R.id.drawer_layout);
-        navigationView = findViewById(R.id.nav_view);
-
-        toggle = new ActionBarDrawerToggle(this, drawerLayout, R.string.open, R.string.close);
-        drawerLayout.addDrawerListener(toggle);
-        toggle.syncState();
-
-        navigationView.setNavigationItemSelectedListener(item -> {
-            int id = item.getItemId();
-            if (id == R.id.nav_home) {
-                startActivity(new Intent(this, MainActivity.class));
-            } else if (id == R.id.nav_logout) {
-                FirebaseAuth.getInstance().signOut();
-                startActivity(new Intent(this, Login.class));
-                finish();
-            }
-            drawerLayout.closeDrawers();
-            return true;
-        });
+        setupBottomNavigation();
     }
 
     private void loadDiseaseData(String shortName) {
@@ -419,9 +396,6 @@ public class DiseaseView extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        if (toggle.onOptionsItemSelected(item)) {
-            return true;
-        }
         return super.onOptionsItemSelected(item);
     }
 }

@@ -42,25 +42,34 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Collections;
+
+import com.github.mikephil.charting.animation.Easing;
+import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.components.YAxis;
+import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
+import com.github.mikephil.charting.formatter.ValueFormatter;
+import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.auth.ui.Login;
 import com.android.tomatoapp.common.models.CultivarNPData;
 import com.android.tomatoapp.common.utils.CultivarImageHelper;
 import com.android.tomatoapp.core.network.LocalDataManager;
-import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import com.android.tomatoapp.financial.data.CalculationModel;
 import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
 
-public class CostSelection extends BaseDrawerActivity {
+public class CostSelection extends BaseBottomNavActivity {
 
     private RecyclerView recyclerView;
-    private FloatingActionButton btnAdd;
+    private ExtendedFloatingActionButton btnAdd;
     private CultivarAdapter adapter;
     private List<Cultivar> cultivarList = new ArrayList<>();
     private TextView programCountText;
     private View emptyState;
     private ImageView headerMenuButton;
+    private com.github.mikephil.charting.charts.HorizontalBarChart expensesBarChart;
 
     private DatabaseReference dbRef;
     private String userId;
@@ -77,10 +86,11 @@ public class CostSelection extends BaseDrawerActivity {
         adapter = new CultivarAdapter(cultivarList);
         recyclerView.setAdapter(adapter);
 
-        btnAdd = findViewById(R.id.addButton);
+        btnAdd = findViewById(R.id.fabNewCalculation);
         programCountText = findViewById(R.id.programCountText);
         emptyState = findViewById(R.id.emptyState);
         headerMenuButton = findViewById(R.id.headerMenuButton);
+        expensesBarChart = null;
 
         // Check if user is logged in
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -96,6 +106,7 @@ public class CostSelection extends BaseDrawerActivity {
 
         // Load data with offline fallback
         loadWorkPrograms();
+        // No chart on this screen
 
         // Set up Firebase listener for real-time updates (when online)
         dbRef.addValueEventListener(new ValueEventListener() {
@@ -130,7 +141,7 @@ public class CostSelection extends BaseDrawerActivity {
 
         btnAdd.setOnClickListener(v -> showAddCalculationDialog());
 
-        setupDrawer();
+        setupBottomNavigation();
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Projected Income/Expenses");
@@ -138,6 +149,111 @@ public class CostSelection extends BaseDrawerActivity {
 
         // Header menu button - Sort options
         headerMenuButton.setOnClickListener(v -> showSortMenu());
+    }
+
+    private void setupExpensesOverviewChart() {
+        if (expensesBarChart == null || userId == null) return;
+
+        expensesBarChart.setNoDataText("Loading expense data...");
+        expensesBarChart.setNoDataTextColor(ContextCompat.getColor(this, R.color.text_secondary));
+
+        dbRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                // TreeMap to keep cultivar names sorted
+                java.util.TreeMap<String, Double> cultivarTotals = new java.util.TreeMap<>();
+
+                for (DataSnapshot programSnapshot : snapshot.getChildren()) {
+                    String cultivar = programSnapshot.child("cultivarName").getValue(String.class);
+                    if (cultivar == null) cultivar = programSnapshot.child("cultivar").getValue(String.class);
+                    if (cultivar == null) continue;
+
+                    double programDailyTotal = 0;
+                    DataSnapshot dailyExpensesSnapshot = programSnapshot.child("dailyExpenses");
+                    if (dailyExpensesSnapshot.exists()) {
+                        for (DataSnapshot dateSnapshot : dailyExpensesSnapshot.getChildren()) {
+                            programDailyTotal += sumCategoryCosts(dateSnapshot.child("labor"));
+                            programDailyTotal += sumCategoryCosts(dateSnapshot.child("material"));
+                            programDailyTotal += sumCategoryCosts(dateSnapshot.child("equipment"));
+                            programDailyTotal += sumCategoryCosts(dateSnapshot.child("miscellaneous"));
+                        }
+                    }
+
+                    Double existing = cultivarTotals.get(cultivar);
+                    double existingVal = (existing != null) ? existing : 0.0;
+                    cultivarTotals.put(cultivar, existingVal + programDailyTotal);
+                }
+
+                if (cultivarTotals.isEmpty()) {
+                    expensesBarChart.setNoDataText("No daily expenses logged yet");
+                    expensesBarChart.invalidate();
+                    return;
+                }
+
+                renderExpensesBarChart(cultivarTotals);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
+        });
+    }
+
+    private double sumCategoryCosts(DataSnapshot snapshot) {
+        double total = 0;
+        for (DataSnapshot item : snapshot.getChildren()) {
+            Double cost = item.child("totalCost").getValue(Double.class);
+            if (cost == null) cost = item.child("cost").getValue(Double.class);
+            if (cost != null) total += cost;
+        }
+        return total;
+    }
+
+    private void renderExpensesBarChart(java.util.TreeMap<String, Double> cultivarTotals) {
+        if (expensesBarChart == null) return;
+
+        List<com.github.mikephil.charting.data.BarEntry> entries = new ArrayList<>();
+        List<String> labels = new ArrayList<>();
+        
+        int index = 0;
+        for (java.util.Map.Entry<String, Double> entry : cultivarTotals.entrySet()) {
+            entries.add(new com.github.mikephil.charting.data.BarEntry(index, entry.getValue().floatValue()));
+            labels.add(entry.getKey());
+            index++;
+        }
+
+        com.github.mikephil.charting.data.BarDataSet dataSet = new com.github.mikephil.charting.data.BarDataSet(entries, "Total Expenses (₱)");
+        
+        // ApexCharts inspired styling
+        dataSet.setColor(ContextCompat.getColor(this, R.color.sidebar_dark_green));
+        dataSet.setDrawValues(false); // No data labels on bars
+
+        com.github.mikephil.charting.data.BarData barData = new com.github.mikephil.charting.data.BarData(dataSet);
+        barData.setBarWidth(0.6f);
+        expensesBarChart.setData(barData);
+
+        expensesBarChart.getDescription().setEnabled(false);
+        expensesBarChart.getLegend().setEnabled(false);
+        expensesBarChart.setDrawGridBackground(false);
+        expensesBarChart.animateY(800, Easing.EaseOutQuart);
+        expensesBarChart.setFitBars(true);
+        expensesBarChart.setTouchEnabled(true);
+        expensesBarChart.setScaleEnabled(false);
+        
+        XAxis xAxis = expensesBarChart.getXAxis();
+        xAxis.setPosition(com.github.mikephil.charting.components.XAxis.XAxisPosition.BOTTOM);
+        xAxis.setDrawGridLines(false);
+        xAxis.setDrawAxisLine(true);
+        xAxis.setValueFormatter(new com.github.mikephil.charting.formatter.IndexAxisValueFormatter(labels));
+        xAxis.setLabelCount(labels.size());
+        xAxis.setTextColor(ContextCompat.getColor(this, R.color.text_primary));
+        xAxis.setTextSize(11f);
+
+        expensesBarChart.getAxisRight().setEnabled(false);
+        expensesBarChart.getAxisLeft().setDrawGridLines(true);
+        expensesBarChart.getAxisLeft().setAxisMinimum(0f);
+        expensesBarChart.getAxisLeft().setTextColor(ContextCompat.getColor(this, R.color.text_secondary));
+        
+        expensesBarChart.invalidate();
     }
 
     private void loadWorkPrograms() {
@@ -182,7 +298,7 @@ public class CostSelection extends BaseDrawerActivity {
                     }
                 }
                 updateUI();
-                if (!LocalDataManager.isOnline(this) && cultivarList.size() > 0) {
+                if (!LocalDataManager.isOnline(this) && !cultivarList.isEmpty()) {
                     Toast.makeText(this, "Showing offline data", Toast.LENGTH_SHORT).show();
                 }
             });
@@ -196,7 +312,7 @@ public class CostSelection extends BaseDrawerActivity {
             if (count == 1) {
                 programCountText.setText("1 program");
             } else {
-                programCountText.setText(String.format("%d programs", count));
+                programCountText.setText(String.format(java.util.Locale.getDefault(), "%d programs", count));
             }
         }
         
@@ -249,7 +365,7 @@ public class CostSelection extends BaseDrawerActivity {
         // Create dialog view
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_calculation, null);
         
-        TextInputLayout hectareLayout = dialogView.findViewById(R.id.hectareInputLayout);
+        
         AutoCompleteTextView cultivarSpinner = dialogView.findViewById(R.id.cultivarSpinner);
         TextInputEditText hectareEditText = dialogView.findViewById(R.id.hectareEditText);
         
@@ -482,10 +598,10 @@ public class CostSelection extends BaseDrawerActivity {
                 cultivarList.sort((a, b) -> b.date.compareTo(a.date));
                 break;
             case "date_asc": // Oldest first
-                cultivarList.sort((a, b) -> a.date.compareTo(b.date));
+                cultivarList.sort(java.util.Comparator.comparing(a -> a.date));
                 break;
             case "name_asc": // A-Z
-                cultivarList.sort((a, b) -> a.name.compareToIgnoreCase(b.name));
+                cultivarList.sort(java.util.Comparator.comparing(a -> a.name, String.CASE_INSENSITIVE_ORDER));
                 break;
             case "name_desc": // Z-A
                 cultivarList.sort((a, b) -> b.name.compareToIgnoreCase(a.name));
@@ -540,7 +656,7 @@ public class CostSelection extends BaseDrawerActivity {
             holder.name.setText(item.name);
             
             // Format date as "Started: YYYY-MM-DD"
-            holder.date.setText(String.format("Started: %s", item.date));
+            holder.date.setText(String.format(java.util.Locale.getDefault(), "Started: %s", item.date));
             holder.image.setImageResource(item.imageRes);
             
             // Make image circular

@@ -116,7 +116,7 @@ public class Login extends AppCompatActivity {
         editTextPassword = findViewById(R.id.password);
         buttonLogin = findViewById(R.id.btn_login);
         buttonGoogleSignIn = findViewById(R.id.btn_google_signin);
-        progressBar = findViewById(R.id.progressBarLogin);
+        progressBar = findViewById(R.id.progressBar);
         mAuth = FirebaseAuth.getInstance();
         textView = findViewById(R.id.registerNow);
         timeoutHandler = new Handler(Looper.getMainLooper());

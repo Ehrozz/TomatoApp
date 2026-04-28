@@ -3,10 +3,11 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="8dp"
+    android:layout_marginBottom="12dp"
     app:cardBackgroundColor="@color/white"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="2dp">
+    app:cardCornerRadius="20dp"
+    app:cardElevation="1dp"
+    app:strokeWidth="0dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -15,13 +16,23 @@
         android:gravity="center_vertical"
         android:padding="16dp">
 
-        <ImageView
-            android:id="@+id/icon"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginEnd="16dp"
-            android:scaleType="fitCenter"
-            android:src="@android:drawable/ic_menu_compass" />
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="@color/cream"
+            app:strokeWidth="0dp"
+            android:layout_marginEnd="16dp">
+            
+            <ImageView
+                android:id="@+id/icon"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_gravity="center"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_weather_clear" />
+        </com.google.android.material.card.MaterialCardView>
 
         <LinearLayout
             android:layout_width="0dp"
@@ -35,29 +46,44 @@
                 android:layout_height="wrap_content"
                 android:text="Mon, Jan 1"
                 android:textStyle="bold"
-                android:textSize="16sp"
-                android:textColor="@color/text_primary"
-                android:layout_marginBottom="4dp" />
+                android:textSize="15sp"
+                android:textColor="@color/text"
+                android:layout_marginBottom="2dp" />
 
             <TextView
                 android:id="@+id/condition"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Partly cloudy"
-                android:textSize="14sp"
-                android:textColor="@color/text_secondary"
-                android:layout_marginBottom="2dp" />
+                android:textSize="13sp"
+                android:textColor="@color/muted" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="end">
 
             <TextView
                 android:id="@+id/details"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="25°/31° · Rain 40%"
-                android:textSize="13sp"
-                android:textColor="@color/fresh_green" />
+                android:text="25°/31°"
+                android:textStyle="bold"
+                android:textSize="15sp"
+                android:textColor="@color/text" />
+            
+            <TextView
+                android:id="@+id/rainLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="40% Rain"
+                android:textSize="11sp"
+                android:textColor="@color/scan_blue"
+                android:layout_marginTop="2dp" />
         </LinearLayout>
+
     </LinearLayout>
 
 </com.google.android.material.card.MaterialCardView>
-
-

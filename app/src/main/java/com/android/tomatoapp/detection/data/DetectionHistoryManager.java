@@ -138,6 +138,7 @@ public class DetectionHistoryManager {
                     entry.put("timestamp", entity.timestamp);
                     entry.put("cultivar", entity.cultivar);
                     entry.put("phase", entity.phase);
+                    entry.put("programId", entity.programId != null ? entity.programId : "");
                     historyList.add(entry);
                 }
                 

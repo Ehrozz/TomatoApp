@@ -20,7 +20,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.analytics.data.AnalyticsPdfExporter;
-import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import com.android.tomatoapp.workprogram.data.WorkProgramDataHelper;
 import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
 import com.android.tomatoapp.workprogram.data.WorkProgramRepository;
@@ -44,7 +44,7 @@ import java.util.Locale;
 /**
  * Details screen for a specific cultivar showing all work programs with table and chart views.
  */
-public class CultivarDetailsActivity extends BaseDrawerActivity {
+public class CultivarDetailsActivity extends BaseBottomNavActivity {
 
     private String cultivarName;
     private Spinner viewModeSpinner;
@@ -73,7 +73,7 @@ public class CultivarDetailsActivity extends BaseDrawerActivity {
             return;
         }
 
-        setupDrawer();
+        setupBottomNavigation();
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Cultivar Details");
@@ -220,7 +220,7 @@ public class CultivarDetailsActivity extends BaseDrawerActivity {
         row.addView(createCell(e.cultivarName != null ? e.cultivarName : "N/A", 120));
         
         // Column 2: Area Size
-        row.addView(createCell(String.format(Locale.getDefault(), "%.2f ha", e.areaSize), 100));
+        row.addView(createCell(String.format(Locale.getDefault(), "%.2f ha", e.areaSize), 90));
         
         // Column 3: Start Date
         row.addView(createCell(e.startingDate != null ? e.startingDate : "N/A", 110));
@@ -228,34 +228,34 @@ public class CultivarDetailsActivity extends BaseDrawerActivity {
         // Columns 4-8: Phase dates
         String[] phaseDates = getPhaseDates(e);
         for (int i = 0; i < 5; i++) {
-            row.addView(createCell(phaseDates[i], 100));
+            row.addView(createCell(phaseDates[i], 80, false, false, true));
         }
         
         // Column 9: Detections
-        row.addView(createCell(getDetectionsSummaryForEntity(e), 100));
+        row.addView(createCell(getDetectionsSummaryForEntity(e), 100, false, false, true));
         
         // Column 10: Income
-        row.addView(createCell(String.format(Locale.getDefault(), "₱%,.0f", e.projectedIncome), 130, true));
+        row.addView(createCell(String.format(Locale.getDefault(), "₱%,.0f", e.projectedIncome), 120, true, false, true));
         
         // Column 11: Expenses
-        row.addView(createCell(String.format(Locale.getDefault(), "₱%,.0f", e.projectedExpenses), 130, true));
+        row.addView(createCell(String.format(Locale.getDefault(), "₱%,.0f", e.projectedExpenses), 120, true, false, true));
         
         // Column 12: Profit
         double profit = e.projectedIncome - e.projectedExpenses;
-        row.addView(createCell(String.format(Locale.getDefault(), "₱%,.0f", profit), 130, true, profit >= 0));
+        row.addView(createCell(String.format(Locale.getDefault(), "₱%,.0f", profit), 120, true, profit >= 0, true));
         
         return row;
     }
     
     private TextView createCell(String text, int width) {
-        return createCell(text, width, false, false);
+        return createCell(text, width, false, false, false);
     }
     
     private TextView createCell(String text, int width, boolean isFinancial) {
-        return createCell(text, width, isFinancial, false);
+        return createCell(text, width, isFinancial, false, false);
     }
     
-    private TextView createCell(String text, int widthDp, boolean isFinancial, boolean isPositive) {
+    private TextView createCell(String text, int widthDp, boolean isFinancial, boolean isPositive, boolean isCenter) {
         TextView cell = new TextView(this);
         cell.setText(text);
         
@@ -275,8 +275,8 @@ public class CultivarDetailsActivity extends BaseDrawerActivity {
         cell.setWidth(widthPx);
         
         // Set alignment based on content type - match header alignment exactly
-        if (isFinancial) {
-            cell.setGravity(android.view.Gravity.CENTER | android.view.Gravity.CENTER_VERTICAL);
+        if (isCenter || isFinancial) {
+            cell.setGravity(android.view.Gravity.CENTER);
         } else {
             // Left align for text columns to match header
             cell.setGravity(android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL);

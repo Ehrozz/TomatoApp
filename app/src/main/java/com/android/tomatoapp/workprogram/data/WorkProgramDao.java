@@ -19,6 +19,9 @@ public interface WorkProgramDao {
     @Query("SELECT * FROM work_programs WHERE userId = :userId")
     List<WorkProgramEntity> getAllForUser(String userId);
 
+    @Query("SELECT * FROM work_programs WHERE id = :id")
+    WorkProgramEntity getById(String id);
+
     @Query("SELECT * FROM work_programs WHERE userId = :userId AND cultivarName = :cultivarName")
     List<WorkProgramEntity> getByCultivar(String userId, String cultivarName);
 }

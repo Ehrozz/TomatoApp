@@ -7,7 +7,9 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import com.android.tomatoapp.common.models.UserLocationEntity;
 import com.android.tomatoapp.core.database.AppDatabase;
+import com.android.tomatoapp.core.sync.SyncActionEntity;
 import com.android.tomatoapp.detection.data.DetectionHistoryEntity;
 import com.android.tomatoapp.detection.data.DetectionHistoryManager;
 import com.android.tomatoapp.financial.data.CalculationEntity;
@@ -40,12 +42,10 @@ public class LocalDataManager {
     private static LocalDataManager instance;
     private final AppDatabase database;
     private final ExecutorService executorService;
-    private final Handler mainHandler;
 
     private LocalDataManager(Context context) {
         database = AppDatabase.getInstance(context);
         executorService = Executors.newFixedThreadPool(2);
-        mainHandler = new Handler(Looper.getMainLooper());
     }
 
     public static synchronized LocalDataManager getInstance(Context context) {
@@ -55,7 +55,7 @@ public class LocalDataManager {
         return instance;
     }
 
-    // Sync Work Programs from Firebase to Local (with deduplication)
+    // Sync Work Programs from Firebase to Local (with conflict resolution)
     public void syncWorkProgramsFromFirebase(String userId) {
         executorService.execute(() -> {
             try {
@@ -69,35 +69,28 @@ public class LocalDataManager {
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
                         executorService.execute(() -> {
                             try {
-                                // Get existing local work programs to check for duplicates
                                 List<WorkProgramEntity> localPrograms = database.workProgramDao().getAllForUser(userId);
-                                
-                                List<WorkProgramEntity> entities = new ArrayList<>();
+                                java.util.Map<String, WorkProgramEntity> localMap = new java.util.HashMap<>();
+                                for (WorkProgramEntity lp : localPrograms) {
+                                    localMap.put(lp.id, lp);
+                                }
+
+                                int updatedCount = 0;
                                 for (DataSnapshot child : snapshot.getChildren()) {
                                     String programId = child.getKey();
                                     if (programId == null) continue;
 
-                                    WorkProgramEntity entity = parseWorkProgramFromSnapshot(child, programId, userId);
-                                    if (entity != null) {
-                                        // Check if this program already exists locally with same ID
-                                        boolean exists = false;
-                                        for (WorkProgramEntity local : localPrograms) {
-                                            if (local.id.equals(entity.id)) {
-                                                exists = true;
-                                                break;
-                                            }
+                                    WorkProgramEntity remoteEntity = parseWorkProgramFromSnapshot(child, programId, userId);
+                                    if (remoteEntity != null) {
+                                        WorkProgramEntity local = localMap.get(programId);
+                                        // Conflict Resolution: Latest update wins
+                                        if (local == null || remoteEntity.lastUpdated > local.lastUpdated) {
+                                            database.workProgramDao().upsert(remoteEntity);
+                                            updatedCount++;
                                         }
-                                        
-                                        // Only add if it doesn't exist locally (upsert will handle updates)
-                                        entities.add(entity);
                                     }
                                 }
-
-                                // Save to local database (upsert handles duplicates by ID)
-                                for (WorkProgramEntity entity : entities) {
-                                    database.workProgramDao().upsert(entity);
-                                }
-                                Log.d(TAG, "Synced " + entities.size() + " work programs from Firebase");
+                                Log.d(TAG, "Synced " + updatedCount + " work programs from Firebase (Conflict Resolution Applied)");
                             } catch (Exception e) {
                                 Log.e(TAG, "Error syncing work programs", e);
                             }
@@ -115,105 +108,81 @@ public class LocalDataManager {
         });
     }
 
-    // Sync Work Programs from Local to Firebase (for offline-created programs)
-    public void syncWorkProgramsToFirebase(Context context, String userId) {
+    // Process Sync Queue (Upload offline changes to Firebase)
+    public void processSyncQueue(Context context, String userId) {
         executorService.execute(() -> {
             try {
-                if (!isOnline(context)) {
-                    Log.d(TAG, "Device is offline, skipping sync to Firebase");
-                    return;
-                }
+                if (!isOnline(context)) return;
 
-                List<WorkProgramEntity> localPrograms = database.workProgramDao().getAllForUser(userId);
-                if (localPrograms.isEmpty()) {
-                    Log.d(TAG, "No local work programs to sync");
-                    return;
-                }
+                List<SyncActionEntity> pendingActions = database.syncActionDao().getAllPending(userId);
+                if (pendingActions.isEmpty()) return;
 
-                DatabaseReference dbRef = FirebaseDatabase.getInstance()
-                        .getReference("users")
-                        .child(userId)
-                        .child("workPrograms");
+                Log.d(TAG, "Processing " + pendingActions.size() + " pending actions in sync queue");
+                
+                DatabaseReference rootRef = FirebaseDatabase.getInstance().getReference("users").child(userId);
 
-                // Check which programs exist in Firebase
-                dbRef.addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        executorService.execute(() -> {
-                            try {
-                                // Collect Firebase program IDs
-                                java.util.Set<String> firebaseIds = new java.util.HashSet<>();
-                                for (DataSnapshot child : snapshot.getChildren()) {
-                                    String programId = child.getKey();
-                                    if (programId != null) {
-                                        firebaseIds.add(programId);
-                                    }
-                                }
+                for (SyncActionEntity action : pendingActions) {
+                    DatabaseReference targetRef = null;
+                    if ("work_program".equals(action.entityType)) {
+                        targetRef = rootRef.child("workPrograms").child(action.entityId);
+                    } else if ("location".equals(action.entityType)) {
+                        targetRef = rootRef.child("locations").child(action.entityId);
+                    }
 
-                                // Sync local programs that don't exist in Firebase
-                                int syncedCount = 0;
-                                for (WorkProgramEntity entity : localPrograms) {
-                                    if (!firebaseIds.contains(entity.id)) {
-                                        // This program was created offline, sync it to Firebase
-                                        DatabaseReference programRef = dbRef.child(entity.id);
-                                        java.util.Map<String, Object> programData = new java.util.HashMap<>();
-                                        programData.put("cultivarName", entity.cultivarName);
-                                        programData.put("startingDate", entity.startingDate);
-                                        programData.put("areaSize", entity.areaSize);
-                                        programData.put("projectedIncome", entity.projectedIncome);
-                                        programData.put("projectedExpenses", entity.projectedExpenses);
-                                        programData.put("adjustedIncome", entity.adjustedIncome);
-                                        programData.put("adjustedExpenses", entity.adjustedExpenses);
-                                        
-                                        // Add research fields if available
-                                        if (entity.season != null) {
-                                            programData.put("season", entity.season);
-                                        }
-                                        if (entity.seasonMonth > 0) {
-                                            programData.put("seasonMonth", entity.seasonMonth);
-                                        }
-                                        programData.put("isOffSeason", entity.isOffSeason);
-                                        if (entity.actualYield > 0) {
-                                            programData.put("actualYield", entity.actualYield);
-                                        }
-                                        if (entity.totalYield > 0) {
-                                            programData.put("totalYield", entity.totalYield);
-                                        }
-                                        if (entity.harvestDate != null) {
-                                            programData.put("harvestDate", entity.harvestDate);
-                                        }
+                    if (targetRef == null) continue;
 
-                                        programRef.setValue(programData)
-                                                .addOnSuccessListener(aVoid -> {
-                                                    Log.d(TAG, "Synced work program " + entity.id + " to Firebase");
-                                                })
-                                                .addOnFailureListener(e -> {
-                                                    Log.e(TAG, "Failed to sync work program " + entity.id + " to Firebase", e);
-                                                });
-                                        syncedCount++;
-                                    }
-                                }
-
-                                if (syncedCount > 0) {
-                                    Log.d(TAG, "Synced " + syncedCount + " local work programs to Firebase");
-                                } else {
-                                    Log.d(TAG, "All local work programs already exist in Firebase");
-                                }
-                            } catch (Exception e) {
-                                Log.e(TAG, "Error syncing work programs to Firebase", e);
+                    if ("DELETE".equals(action.action)) {
+                        targetRef.removeValue().addOnSuccessListener(
+                                aVoid -> executorService.execute(() -> database.syncActionDao().delete(action))
+                        );
+                    } else {
+                        // CREATE or UPDATE
+                        if ("work_program".equals(action.entityType)) {
+                            WorkProgramEntity entity = database.workProgramDao().getById(action.entityId);
+                            if (entity != null) {
+                                java.util.Map<String, Object> data = serializeWorkProgram(entity);
+                                targetRef.setValue(data).addOnSuccessListener(
+                                        aVoid -> executorService.execute(() -> database.syncActionDao().delete(action))
+                                );
+                            } else {
+                                // Entity no longer exists locally, remove from queue
+                                executorService.execute(() -> database.syncActionDao().delete(action));
                             }
-                        });
+                        } else if ("location".equals(action.entityType)) {
+                            UserLocationEntity entity = database.userLocationDao().getById(action.entityId);
+                            if (entity != null) {
+                                targetRef.setValue(serializeUserLocation(entity)).addOnSuccessListener(
+                                        aVoid -> executorService.execute(() -> database.syncActionDao().delete(action))
+                                );
+                            } else {
+                                executorService.execute(() -> database.syncActionDao().delete(action));
+                            }
+                        }
                     }
-
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {
-                        Log.e(TAG, "Error checking Firebase for work programs", error.toException());
-                    }
-                });
+                }
             } catch (Exception e) {
-                Log.e(TAG, "Error syncing work programs to Firebase", e);
+                Log.e(TAG, "Error processing sync queue", e);
             }
         });
+    }
+
+    private java.util.Map<String, Object> serializeWorkProgram(WorkProgramEntity entity) {
+        java.util.Map<String, Object> data = new java.util.HashMap<>();
+        data.put("cultivarName", entity.cultivarName);
+        data.put("startingDate", entity.startingDate);
+        data.put("areaSize", entity.areaSize);
+        data.put("projectedIncome", entity.projectedIncome);
+        data.put("projectedExpenses", entity.projectedExpenses);
+        data.put("adjustedIncome", entity.adjustedIncome);
+        data.put("adjustedExpenses", entity.adjustedExpenses);
+        data.put("lastUpdated", entity.lastUpdated);
+        data.put("season", entity.season);
+        data.put("seasonMonth", entity.seasonMonth);
+        data.put("isOffSeason", entity.isOffSeason);
+        data.put("actualYield", entity.actualYield);
+        data.put("totalYield", entity.totalYield);
+        if (entity.harvestDate != null) data.put("harvestDate", entity.harvestDate);
+        return data;
     }
 
 
@@ -319,6 +288,7 @@ public class LocalDataManager {
     }
 
     // Sync Tasks from Firebase
+    @SuppressWarnings("unused")
     public void syncTasksFromFirebase(String userId, String programId) {
         executorService.execute(() -> {
             try {
@@ -414,6 +384,7 @@ public class LocalDataManager {
     }
 
     // Save Calculation to Local Database
+    @SuppressWarnings("unused")
     public void saveCalculation(String calculationId, String userId, String programId,
                                 double grossIncome, double totalExpenses, double netIncome,
                                 double hectare, String dateCreated, String dateSaved,
@@ -589,14 +560,63 @@ public class LocalDataManager {
         }
     }
 
-    // Read Calculations from Local Database
-    public List<CalculationEntity> getCalculationsFromLocal(String userId) {
+    @SuppressWarnings("unused")
+    public List<com.android.tomatoapp.common.models.UserLocationEntity> getUserLocationsFromLocal(String userId) {
         try {
-            return database.calculationDao().getAllByUser(userId);
+            return database.userLocationDao().getAllForUser(userId);
         } catch (Exception e) {
-            Log.e(TAG, "Error reading calculations from local database", e);
+            Log.e(TAG, "Error reading locations from local database", e);
             return new ArrayList<>();
         }
+    }
+
+    public void saveUserLocationToLocal(com.android.tomatoapp.common.models.UserLocationEntity entity, String actionType) {
+        executorService.execute(() -> {
+            try {
+                entity.lastUpdated = System.currentTimeMillis();
+                database.userLocationDao().upsert(entity);
+                if (entity.isDefault) {
+                    database.userLocationDao().clearOtherDefaults(entity.userId, entity.id);
+                }
+                
+                // Add to sync queue
+                SyncActionEntity syncAction = new SyncActionEntity(
+                    entity.userId, "location", entity.id, actionType, null);
+                database.syncActionDao().insert(syncAction);
+                Log.d(TAG, "Saved location " + entity.id + " and queued " + actionType);
+            } catch (Exception e) {
+                Log.e(TAG, "Error saving location to local", e);
+            }
+        });
+    }
+
+    @SuppressWarnings("unused")
+    public void deleteUserLocationLocally(String userId, String locationId) {
+        executorService.execute(() -> {
+            try {
+                database.userLocationDao().deleteById(locationId);
+                // Add to sync queue
+                SyncActionEntity syncAction = new SyncActionEntity(
+                    userId, "location", locationId, "DELETE", null);
+                database.syncActionDao().insert(syncAction);
+                Log.d(TAG, "Deleted location " + locationId + " locally and queued DELETE");
+            } catch (Exception e) {
+                Log.e(TAG, "Error deleting location locally", e);
+            }
+        });
+    }
+
+    private java.util.Map<String, Object> serializeUserLocation(com.android.tomatoapp.common.models.UserLocationEntity entity) {
+        java.util.Map<String, Object> data = new java.util.HashMap<>();
+        data.put("id", entity.id);
+        data.put("province", entity.province);
+        data.put("city", entity.city);
+        data.put("brgy", entity.brgy);
+        data.put("lat", entity.lat);
+        data.put("lon", entity.lon);
+        data.put("isDefault", entity.isDefault);
+        data.put("lastUpdated", entity.lastUpdated);
+        return data;
     }
 
     // Read Detection History from Local Database
@@ -624,21 +644,47 @@ public class LocalDataManager {
         try {
             android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
                     context.getSystemService(Context.CONNECTIVITY_SERVICE);
-            android.net.NetworkInfo netInfo = cm.getActiveNetworkInfo();
-            return netInfo != null && netInfo.isConnected();
+            android.net.Network activeNetwork = cm.getActiveNetwork();
+            if (activeNetwork == null) return false;
+
+            android.net.NetworkCapabilities capabilities = cm.getNetworkCapabilities(activeNetwork);
+            return capabilities != null
+                    && capabilities.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET);
         } catch (Exception e) {
             return false;
         }
     }
 
-    // Save Work Program to Local Database (for offline support)
-    public void saveWorkProgramToLocal(WorkProgramEntity entity) {
+    // Save Work Program to Local Database and Queue for Sync
+    public void saveWorkProgramToLocal(WorkProgramEntity entity, String actionType) {
         executorService.execute(() -> {
             try {
+                entity.lastUpdated = System.currentTimeMillis();
                 database.workProgramDao().upsert(entity);
-                Log.d(TAG, "Saved work program " + entity.id + " to local database");
+                
+                // Add to sync queue
+                SyncActionEntity syncAction = new SyncActionEntity(
+                    entity.userId, "work_program", entity.id, actionType, null);
+                database.syncActionDao().insert(syncAction);
+                
+                Log.d(TAG, "Saved work program " + entity.id + " and queued " + actionType);
             } catch (Exception e) {
-                Log.e(TAG, "Error saving work program to local database", e);
+                Log.e(TAG, "Error saving work program to local", e);
+            }
+        });
+    }
+
+    public void deleteWorkProgramLocally(String userId, String programId) {
+        executorService.execute(() -> {
+            try {
+                database.workProgramDao().deleteById(programId);
+                // Add to sync queue
+                SyncActionEntity syncAction = new SyncActionEntity(
+                    userId, "work_program", programId, "DELETE", null);
+                database.syncActionDao().insert(syncAction);
+                Log.d(TAG, "Deleted work program " + programId + " locally and queued DELETE");
+            } catch (Exception e) {
+                Log.e(TAG, "Error deleting work program locally", e);
             }
         });
     }
@@ -735,6 +781,7 @@ public class LocalDataManager {
             Double actualYieldObj = snapshot.child("actualYield").getValue(Double.class);
             Double totalYieldObj = snapshot.child("totalYield").getValue(Double.class);
             String harvestDate = snapshot.child("harvestDate").getValue(String.class);
+            Long lastUpdated = snapshot.child("lastUpdated").getValue(Long.class);
 
             // Auto-detect season if not set
             if (season == null && startingDate != null) {
@@ -742,13 +789,14 @@ public class LocalDataManager {
             }
             int seasonMonth = seasonMonthObj != null ? seasonMonthObj :
                              (startingDate != null ? SeasonHelper.getSeasonMonth(startingDate) : 0);
-            boolean isOffSeason = isOffSeasonObj != null ? isOffSeasonObj :
-                                 (startingDate != null ? SeasonHelper.isOffSeason(startingDate) : false);
+            boolean isOffSeason = isOffSeasonObj != null
+                    ? isOffSeasonObj
+                    : (startingDate != null && SeasonHelper.isOffSeason(startingDate));
             double actualYield = actualYieldObj != null ? actualYieldObj : 0.0;
             double totalYield = totalYieldObj != null ? totalYieldObj : 0.0;
 
             // Create entity with all fields
-            return new WorkProgramEntity(
+            WorkProgramEntity entity = new WorkProgramEntity(
                     programId,
                     userId,
                     cultivarName != null ? cultivarName : "",
@@ -769,6 +817,8 @@ public class LocalDataManager {
                     totalYield,
                     harvestDate
             );
+            if (lastUpdated != null) entity.lastUpdated = lastUpdated;
+            return entity;
         } catch (Exception e) {
             Log.e(TAG, "Error parsing work program", e);
             return null;

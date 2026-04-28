@@ -57,7 +57,7 @@ import com.android.tomatoapp.common.managers.MissedDecorator;
 import com.android.tomatoapp.common.managers.SkippedDecorator;
 import com.android.tomatoapp.common.utils.CultivarImageHelper;
 import com.android.tomatoapp.core.network.LocalDataManager;
-import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import com.android.tomatoapp.financial.ui.CurrentExpensesActivity;
 import com.android.tomatoapp.settings.data.SettingsPreferences;
 import com.android.tomatoapp.task.data.TaskEntity;
@@ -66,11 +66,11 @@ import com.android.tomatoapp.weather.data.WeatherDataCollector;
 import com.android.tomatoapp.workprogram.data.WorkProgramDataHelper;
 import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
 
-public class Workprogram extends BaseDrawerActivity {
+public class Workprogram extends BaseBottomNavActivity {
 
     private static final String TAG = "Workprogram";
 
-    private CardView cultivarCard;
+    private View cultivarCard;
     private Spinner cultivarSpinner;
     private EditText landAreaInput;
     private DatePicker startDatePicker;
@@ -82,12 +82,17 @@ public class Workprogram extends BaseDrawerActivity {
     private ImageView cultivarImage;
     private TextView cultivarNameText;
     private TextView startDateText;
-    private LinearLayout calendarHeader;
+    private View calendarHeader;        // dummy in redesigned layout
     private ImageView headerCultivarImage;
     private TextView headerCultivarName;
     private TextView headerStartDate;
-    private TextView taskWarningBanner;
+    private View taskWarningBanner;     // dummy in redesigned layout
     private MaterialButton btnCurrentExpenses;
+    private TextView summaryDaysActive;
+    private TextView summaryExpenses;
+    private TextView summaryTasksDue;
+    private TextView seasonTagText;
+    private TextView cultivarEmoji;
 
     private String selectedCultivar = "";
     private String selectedDate = "";
@@ -153,31 +158,35 @@ public class Workprogram extends BaseDrawerActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_workprogram);
 
-        // Drawer setup
-        setupDrawer();
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle("Work Program");
-        }
+        // Bottom Navigation setup
+        setupBottomNavigation();
 
-        // Views
-        cultivarCard = findViewById(R.id.floatingFormCard);
+        // Views - only bind views that actually exist in the redesigned layout
+        cultivarCard   = findViewById(R.id.floatingFormCard); // dummy <View>
+        calendarView   = findViewById(R.id.CalendarView);
+
+        // New UI elements (real views in redesigned layout)
+        headerCard         = findViewById(R.id.headerCard);
+        cultivarImage      = findViewById(R.id.cultivarImage);
+        cultivarNameText   = findViewById(R.id.cultivarNameText);
+        startDateText      = findViewById(R.id.startDateText);
+        calendarHeader     = findViewById(R.id.calendarHeader);      // dummy <TextView>
+        headerCultivarImage = findViewById(R.id.headerCultivarImage); // dummy <ImageView>
+        headerCultivarName  = findViewById(R.id.headerCultivarName);  // dummy <TextView>
+        headerStartDate     = findViewById(R.id.headerStartDate);     // dummy <TextView>
+        taskWarningBanner   = findViewById(R.id.taskWarningBanner);  // dummy <LinearLayout>
+        btnCurrentExpenses  = findViewById(R.id.btnCurrentExpenses);
+        summaryDaysActive   = findViewById(R.id.summaryDaysActive);
+        summaryExpenses     = findViewById(R.id.summaryExpenses);
+        summaryTasksDue      = findViewById(R.id.summaryTasksDue);
+        seasonTagText       = findViewById(R.id.seasonTagText);
+        cultivarEmoji       = findViewById(R.id.cultivarEmoji);
+
+        // Form fields (bound to dummies if not in form path)
         cultivarSpinner = findViewById(R.id.cultivarSpinner);
-        landAreaInput = findViewById(R.id.landAreaInput);
+        landAreaInput   = findViewById(R.id.landAreaInput);
         startDatePicker = findViewById(R.id.startDatePicker);
-        btnSubmitForm = findViewById(R.id.btnSelectCultivar);
-        calendarView = findViewById(R.id.CalendarView);
-        
-        // New UI elements
-        headerCard = findViewById(R.id.headerCard);
-        cultivarImage = findViewById(R.id.cultivarImage);
-        cultivarNameText = findViewById(R.id.cultivarNameText);
-        startDateText = findViewById(R.id.startDateText);
-        calendarHeader = findViewById(R.id.calendarHeader);
-        headerCultivarImage = findViewById(R.id.headerCultivarImage);
-        headerCultivarName = findViewById(R.id.headerCultivarName);
-        headerStartDate = findViewById(R.id.headerStartDate);
-        taskWarningBanner = findViewById(R.id.taskWarningBanner);
-        btnCurrentExpenses = findViewById(R.id.btnCurrentExpenses);
+        btnSubmitForm   = findViewById(R.id.btnSubmitForm);
 
         // Check if user is logged in
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -200,9 +209,9 @@ public class Workprogram extends BaseDrawerActivity {
 
         if (cultivar != null && startDate != null && passedProgramId != null) {
             // Existing program - show header card with cultivar info
-            cultivarCard.setVisibility(CardView.GONE);
-            headerCard.setVisibility(View.VISIBLE);
-            calendarHeader.setVisibility(View.GONE);
+            if (cultivarCard != null) cultivarCard.setVisibility(View.GONE);
+            if (headerCard != null) headerCard.setVisibility(View.VISIBLE);
+            if (calendarHeader != null) calendarHeader.setVisibility(View.GONE);
             
             selectedCultivar = cultivar;
             programStartDate = startDate;
@@ -227,12 +236,13 @@ public class Workprogram extends BaseDrawerActivity {
             attachLogsListener();
             addPhaseDecorators();
             setCalendarClickListener();
+            loadSummaryStats();
 
         } else {
             // New program form
-            cultivarCard.setVisibility(CardView.VISIBLE);
-            headerCard.setVisibility(View.GONE);
-            calendarHeader.setVisibility(View.GONE);
+            if (cultivarCard != null) cultivarCard.setVisibility(View.VISIBLE);
+            if (headerCard != null) headerCard.setVisibility(View.GONE);
+            if (calendarHeader != null) calendarHeader.setVisibility(View.GONE);
 
             String[] cultivarNames = new String[cultivarsData.length];
             for (int i = 0; i < cultivarsData.length; i++) {
@@ -241,14 +251,16 @@ public class Workprogram extends BaseDrawerActivity {
             ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
                     android.R.layout.simple_spinner_item, cultivarNames);
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-            cultivarSpinner.setAdapter(adapter);
+            if (cultivarSpinner != null) {
+                cultivarSpinner.setAdapter(adapter);
+            }
             
             // Pre-select default cultivar if set
             String defaultCultivar = SettingsPreferences.getDefaultCultivar(this);
             if (!defaultCultivar.isEmpty()) {
                 for (int i = 0; i < cultivarNames.length; i++) {
                     if (cultivarNames[i].equals(defaultCultivar)) {
-                        cultivarSpinner.setSelection(i);
+                        if (cultivarSpinner != null) cultivarSpinner.setSelection(i);
                         selectedCultivar = defaultCultivar;
                         break;
                     }
@@ -256,19 +268,29 @@ public class Workprogram extends BaseDrawerActivity {
             }
 
             // Initialize selectedDate
-            selectedDate = String.format(Locale.getDefault(), "%04d-%02d-%02d",
-                    startDatePicker.getYear(),
-                    startDatePicker.getMonth() + 1,
-                    startDatePicker.getDayOfMonth());
+            if (startDatePicker != null) {
+                selectedDate = String.format(Locale.getDefault(), "%04d-%02d-%02d",
+                        startDatePicker.getYear(),
+                        startDatePicker.getMonth() + 1,
+                        startDatePicker.getDayOfMonth());
+            }
 
             // Update selectedDate when DatePicker changes
-            startDatePicker.init(startDatePicker.getYear(), startDatePicker.getMonth(), startDatePicker.getDayOfMonth(),
-                    (view, year, month, dayOfMonth) -> selectedDate = String.format(Locale.getDefault(),
-                            "%04d-%02d-%02d", year, month + 1, dayOfMonth));
+            if (startDatePicker != null) {
+                startDatePicker.init(startDatePicker.getYear(), startDatePicker.getMonth(), startDatePicker.getDayOfMonth(),
+                        (view, year, month, dayOfMonth) -> selectedDate = String.format(Locale.getDefault(),
+                                "%04d-%02d-%02d", year, month + 1, dayOfMonth));
+            }
 
-            btnSubmitForm.setOnClickListener(v -> {
-                selectedCultivar = cultivarSpinner.getSelectedItem().toString();
-                landArea = landAreaInput.getText().toString().trim();
+            if (btnSubmitForm != null) btnSubmitForm.setOnClickListener(v -> {
+                if (cultivarSpinner == null || landAreaInput == null || selectedDate == null) {
+                    Toast.makeText(this, "Setup error: form inputs not available", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                Object selected = cultivarSpinner.getSelectedItem();
+                selectedCultivar = selected != null ? selected.toString() : "";
+                landArea = landAreaInput.getText() != null ? landAreaInput.getText().toString().trim() : "";
 
                 if (selectedCultivar.isEmpty() || selectedDate.isEmpty() || landArea.isEmpty()) {
                     Toast.makeText(this, "Please fill land area, cultivar, and start date", Toast.LENGTH_SHORT).show();
@@ -329,7 +351,7 @@ public class Workprogram extends BaseDrawerActivity {
                 );
                 
                 // Save to local database immediately (works offline)
-                LocalDataManager.getInstance(Workprogram.this).saveWorkProgramToLocal(localEntity);
+                LocalDataManager.getInstance(Workprogram.this).saveWorkProgramToLocal(localEntity, "CREATE");
                 
                 // Save all data at once to Firebase (will queue if offline)
                 DatabaseReference programRef = dbRef.child(id);
@@ -395,7 +417,7 @@ public class Workprogram extends BaseDrawerActivity {
                     }
                 });
 
-                cultivarCard.setVisibility(CardView.GONE);
+                cultivarCard.setVisibility(View.GONE);
             });
         }
     }
@@ -412,12 +434,6 @@ public class Workprogram extends BaseDrawerActivity {
         int remaining = maturityDays - phase1Days;
         int eachPhase = remaining / 4;
         int extra = remaining % 4; // distribute remainder
-
-        Drawable p1 = ContextCompat.getDrawable(this, R.drawable.phase1);
-        Drawable p2 = ContextCompat.getDrawable(this, R.drawable.phase2);
-        Drawable p3 = ContextCompat.getDrawable(this, R.drawable.phase3);
-        Drawable p4 = ContextCompat.getDrawable(this, R.drawable.phase4);
-        Drawable p5 = ContextCompat.getDrawable(this, R.drawable.phase5);
 
         try {
             Date start = sdf.parse(programStartDate);
@@ -438,8 +454,9 @@ public class Workprogram extends BaseDrawerActivity {
             }
 
             // Fill Phases 2–5
+            int currentExtra = extra;
             for (int phase = 2; phase <= 5; phase++) {
-                int duration = eachPhase + (extra-- > 0 ? 1 : 0);
+                int duration = eachPhase + (currentExtra-- > 0 ? 1 : 0);
                 for (int d = 0; d < duration; d++) {
                     CalendarDay cd = CalendarDay.from(cal);
                     switch (phase) {
@@ -452,11 +469,22 @@ public class Workprogram extends BaseDrawerActivity {
                 }
             }
 
+            // Use the new drawables for the 5 stages
+            Drawable p1 = ContextCompat.getDrawable(this, R.drawable.bg_calendar_day_landprep);
+            Drawable p2 = ContextCompat.getDrawable(this, R.drawable.bg_calendar_day_vegetative);
+            Drawable p3 = ContextCompat.getDrawable(this, R.drawable.bg_calendar_day_flowering);
+            Drawable p4 = ContextCompat.getDrawable(this, R.drawable.bg_calendar_day_maturity);
+            Drawable p5 = ContextCompat.getDrawable(this, R.drawable.bg_calendar_day_harvest);
+
             calendarView.addDecorator(new PhaseRangeDecorator(phase1, p1));
             calendarView.addDecorator(new PhaseRangeDecorator(phase2, p2));
             calendarView.addDecorator(new PhaseRangeDecorator(phase3, p3));
             calendarView.addDecorator(new PhaseRangeDecorator(phase4, p4));
             calendarView.addDecorator(new PhaseRangeDecorator(phase5, p5));
+            
+            // Today Decorator remains but legend is removed
+            calendarView.addDecorator(new TodayDecorator(this));
+            
         } catch (ParseException e) {
             Log.e(TAG, "Error parsing phases for calendar display", e);
         }
@@ -469,7 +497,147 @@ public class Workprogram extends BaseDrawerActivity {
             this.dates = dates; this.drawable = drawable;
         }
         @Override public boolean shouldDecorate(CalendarDay day) { return dates.contains(day); }
-        @Override public void decorate(DayViewFacade view) { view.setBackgroundDrawable(drawable); }
+        @Override public void decorate(DayViewFacade view) { 
+            view.setBackgroundDrawable(drawable); 
+            view.addSpan(new android.text.style.ForegroundColorSpan(android.graphics.Color.BLACK));
+        }
+    }
+
+    public static class TodayDecorator implements DayViewDecorator {
+        private final CalendarDay today;
+        private final Drawable drawable;
+        private final android.content.Context context;
+
+        public TodayDecorator(android.content.Context context) {
+            this.context = context;
+            this.today = CalendarDay.today();
+            this.drawable = ContextCompat.getDrawable(context, R.drawable.bg_calendar_day_today);
+        }
+
+        @Override
+        public boolean shouldDecorate(CalendarDay day) {
+            return day.equals(today);
+        }
+
+        @Override
+        public void decorate(DayViewFacade view) {
+            if (drawable != null) {
+                view.setBackgroundDrawable(drawable);
+            }
+            view.addSpan(new android.text.style.ForegroundColorSpan(android.graphics.Color.WHITE));
+            view.addSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD));
+        }
+    }
+
+    private void loadSummaryStats() {
+        if (programId == null || programStartDate == null) return;
+
+        // 1. Days Active
+        int daysActive = calculateDayNumber(programStartDate, new Date());
+        if (summaryDaysActive != null) {
+            summaryDaysActive.setText(String.valueOf(Math.max(1, daysActive)));
+        }
+
+        // 2. Expenses and Tasks Due
+        // Avoid UI "flash" from any XML placeholder values
+        if (summaryExpenses != null) summaryExpenses.setText("₱0");
+        if (summaryTasksDue != null) summaryTasksDue.setText("0");
+
+        WorkProgramDataHelper.fetchCompletionStats(userId, programId, selectedCultivar, programStartDate, stats -> {
+            runOnUiThread(() -> {
+                // Expenses: sum logged daily expenses from Firebase
+                loadLoggedDailyExpensesTotal();
+            });
+        });
+    }
+
+    private void loadLoggedDailyExpensesTotal() {
+        if (summaryExpenses == null) return;
+        if (userId == null || programId == null) {
+            summaryExpenses.setText("₱0");
+            return;
+        }
+
+        if (!LocalDataManager.isOnline(this)) {
+            // Offline: we can't reliably aggregate remote daily expenses
+            summaryExpenses.setText("₱0");
+            return;
+        }
+
+        DatabaseReference dailyExpensesRef = FirebaseDatabase.getInstance()
+                .getReference("users")
+                .child(userId)
+                .child("workPrograms")
+                .child(programId)
+                .child("dailyExpenses");
+
+        dailyExpensesRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                double total = 0.0;
+                for (DataSnapshot dateNode : snapshot.getChildren()) {
+                    total += sumDailyExpenseNode(dateNode);
+                }
+                final double finalTotal = total;
+                runOnUiThread(() -> summaryExpenses.setText(formatPeso(finalTotal)));
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                runOnUiThread(() -> summaryExpenses.setText("₱0"));
+            }
+        });
+    }
+
+    private double sumDailyExpenseNode(DataSnapshot dateNode) {
+        double total = 0.0;
+
+        // labor[].totalCost
+        DataSnapshot labor = dateNode.child("labor");
+        for (DataSnapshot item : labor.getChildren()) {
+            total += getDouble(item.child("totalCost").getValue());
+        }
+
+        // material[].totalCost
+        DataSnapshot material = dateNode.child("material");
+        for (DataSnapshot item : material.getChildren()) {
+            total += getDouble(item.child("totalCost").getValue());
+        }
+
+        // equipment[].totalCost
+        DataSnapshot equipment = dateNode.child("equipment");
+        for (DataSnapshot item : equipment.getChildren()) {
+            total += getDouble(item.child("totalCost").getValue());
+        }
+
+        // miscellaneous[].cost
+        DataSnapshot misc = dateNode.child("miscellaneous");
+        for (DataSnapshot item : misc.getChildren()) {
+            total += getDouble(item.child("cost").getValue());
+        }
+
+        return total;
+    }
+
+    private double getDouble(Object value) {
+        if (value instanceof Double) return (Double) value;
+        if (value instanceof Long) return ((Long) value).doubleValue();
+        if (value instanceof Integer) return ((Integer) value).doubleValue();
+        if (value instanceof String) {
+            try {
+                return Double.parseDouble((String) value);
+            } catch (NumberFormatException ignored) {
+                return 0.0;
+            }
+        }
+        return 0.0;
+    }
+
+    private String formatPeso(double value) {
+        if (value >= 1000) {
+            return String.format(Locale.getDefault(), "₱%.1fk", value / 1000.0);
+        }
+        return String.format(Locale.getDefault(), "₱%.0f", value);
     }
 
     // Decorator to disable non-accessible dates
@@ -520,27 +688,8 @@ public class Workprogram extends BaseDrawerActivity {
             taskWarningBanner.setVisibility(View.GONE);
             return;
         }
-
-        StringBuilder message = new StringBuilder("Heads up: ");
-        if (missedCount > 0) {
-            message.append(missedCount).append(missedCount == 1 ? " day missed" : " days missed");
-        }
-        if (skippedCount > 0) {
-            if (missedCount > 0) {
-                message.append(" · ");
-            }
-            message.append(skippedCount).append(skippedCount == 1 ? " day skipped" : " days skipped");
-        }
-
-        String hint = buildPhaseCatchUpHint();
-        if (!hint.isEmpty()) {
-            message.append("\n").append(hint);
-        } else {
-            message.append("\nLog today's activity or plan a quick catch-up.");
-        }
-
-        taskWarningBanner.setText(message.toString());
-        taskWarningBanner.setVisibility(View.VISIBLE);
+        // Banner is a dummy view in redesigned layout; just show it as a visual indicator
+        taskWarningBanner.setVisibility(View.GONE); // hidden since dummy has no text UI
     }
 
     private String buildPhaseCatchUpHint() {
@@ -604,15 +753,15 @@ public class Workprogram extends BaseDrawerActivity {
     private String getPhaseLabel(int phase) {
         switch (phase) {
             case 1:
-                return "Phase 1 (Nursery & Land Prep)";
+                return "Phase 1 (Land & Soil Prep)";
             case 2:
-                return "Phase 2 (Transplant & Establishment)";
+                return "Phase 2 (Vegetative)";
             case 3:
-                return "Phase 3 (Vegetative Growth)";
+                return "Phase 3 (Flowering)";
             case 4:
-                return "Phase 4 (Flowering & Fruit Set)";
+                return "Phase 4 (Maturity)";
             case 5:
-                return "Phase 5 (Harvest)";
+                return "Phase 5 (Post-Harvest)";
             default:
                 return "";
         }
@@ -635,26 +784,7 @@ public class Workprogram extends BaseDrawerActivity {
                 return;
             }
 
-            // Always allow start date (day 1) to be accessible
-            if (clickedDate.equals(programStartDate)) {
-                openDailyTask(clickedDate);
-                return;
-            }
-
-            // Check if date is accessible (all previous days completed)
-            // Use parseCalendarDay to ensure consistent CalendarDay creation
-            CalendarDay clickedDay = parseCalendarDay(clickedDate);
-            if (clickedDay == null || !accessibleDates.contains(clickedDay)) {
-                // Also check if it's the start date (should always be accessible)
-                if (!clickedDate.equals(programStartDate)) {
-                    Toast.makeText(this, "Please complete previous day tasks first", Toast.LENGTH_LONG).show();
-                    // Deselect the date to prevent selection
-                    widget.setDateSelected(date, false);
-                    return;
-                }
-            }
-
-            // Date is accessible, open DailyTask
+            // Allow viewing any date in the calendar as requested
             openDailyTask(clickedDate);
         });
     }
@@ -761,15 +891,14 @@ public class Workprogram extends BaseDrawerActivity {
                 Date today = new Date();
                 processTaskStatusesMap(taskStatuses, today);
                 
-                if (!LocalDataManager.isOnline(this)) {
-                    Toast.makeText(this, "Showing offline task data", Toast.LENGTH_SHORT).show();
+                if (!LocalDataManager.isOnline(Workprogram.this)) {
+                    Toast.makeText(Workprogram.this, "Showing offline task data", Toast.LENGTH_SHORT).show();
                 }
             });
         }).start();
     }
 
     private void processTaskStatusesMap(java.util.HashMap<String, String> taskStatuses, Date today) {
-        // Process dates and determine accessible dates
         try {
             Date start = sdf.parse(programStartDate);
             if (start == null) return;
@@ -777,14 +906,12 @@ public class Workprogram extends BaseDrawerActivity {
             Calendar cal = Calendar.getInstance();
             cal.setTime(start);
             
-            // Calculate accessible dates: a date is accessible if all previous dates are completed or missed
             Calendar checkCal = Calendar.getInstance();
             checkCal.setTime(start);
             Date endDate = today;
-            // Add some future dates to check
             Calendar futureCal = Calendar.getInstance();
             futureCal.setTime(today);
-            futureCal.add(Calendar.DAY_OF_YEAR, 90); // Check up to 90 days ahead
+            futureCal.add(Calendar.DAY_OF_YEAR, 90); 
             if (futureCal.getTime().after(endDate)) {
                 endDate = futureCal.getTime();
             }
@@ -797,193 +924,110 @@ public class Workprogram extends BaseDrawerActivity {
                     continue;
                 }
                 
-                // Always allow start date (day 1) to be accessible
                 if (dateKey.equals(programStartDate)) {
                     accessibleDates.add(cd);
-                    // Process status for display
                     String status = taskStatuses.get(dateKey);
                     if ("completed".equals(status)) {
                         completedDates.add(cd);
-                        // When Day 1 is completed, make Day 2 accessible
-                        Calendar nextCal = Calendar.getInstance();
-                        nextCal.setTime(checkCal.getTime());
-                        nextCal.add(Calendar.DAY_OF_YEAR, 1);
-                        String nextDateKey = sdf.format(nextCal.getTime());
-                        CalendarDay nextDay = parseCalendarDay(nextDateKey);
-                        if (nextDay != null) {
-                            accessibleDates.add(nextDay);
-                        }
                     } else if ("missed".equals(status)) {
                         missedDates.add(cd);
-                        // When Day 1 is missed, make Day 2 accessible
-                        Calendar nextCal = Calendar.getInstance();
-                        nextCal.setTime(checkCal.getTime());
-                        nextCal.add(Calendar.DAY_OF_YEAR, 1);
-                        String nextDateKey = sdf.format(nextCal.getTime());
-                        CalendarDay nextDay = parseCalendarDay(nextDateKey);
-                        if (nextDay != null) {
-                            accessibleDates.add(nextDay);
-                        }
                     } else if ("skipped".equals(status)) {
                         skippedDates.add(cd);
-                        Calendar nextCal = Calendar.getInstance();
-                        nextCal.setTime(checkCal.getTime());
-                        nextCal.add(Calendar.DAY_OF_YEAR, 1);
-                        String nextDateKey = sdf.format(nextCal.getTime());
-                        CalendarDay nextDay = parseCalendarDay(nextDateKey);
-                        if (nextDay != null) {
-                            accessibleDates.add(nextDay);
-                        }
                     } else if ("pending".equals(status)) {
                         Date taskDate = sdf.parse(dateKey);
                         if (taskDate != null && taskDate.before(today)) {
-                            // Mark as missed if past due (only if online)
-                            if (logsRef != null && LocalDataManager.isOnline(this)) {
+                            if (logsRef != null && LocalDataManager.isOnline(Workprogram.this)) {
                                 logsRef.child(dateKey).setValue("missed");
                             }
                             missedDates.add(cd);
                         }
                     }
-                    checkCal.add(Calendar.DAY_OF_YEAR, 1);
-                    continue; // Skip to next date
-                }
-                
-                // Check if this date is accessible
-                        // A date is accessible if ALL previous dates are completed or missed
-                        boolean isAccessible = true;
-                        Calendar prevCal = Calendar.getInstance();
-                        prevCal.setTime(start);
-                        
-                        // Check all previous dates - if ANY previous date is pending, current date is NOT accessible
-                        while (prevCal.getTime().before(checkCal.getTime())) {
-                            String prevDateKey = sdf.format(prevCal.getTime());
-                            String prevStatus = taskStatuses.get(prevDateKey);
-                            Date prevDate = prevCal.getTime();
-                            
-                            // Check previous date status
-                            if ("pending".equals(prevStatus)) {
-                                // Previous date is pending - current date is NOT accessible
-                                isAccessible = false;
-                                break;
-                            } else if ("completed".equals(prevStatus) || "missed".equals(prevStatus) || "skipped".equals(prevStatus)) {
-                                // Previous date is completed or missed - this is good, continue checking
-                                // No action needed, continue to next previous date
-                            } else if (prevStatus == null) {
-                                // Status doesn't exist in Firebase
-                                if (prevDate.before(today)) {
-                                    // Should have been created but wasn't - not accessible
-                                    isAccessible = false;
-                                    break;
-                                }
-                                // If it's today or future and status is null, that's okay (not created yet)
-                            } else {
-                                // Unknown status - treat as not accessible if before today
-                                if (prevDate.before(today)) {
-                                    isAccessible = false;
-                                    break;
-                                }
-                            }
-                            
-                            prevCal.add(Calendar.DAY_OF_YEAR, 1);
+                } else {
+                    boolean isAccessible = true;
+                    Calendar prevCal = Calendar.getInstance();
+                    prevCal.setTime(start);
+                    
+                    while (prevCal.getTime().before(checkCal.getTime())) {
+                        String prevDateKey = sdf.format(prevCal.getTime());
+                        String prevStatus = taskStatuses.get(prevDateKey);
+                        if ("pending".equals(prevStatus)) {
+                            isAccessible = false;
+                            break;
                         }
-                        
-                        // If all previous dates passed the check, the current date is accessible
-                        
-                        if (isAccessible) {
-                            accessibleDates.add(cd);
-                            
-                            // Process status for display
-                            String status = taskStatuses.get(dateKey);
-                            if ("completed".equals(status)) {
-                                completedDates.add(cd);
-                                // When a date is completed, make the next day accessible
-                                Calendar nextCal = Calendar.getInstance();
-                                nextCal.setTime(checkCal.getTime());
-                                nextCal.add(Calendar.DAY_OF_YEAR, 1);
-                                String nextDateKey = sdf.format(nextCal.getTime());
-                                CalendarDay nextDay = parseCalendarDay(nextDateKey);
-                                if (nextDay != null) {
-                                    accessibleDates.add(nextDay);
-                                }
-                            } else if ("missed".equals(status)) {
-                                missedDates.add(cd);
-                                // When a date is missed, make the next day accessible (user can continue)
-                                Calendar nextCal = Calendar.getInstance();
-                                nextCal.setTime(checkCal.getTime());
-                                nextCal.add(Calendar.DAY_OF_YEAR, 1);
-                                String nextDateKey = sdf.format(nextCal.getTime());
-                                CalendarDay nextDay = parseCalendarDay(nextDateKey);
-                                if (nextDay != null) {
-                                    accessibleDates.add(nextDay);
-                                }
-                            } else if ("skipped".equals(status)) {
-                                skippedDates.add(cd);
-                                Calendar nextCal = Calendar.getInstance();
-                                nextCal.setTime(checkCal.getTime());
-                                nextCal.add(Calendar.DAY_OF_YEAR, 1);
-                                String nextDateKey = sdf.format(nextCal.getTime());
-                                CalendarDay nextDay = parseCalendarDay(nextDateKey);
-                                if (nextDay != null) {
-                                    accessibleDates.add(nextDay);
-                                }
-                            } else if ("pending".equals(status)) {
-                                Date taskDate = sdf.parse(dateKey);
-                                if (taskDate != null && taskDate.before(today)) {
-                                    // Mark as missed if past due
-                                    logsRef.child(dateKey).setValue("missed");
-                                    missedDates.add(cd);
-                                }
-                            }
-                        } else {
-                            // Date is not accessible - ensure it's not in accessibleDates
-                            accessibleDates.remove(cd);
-                        }
-                        
-                        checkCal.add(Calendar.DAY_OF_YEAR, 1);
+                        prevCal.add(Calendar.DAY_OF_YEAR, 1);
                     }
                     
-                    // Post-process: Explicitly make next day accessible for all completed/missed dates
-                    // This ensures that when a date is completed, the next day is always accessible
-                    Calendar postCal = Calendar.getInstance();
-                    postCal.setTime(start);
-                    while (!postCal.getTime().after(endDate)) {
-                        String dateKey = sdf.format(postCal.getTime());
+                    if (isAccessible) {
+                        accessibleDates.add(cd);
                         String status = taskStatuses.get(dateKey);
-                        
-                        // If this date is completed, missed, or skipped, make the next day accessible
-                        if ("completed".equals(status) || "missed".equals(status) || "skipped".equals(status)) {
-                            Calendar nextCal = Calendar.getInstance();
-                            nextCal.setTime(postCal.getTime());
-                            nextCal.add(Calendar.DAY_OF_YEAR, 1);
-                            String nextDateKey = sdf.format(nextCal.getTime());
-                            CalendarDay nextDay = parseCalendarDay(nextDateKey);
-                            if (nextDay != null) {
-                                accessibleDates.add(nextDay);
+                        if ("completed".equals(status)) {
+                            completedDates.add(cd);
+                        } else if ("missed".equals(status)) {
+                            missedDates.add(cd);
+                        } else if ("skipped".equals(status)) {
+                            skippedDates.add(cd);
+                        } else if ("pending".equals(status)) {
+                            Date taskDate = sdf.parse(dateKey);
+                            if (taskDate != null && taskDate.before(today)) {
+                                if (logsRef != null && LocalDataManager.isOnline(Workprogram.this)) {
+                                    logsRef.child(dateKey).setValue("missed");
+                                }
+                                missedDates.add(cd);
                             }
                         }
-                        
-                        postCal.add(Calendar.DAY_OF_YEAR, 1);
                     }
-                    
-                } catch (ParseException e) {
-                    Log.e(TAG, "Error calculating accessible dates", e);
                 }
+                checkCal.add(Calendar.DAY_OF_YEAR, 1);
+            }
+            
+            // Post-process accessible dates
+            Calendar postCal = Calendar.getInstance();
+            postCal.setTime(start);
+            while (!postCal.getTime().after(endDate)) {
+                String dateKey = sdf.format(postCal.getTime());
+                String status = taskStatuses.get(dateKey);
+                if ("completed".equals(status) || "missed".equals(status) || "skipped".equals(status)) {
+                    Calendar nextCal = Calendar.getInstance();
+                    nextCal.setTime(postCal.getTime());
+                    nextCal.add(Calendar.DAY_OF_YEAR, 1);
+                    CalendarDay nextDay = parseCalendarDay(sdf.format(nextCal.getTime()));
+                    if (nextDay != null) accessibleDates.add(nextDay);
+                }
+                postCal.add(Calendar.DAY_OF_YEAR, 1);
+            }
+        } catch (ParseException e) {
+            Log.e(TAG, "Error calculating accessible dates", e);
+        }
 
-                updateTaskWarningBanner();
+        // Calculate tasks due for today
+        int tasksDue = 0;
+        String todayKey = sdf.format(today);
+        String todayStatus = taskStatuses.get(todayKey);
+        
+        // If today is pending or not yet logged, show tasks count for today
+        if (todayStatus == null || "pending".equals(todayStatus)) {
+            int maturityDays = getMaturityDays(selectedCultivar);
+            int dayNumber = calculateDayNumber(programStartDate, today);
+            if (dayNumber > 0 && dayNumber <= maturityDays) {
+                // Fetch task count for the current day from the schedule
+                tasksDue = WorkProgramDataHelper.getTaskCountForDay(selectedCultivar, maturityDays, dayNumber);
+            }
+        }
+        
+        final int finalTasksDue = tasksDue;
+        runOnUiThread(() -> {
+            if (summaryTasksDue != null) {
+                summaryTasksDue.setText(String.valueOf(finalTasksDue));
+            }
+        });
 
-                // Clear all decorators first
-                calendarView.removeDecorators();
-
-                // Re-add phase backgrounds
-                addPhaseDecorators();
-
-                // ✅ Add decorator to disable non-accessible dates FIRST (before other decorators)
-                calendarView.addDecorator(new DisabledDateDecorator(new HashSet<>(accessibleDates), Workprogram.this));
-                
-                // ✅ Add dots under numbers
-                calendarView.addDecorator(new CompletedDecorator(new HashSet<>(completedDates), Workprogram.this));
-                calendarView.addDecorator(new MissedDecorator(new HashSet<>(missedDates), Workprogram.this));
-                calendarView.addDecorator(new SkippedDecorator(new HashSet<>(skippedDates), Workprogram.this));
+        updateTaskWarningBanner();
+        calendarView.removeDecorators();
+        addPhaseDecorators();
+        calendarView.addDecorator(new DisabledDateDecorator(new HashSet<>(accessibleDates), Workprogram.this));
+        calendarView.addDecorator(new CompletedDecorator(new HashSet<>(completedDates), Workprogram.this));
+        calendarView.addDecorator(new MissedDecorator(new HashSet<>(missedDates), Workprogram.this));
+        calendarView.addDecorator(new SkippedDecorator(new HashSet<>(skippedDates), Workprogram.this));
     }
 
 
@@ -1017,50 +1061,42 @@ public class Workprogram extends BaseDrawerActivity {
      * Updates the cultivar information in the header card
      */
     private void updateCultivarInfo(String cultivar, String startDate) {
-        // Format date according to user preference for display
-        String displayDate = startDate;
-        try {
-            Date dateObj = sdf.parse(startDate);
-            SimpleDateFormat displayFormat = SettingsPreferences.getDateFormatInstance(this);
-            displayDate = displayFormat.format(dateObj);
-        } catch (ParseException e) {
-            // Keep original format if parsing fails
-        }
-        if (cultivarNameText != null) {
-            cultivarNameText.setText(cultivar);
-        }
+        if (cultivarNameText != null) cultivarNameText.setText(cultivar);
+        
         if (startDateText != null) {
-            startDateText.setText("Start Date: " + displayDate);
-        }
-        if (headerStartDate != null) {
-            headerStartDate.setText("Start Date: " + displayDate);
-        }
-        if (cultivarImage != null) {
-            // Set cultivar-specific image using CultivarImageHelper
-            cultivarImage.setImageResource(CultivarImageHelper.getCultivarImageResource(cultivar));
-            // Make image circular
-            cultivarImage.setClipToOutline(true);
-            cultivarImage.setOutlineProvider(new android.view.ViewOutlineProvider() {
-                @Override
-                public void getOutline(android.view.View view, android.graphics.Outline outline) {
-                    outline.setOval(0, 0, view.getWidth(), view.getHeight());
+            try {
+                Date date = sdf.parse(startDate);
+                if (date != null) {
+                    SimpleDateFormat displayFormat = new SimpleDateFormat("MMMM d, yyyy", Locale.getDefault());
+                    startDateText.setText("Started: " + displayFormat.format(date));
+                    
+                    // Update Season tag: Wet (June-Nov) or Dry (Dec-May)
+                    if (seasonTagText != null) {
+                        Calendar cal = Calendar.getInstance();
+                        cal.setTime(date);
+                        int month = cal.get(Calendar.MONTH); // 0-based
+                        String season = (month >= 5 && month <= 10) ? "Wet Season" : "Dry Season";
+                        seasonTagText.setText(season);
+                    }
                 }
-            });
+            } catch (ParseException e) {
+                startDateText.setText("Started: " + startDate);
+            }
         }
-        if (headerCultivarImage != null) {
-            // Set header cultivar image using CultivarImageHelper
-            headerCultivarImage.setImageResource(CultivarImageHelper.getCultivarImageResource(cultivar));
-            // Make image circular
-            headerCultivarImage.setClipToOutline(true);
-            headerCultivarImage.setOutlineProvider(new android.view.ViewOutlineProvider() {
-                @Override
-                public void getOutline(android.view.View view, android.graphics.Outline outline) {
-                    outline.setOval(0, 0, view.getWidth(), view.getHeight());
-                }
-            });
-        }
-        if (headerCultivarName != null) {
-            headerCultivarName.setText(cultivar);
+        
+        // Handle image vs emoji
+        if (cultivarImage != null && cultivarEmoji != null) {
+            // Use the correct method name from the project (getCultivarImageResource)
+            int imageRes = CultivarImageHelper.getCultivarImageResource(cultivar);
+            if (imageRes != 0) {
+                cultivarImage.setImageResource(imageRes);
+                cultivarImage.setVisibility(View.VISIBLE);
+                cultivarEmoji.setVisibility(View.GONE);
+            } else {
+                cultivarImage.setVisibility(View.GONE);
+                cultivarEmoji.setVisibility(View.VISIBLE);
+                cultivarEmoji.setText("🍅");
+            }
         }
     }
 

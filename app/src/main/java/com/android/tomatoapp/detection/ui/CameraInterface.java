@@ -67,7 +67,10 @@ import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
-public class CameraInterface extends AppCompatActivity {
+import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
+import com.android.tomatoapp.detection.utils.RipenessClassifier;
+
+public class CameraInterface extends BaseBottomNavActivity {
 
     private static final String TAG = "CameraInterface";
     public static final String EXTRA_LINKED_PROGRAM_ID = "extra_linked_program_id";
@@ -206,6 +209,8 @@ public class CameraInterface extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_camera_interface);
+
+        setupBottomNavigation();
 
         // Hide action bar for full-screen camera experience
         if (getSupportActionBar() != null) {
@@ -582,6 +587,19 @@ public class CameraInterface extends AppCompatActivity {
                 results.put("accuracy", "0%");
                 results.put("description", "Failed to decode image. Please ensure the image is valid.");
                 return results;
+            }
+
+            // Extra signal derived from the image itself (non-static):
+            // For FRUITS model runs, estimate ripeness + maturity stage (Green/Turning/Red).
+            if (currentModelType == ModelType.FRUITS) {
+                try {
+                    RipenessClassifier.Result r = RipenessClassifier.classify(bitmap);
+                    results.put("ripeness", r.ripeness);
+                    results.put("ripenessStage", r.stage);
+                    results.put("ripenessConfidence", String.format(Locale.getDefault(), "%.0f%%", r.confidence01 * 100f));
+                } catch (Exception ignored) {
+                    // Keep detection flow resilient if classifier fails
+                }
             }
             
             // Enhanced image preprocessing: use high-quality scaling and maintain aspect ratio
@@ -1185,32 +1203,6 @@ public class CameraInterface extends AppCompatActivity {
         return indices;
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.drawer_menu, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        int id = item.getItemId();
-
-        if (id == android.R.id.home) {
-            // do nothing (no back action)
-            return true;
-        } else if (id == R.id.nav_home) {
-            finish();
-            return true;
-        } else if (id == R.id.nav_profile) {
-            return true;
-        } else if (id == R.id.nav_settings) {
-            return true;
-        } else if (id == R.id.nav_logout) {
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
-    }
 
     @Override
     public boolean onSupportNavigateUp() {

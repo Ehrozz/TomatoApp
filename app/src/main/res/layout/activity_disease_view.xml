@@ -1,417 +1,335 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/drawer_layout"
+    android:id="@+id/main_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/info_green"
+    android:background="@color/sidebar_dark_green"
     tools:context=".DiseaseView">
 
-    <!-- Main Content -->
-    <LinearLayout
+    <!-- Header Image with Gradient -->
+    <FrameLayout
+        android:id="@+id/headerImageContainer"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:background="@color/info_green">
+        android:layout_height="320dp"
+        android:layout_alignParentTop="true">
 
-        <!-- Light Green Header -->
-        <LinearLayout
+        <ImageView
+            android:id="@+id/diseaseImage"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:background="@color/info_green"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:paddingTop="48dp"
-            android:paddingBottom="16dp"
-            android:fitsSystemWindows="true">
+            android:layout_height="match_parent"
+            android:src="@drawable/disease_early_blight"
+            android:scaleType="centerCrop"
+            android:contentDescription="Disease illustration" />
 
-            <!-- Back Button -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="140dp"
+            android:layout_gravity="bottom"
+            android:background="@drawable/bg_bottom_gradient_dark" />
+            
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tap to enlarge"
+            android:textColor="@color/white"
+            android:textSize="10sp"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="4dp"
+            android:background="#80000000"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="16dp" />
+    </FrameLayout>
+
+    <!-- Navigation Bar -->
+    <LinearLayout
+        android:id="@+id/disNav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:gravity="center_vertical">
+        
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/backButtonCard"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            app:cardBackgroundColor="#40FFFFFF"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp">
             <ImageButton
                 android:id="@+id/backButton"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:src="@android:drawable/ic_menu_revert"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:src="@android:drawable/ic_media_play"
+                android:rotation="180"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Back"
                 app:tint="@color/white"
-                android:scaleType="centerInside"
-                android:padding="8dp" />
+                android:padding="8dp"
+                android:scaleType="fitCenter" />
+        </com.google.android.material.card.MaterialCardView>
 
-            <!-- Title -->
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="INFORMATION"
-                android:textColor="@color/white"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:gravity="center"
-                android:letterSpacing="0.1" />
-        </LinearLayout>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="INFORMATION"
+            android:textColor="@color/white"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.15"
+            android:layout_marginStart="14dp" />
+    </LinearLayout>
 
-        <!-- Main Content Card -->
-        <ScrollView
-            android:id="@+id/scrollView"
+    <!-- Main Content Card -->
+    <ScrollView
+        android:id="@+id/scrollView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:clipToPadding="false"
+        android:layout_below="@id/headerImageContainer"
+        android:layout_marginTop="-40dp"
+        android:layout_above="@id/bottom_navigation">
+
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:fillViewport="true"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:paddingBottom="16dp">
+            android:layout_height="wrap_content"
+            android:minHeight="500dp"
+            app:cardBackgroundColor="@color/white"
+            app:cardElevation="8dp"
+            app:cardCornerRadius="24dp"
+            app:strokeWidth="0dp">
 
-            <com.google.android.material.card.MaterialCardView
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                app:cardBackgroundColor="@color/white"
-                app:cardCornerRadius="20dp"
-                app:cardElevation="8dp">
+                android:orientation="vertical"
+                android:padding="24dp"
+                android:paddingBottom="40dp">
 
+                <TextView
+                    android:id="@+id/diseaseSeverityBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="⚠ Moderate Severity"
+                    android:textColor="#B45309"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="4dp"
+                    android:background="@drawable/bg_pill_input"
+                    android:backgroundTint="#FEF3E2"
+                    android:layout_marginBottom="12dp" />
+
+                <TextView
+                    android:id="@+id/diseaseTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Early Blight"
+                    android:textColor="@color/text"
+                    android:fontFamily="serif"
+                    android:textSize="24sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/scientificName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Alternaria solani"
+                    android:textColor="@color/muted"
+                    android:textSize="14sp"
+                    android:fontFamily="sans-serif-light"
+                    android:layout_marginBottom="24dp" />
+
+                <!-- Action Tabs -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="20dp">
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="24dp">
 
-                    <!-- Title with Orange Icon -->
                     <LinearLayout
-                        android:layout_width="match_parent"
+                        android:id="@+id/tabSymptoms"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:layout_marginBottom="16dp">
-
-                        <!-- Disease Title -->
-                        <TextView
-                            android:id="@+id/diseaseTitle"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Disease Title"
-                            android:textColor="@color/text_primary"
-                            android:textSize="24sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-
-                    <!-- Large Illustration Area -->
-                    <com.google.android.material.card.MaterialCardView
-                        android:layout_width="match_parent"
-                        android:layout_height="280dp"
-                        android:layout_marginBottom="16dp"
-                        app:cardBackgroundColor="@color/soft_cream"
-                        app:cardCornerRadius="12dp"
-                        app:cardElevation="2dp"
-                        app:strokeWidth="1dp"
-                        app:strokeColor="@color/divider">
-
-                        <ImageView
-                            android:id="@+id/diseaseImage"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:src="@mipmap/ic_logo"
-                            android:scaleType="centerCrop"
-                            android:contentDescription="Disease illustration"
-                            android:background="@color/soft_cream" />
-                    </com.google.android.material.card.MaterialCardView>
-
-                    <!-- Scientific Name -->
-                    <TextView
-                        android:id="@+id/scientificName"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text=""
-                        android:textColor="@color/text_secondary"
-                        android:textSize="14sp"
-                        android:textStyle="italic"
-                        android:layout_marginBottom="20dp"
-                        android:visibility="gone" />
-
-                    <!-- Action Buttons -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
                         android:gravity="center"
-                        android:layout_marginBottom="24dp">
-
-                        <!-- Symptoms Button -->
-                        <LinearLayout
-                            android:id="@+id/symptomsButton"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:gravity="center"
-                            android:padding="12dp"
-                            android:background="?attr/selectableItemBackground"
-                            android:clickable="true"
-                            android:focusable="true">
-
-                            <ImageView
-                                android:layout_width="32dp"
-                                android:layout_height="32dp"
-                                android:src="@android:drawable/ic_menu_view"
-                                app:tint="@color/info_green"
-                                android:scaleType="centerInside" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Symptoms"
-                                android:textColor="@color/text_primary"
-                                android:textSize="12sp"
-                                android:layout_marginTop="4dp" />
-                        </LinearLayout>
-
-                        <!-- Treatment Button -->
-                        <LinearLayout
-                            android:id="@+id/treatmentButton"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:gravity="center"
-                            android:padding="12dp"
-                            android:background="?attr/selectableItemBackground"
-                            android:clickable="true"
-                            android:focusable="true">
-
-                            <ImageView
-                                android:layout_width="32dp"
-                                android:layout_height="32dp"
-                                android:src="@android:drawable/ic_menu_camera"
-                                app:tint="@color/info_green"
-                                android:scaleType="centerInside" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Treatment"
-                                android:textColor="@color/text_primary"
-                                android:textSize="12sp"
-                                android:layout_marginTop="4dp" />
-                        </LinearLayout>
-
-                        <!-- Prevention Button -->
-                        <LinearLayout
-                            android:id="@+id/preventionButton"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:gravity="center"
-                            android:padding="12dp"
-                            android:background="?attr/selectableItemBackground"
-                            android:clickable="true"
-                            android:focusable="true">
-
-                            <ImageView
-                                android:layout_width="32dp"
-                                android:layout_height="32dp"
-                                android:src="@android:drawable/ic_menu_agenda"
-                                app:tint="@color/info_green"
-                                android:scaleType="centerInside" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Prevention"
-                                android:textColor="@color/text_primary"
-                                android:textSize="12sp"
-                                android:layout_marginTop="4dp" />
-                        </LinearLayout>
+                        android:padding="10dp"
+                        android:background="@drawable/bg_pill_input"
+                        android:backgroundTint="@color/green_light"
+                        android:layout_marginEnd="6dp">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="👁" android:textSize="16sp" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Symptoms" android:textSize="9sp" android:textStyle="bold" android:textColor="@color/green" />
                     </LinearLayout>
 
-                    <!-- Information Section Title -->
-                    <TextView
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:id="@+id/tabTreatment"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:text="Disease Information"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:layout_marginBottom="12dp" />
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:padding="10dp"
+                        android:background="@drawable/bg_pill_input"
+                        android:layout_marginHorizontal="3dp">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="💊" android:textSize="16sp" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Treatment" android:textSize="9sp" android:textStyle="bold" android:textColor="@color/muted" />
+                    </LinearLayout>
 
-                    <!-- Divider -->
-                    <View
+                    <LinearLayout
+                        android:id="@+id/tabPrevention"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:padding="10dp"
+                        android:background="@drawable/bg_pill_input"
+                        android:layout_marginStart="6dp">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🛡" android:textSize="16sp" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Prevention" android:textSize="9sp" android:textStyle="bold" android:textColor="@color/muted" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Content Sections -->
+                <LinearLayout
+                    android:id="@+id/sectionSymptoms"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+                    
+                    <TextView
                         android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:background="@color/divider"
-                        android:layout_marginBottom="16dp" />
-
-                    <!-- Description Section -->
-                    <TextView
-                        android:id="@+id/diseaseDescription"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Disease description goes here."
-                        android:textColor="@color/text_primary"
-                        android:textSize="14sp"
-                        android:lineSpacingExtra="4dp"
-                        android:layout_marginBottom="20dp" />
-
-                    <!-- Symptoms Section -->
-                    <TextView
-                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Symptoms"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp"
+                        android:textColor="@color/text"
+                        android:textSize="14sp"
                         android:textStyle="bold"
-                        android:layout_marginBottom="8dp" />
+                        android:paddingBottom="6dp"
+                        android:layout_marginBottom="8dp"
+                        android:background="@drawable/bottom_nav_gradient"
+                        android:backgroundTint="@color/green_light" />
 
                     <TextView
-                        android:id="@+id/diseaseSymptoms"
-                        android:layout_width="wrap_content"
+                        android:id="@+id/diseaseDescription"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Disease symptoms go here."
-                        android:textColor="@color/text_primary"
-                        android:textSize="14sp"
-                        android:lineSpacingExtra="4dp"
+                        android:text="Dark brown to black lesions with concentric rings appear on older, lower leaves first. Lesions are surrounded by yellow halos."
+                        android:textColor="@color/muted"
+                        android:textSize="12sp"
+                        android:lineSpacingExtra="6dp"
                         android:layout_marginBottom="20dp" />
 
-                    <!-- Cause Section -->
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Cause"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp"
+                        android:textColor="@color/text"
+                        android:textSize="14sp"
                         android:textStyle="bold"
-                        android:layout_marginBottom="8dp" />
+                        android:paddingBottom="6dp"
+                        android:layout_marginBottom="8dp"
+                        android:background="@drawable/bottom_nav_gradient"
+                        android:backgroundTint="@color/green_light" />
 
                     <TextView
                         android:id="@+id/diseaseCause"
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Disease cause goes here."
-                        android:textColor="@color/text_primary"
-                        android:textSize="14sp"
-                        android:lineSpacingExtra="4dp"
+                        android:text="Caused by the fungus Alternaria solani. Spreads rapidly in warm, humid conditions between 24–29°C."
+                        android:textColor="@color/muted"
+                        android:textSize="12sp"
+                        android:lineSpacingExtra="6dp"
                         android:layout_marginBottom="20dp" />
-
-                    <!-- Treatment Section -->
+                </LinearLayout>
+                
+                <LinearLayout
+                    android:id="@+id/sectionTreatment"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Treatment"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp"
+                        android:text="Recommended Treatment"
+                        android:textColor="@color/text"
+                        android:textSize="14sp"
                         android:textStyle="bold"
-                        android:layout_marginBottom="8dp" />
+                        android:paddingBottom="6dp"
+                        android:layout_marginBottom="8dp"
+                        android:background="@drawable/bottom_nav_gradient"
+                        android:backgroundTint="@color/green_light" />
 
                     <TextView
                         android:id="@+id/diseaseCure"
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Disease treatment goes here."
-                        android:textColor="@color/text_primary"
-                        android:textSize="14sp"
-                        android:lineSpacingExtra="4dp"
+                        android:text="Apply copper-based or chlorothalonil fungicides at first sign. Remove infected leaves promptly. Repeat every 7–10 days."
+                        android:textColor="@color/muted"
+                        android:textSize="12sp"
+                        android:lineSpacingExtra="6dp"
                         android:layout_marginBottom="20dp" />
-
-                    <!-- Prevention Section -->
+                </LinearLayout>
+                
+                <LinearLayout
+                    android:id="@+id/sectionPrevention"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Prevention"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp"
+                        android:text="Prevention Measures"
+                        android:textColor="@color/text"
+                        android:textSize="14sp"
                         android:textStyle="bold"
-                        android:layout_marginBottom="8dp" />
+                        android:paddingBottom="6dp"
+                        android:layout_marginBottom="8dp"
+                        android:background="@drawable/bottom_nav_gradient"
+                        android:backgroundTint="@color/green_light" />
 
                     <TextView
                         android:id="@+id/diseasePrevention"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Prevention measures go here."
-                        android:textColor="@color/text_primary"
-                        android:textSize="14sp"
-                        android:lineSpacingExtra="4dp"
-                        android:layout_marginBottom="20dp" />
-
-                    <!-- Pest Information Section -->
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Pest Information"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:layout_marginTop="8dp"
-                        android:layout_marginBottom="8dp" />
-
-                    <!-- Pest Image Placeholder -->
-                    <com.google.android.material.card.MaterialCardView
-                        android:id="@+id/pestImageCard"
                         android:layout_width="match_parent"
-                        android:layout_height="200dp"
-                        android:layout_marginBottom="16dp"
-                        app:cardBackgroundColor="@color/soft_cream"
-                        app:cardCornerRadius="12dp"
-                        app:cardElevation="2dp"
-                        app:strokeWidth="1dp"
-                        app:strokeColor="@color/divider"
-                        android:visibility="gone">
-
-                        <ImageView
-                            android:id="@+id/pestImage"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:src="@mipmap/ic_logo"
-                            android:scaleType="centerCrop"
-                            android:contentDescription="Pest illustration"
-                            android:background="@color/soft_cream" />
-                    </com.google.android.material.card.MaterialCardView>
-
-                    <!-- Pest Common Name -->
-                    <TextView
-                        android:id="@+id/pestCommonName"
-                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text=""
-                        android:textColor="@color/text_primary"
-                        android:textSize="18sp"
-                        android:textStyle="bold"
-                        android:layout_marginBottom="8dp"
-                        android:visibility="gone" />
-
-                    <!-- Pest Scientific Name -->
-                    <TextView
-                        android:id="@+id/pestScientificName"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text=""
-                        android:textColor="@color/text_secondary"
-                        android:textSize="14sp"
-                        android:textStyle="italic"
-                        android:layout_marginBottom="12dp"
-                        android:visibility="gone" />
-
-                    <TextView
-                        android:id="@+id/pestDescription"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Pest description goes here."
-                        android:textColor="@color/text_primary"
-                        android:textSize="14sp"
-                        android:lineSpacingExtra="4dp"
-                        android:layout_marginBottom="8dp" />
+                        android:text="Ensure crop rotation, proper spacing for air circulation, and use disease-free seeds. Avoid overhead irrigation."
+                        android:textColor="@color/muted"
+                        android:textSize="12sp"
+                        android:lineSpacingExtra="6dp"
+                        android:layout_marginBottom="20dp" />
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-        </ScrollView>
-    </LinearLayout>
 
-    <com.google.android.material.navigation.NavigationView
-        android:id="@+id/nav_view"
-        android:layout_width="280dp"
-        android:layout_height="match_parent"
-        android:layout_gravity="start"
-        app:menu="@menu/drawer_menu" />
+                <!-- Dummy views for backwards compatibility -->
+                <LinearLayout android:id="@+id/symptomsButton" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
+                <LinearLayout android:id="@+id/treatmentButton" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
+                <LinearLayout android:id="@+id/preventionButton" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
+                <TextView android:id="@+id/pestCommonName" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
+                <TextView android:id="@+id/pestScientificName" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
+                <TextView android:id="@+id/pestDescription" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
+                <TextView android:id="@+id/diseaseSymptoms" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
+                <com.google.android.material.card.MaterialCardView android:id="@+id/pestImageCard" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone">
+                    <ImageView android:id="@+id/pestImage" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
+                </com.google.android.material.card.MaterialCardView>
 
-</androidx.drawerlayout.widget.DrawerLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </ScrollView>
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottom_navigation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:background="@color/white"
+        app:menu="@menu/menu_bottom_nav"
+        app:itemIconTint="@color/nav_selected"
+        app:itemTextColor="@color/nav_selected"
+        app:labelVisibilityMode="labeled"
+        app:elevation="16dp" />
+
+</RelativeLayout>

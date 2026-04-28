@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp"
+    android:height="28dp"
+    android:viewportWidth="256"
+    android:viewportHeight="256">
+    <!-- Secondary (Duotone) Path -->
+    <path
+        android:fillColor="#0a0a0a"
+        android:alpha="0.2"
+        android:pathData="M216,40V216a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V40a8,8,0,0,1,8-8H208A8,8,0,0,1,216,40ZM104,80H80v96h24ZM144,48H120v128h24ZM184,112H160v64h24Z" />
+    <!-- Primary Path -->
+    <path
+        android:fillColor="#0a0a0a"
+        android:pathData="M208,32H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM80,88h16v88H80ZM120,56h16V176H120ZM160,120h16v56H160Z" />
+</vector>

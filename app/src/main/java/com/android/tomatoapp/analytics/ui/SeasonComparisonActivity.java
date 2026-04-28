@@ -11,7 +11,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.analytics.data.AnalyticsManager;
-import com.android.tomatoapp.core.ui.BaseDrawerActivity;
+import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
 import com.android.tomatoapp.workprogram.data.WorkProgramRepository;
 import com.github.mikephil.charting.charts.BarChart;
@@ -29,7 +29,7 @@ import java.util.Locale;
  * Activity for comparing on-season vs off-season performance.
  * Key for proving off-season tomato planting viability.
  */
-public class SeasonComparisonActivity extends BaseDrawerActivity {
+public class SeasonComparisonActivity extends BaseBottomNavActivity {
     
     private ProgressBar progressBar;
     private TextView emptyText;
@@ -45,7 +45,7 @@ public class SeasonComparisonActivity extends BaseDrawerActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_season_comparison);
         
-        setupDrawer();
+        setupBottomNavigation();
         
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Season Comparison");
