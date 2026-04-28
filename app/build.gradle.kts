@@ -77,14 +77,10 @@ android {
         val variant = this
         variant.outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            val buildType = variant.buildType.name
             val versionName = variant.versionName
-            val versionCode = variant.versionCode
             
-            // Example:
-            // TomatoApp_v1.2.0_(Build_45000)_release.apk
-            // TomatoApp_v1.2.0-beta.45_(Build_1200045)_beta.apk
-            output.outputFileName = "TomatoApp_v${versionName}_(Build_${versionCode})_${buildType}.apk"
+            // Simplified naming: TomatoApp_v1.0.0-alpha.apk
+            output.outputFileName = "TomatoApp_v${versionName}.apk"
         }
     }
     
