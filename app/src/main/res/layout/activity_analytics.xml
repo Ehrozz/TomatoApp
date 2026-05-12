@@ -59,7 +59,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Track expenses and profitability by cultivar"
+                        android:text="Track expenses and profitability by saved work program"
                         android:textColor="#CCFFFFFF"
                         android:textSize="12sp" />
                 </LinearLayout>
@@ -89,7 +89,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="NET PROFIT"
+                                android:text="ADJ PROFIT"
                                 android:textColor="@color/muted"
                                 android:textSize="10sp"
                                 android:textStyle="bold" />
@@ -275,9 +275,9 @@
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="💰 Profit per Area"
+                                        android:text="💰 Adjusted Profit per Area"
                                         android:textStyle="bold"
-                                        android:textColor="@color/text"
+                                        android:textColor="@color/text_primary"
                                         android:textSize="15sp"
                                         android:layout_marginBottom="12dp" />
                                     <com.github.mikephil.charting.charts.BarChart
@@ -303,9 +303,9 @@
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="✅ Completion Rate Trend"
+                                        android:text="✅ Completion Rate Trend by Cultivar"
                                         android:textStyle="bold"
-                                        android:textColor="@color/text"
+                                        android:textColor="@color/text_primary"
                                         android:textSize="15sp"
                                         android:layout_marginBottom="12dp" />
                                     <com.github.mikephil.charting.charts.LineChart
@@ -344,14 +344,14 @@
                                 android:layout_height="wrap_content"
                                 android:text="No Analytics Data Yet"
                                 android:textAlignment="center"
-                                android:textColor="@color/text"
+                                android:textColor="@color/text_primary"
                                 android:textSize="18sp"
                                 android:textStyle="bold"
                                 android:layout_marginBottom="8dp" />
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Run a calculation to see analytics here"
+                                android:text="Save a work program to see finance cards here"
                                 android:textAlignment="center"
                                 android:textColor="@color/muted"
                                 android:textSize="14sp" />

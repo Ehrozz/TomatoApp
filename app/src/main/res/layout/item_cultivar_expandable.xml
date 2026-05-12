@@ -146,7 +146,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Total Profit"
+                        android:text="Adjusted Profit"
                         android:textSize="10sp"
                         android:textColor="@color/text_secondary" />
                     <TextView
@@ -188,7 +188,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Profit/Area"
+                        android:text="Adj Profit/Area"
                         android:textSize="10sp"
                         android:textColor="@color/text_secondary" />
                     <TextView

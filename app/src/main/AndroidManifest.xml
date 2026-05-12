@@ -51,7 +51,7 @@
         <activity
             android:name=".financial.ui.CurrentExpensesActivity"
             android:exported="false"
-            android:label="Current Expenses" />
+            android:label="Daily Expenses Overview" />
         <activity
             android:name=".analytics.ui.DetectionHistoryActivity"
             android:exported="false" />

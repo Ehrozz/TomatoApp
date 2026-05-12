@@ -6,6 +6,7 @@ public class User {
     public String usernameLower;
     public String address;
     public String email;
+    public String photoUri;
     public String phone;
     public String phoneInternational;
     public String phoneLocal;
@@ -26,6 +27,7 @@ public class User {
         this.usernameLower = usernameLower;
         this.address = address;
         this.email = email;
+        this.photoUri = null;
         this.phone = phone;
         this.phoneInternational = phoneInternational;
         this.phoneLocal = phoneLocal;

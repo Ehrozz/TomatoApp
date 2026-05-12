@@ -31,6 +31,14 @@ public class DetectionResults extends BaseBottomNavActivity {
     private TextView badgeNumber;
     private TextView recommendation1, recommendation2, recommendation3;
     private ImageView detectionImage;
+    
+    // Expandable state tracking
+    private boolean symptomsExpanded = false;
+    private boolean treatmentExpanded = false;
+    private boolean preventionExpanded = false;
+    private int maxSymptomLines = 3;
+    private int maxTreatmentLines = 3;
+    private int maxPreventionLines = 2;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -238,6 +246,70 @@ public class DetectionResults extends BaseBottomNavActivity {
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Scan Results");
+        }
+        
+        // Make symptoms and treatment clickable/expandable
+        setupClickableInfoSections();
+    }
+    
+    private void setupClickableInfoSections() {
+        // Make symptoms clickable
+        if (detectionSymptoms != null) {
+            detectionSymptoms.setOnClickListener(v -> toggleSymptomsExpand());
+            // Add visual feedback that it's clickable
+            detectionSymptoms.setTextIsSelectable(false);
+        }
+        
+        // Make treatment clickable
+        if (detectionCure != null) {
+            detectionCure.setOnClickListener(v -> toggleTreatmentExpand());
+            // Add visual feedback that it's clickable
+            detectionCure.setTextIsSelectable(false);
+        }
+
+        // Make prevention clickable (displayed as recommendation 3)
+        if (recommendation3 != null) {
+            recommendation3.setOnClickListener(v -> togglePreventionExpand());
+            recommendation3.setMaxLines(maxPreventionLines);
+            recommendation3.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            recommendation3.setTextIsSelectable(false);
+        }
+    }
+    
+    private void toggleSymptomsExpand() {
+        if (detectionSymptoms == null) return;
+        
+        symptomsExpanded = !symptomsExpanded;
+        if (symptomsExpanded) {
+            // Expand: show all lines
+            detectionSymptoms.setMaxLines(Integer.MAX_VALUE);
+        } else {
+            // Collapse: show 3 lines
+            detectionSymptoms.setMaxLines(maxSymptomLines);
+        }
+    }
+    
+    private void toggleTreatmentExpand() {
+        if (detectionCure == null) return;
+        
+        treatmentExpanded = !treatmentExpanded;
+        if (treatmentExpanded) {
+            // Expand: show all lines
+            detectionCure.setMaxLines(Integer.MAX_VALUE);
+        } else {
+            // Collapse: show 3 lines
+            detectionCure.setMaxLines(maxTreatmentLines);
+        }
+    }
+
+    private void togglePreventionExpand() {
+        if (recommendation3 == null) return;
+
+        preventionExpanded = !preventionExpanded;
+        if (preventionExpanded) {
+            recommendation3.setMaxLines(Integer.MAX_VALUE);
+        } else {
+            recommendation3.setMaxLines(maxPreventionLines);
         }
     }
 

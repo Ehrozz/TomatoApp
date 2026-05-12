@@ -2,11 +2,14 @@ package com.android.tomatoapp.settings.ui;
 
 import android.app.TimePickerDialog;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import com.google.firebase.auth.FirebaseAuth;
 import android.view.View;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 
@@ -23,8 +26,13 @@ import com.android.tomatoapp.notifications.GeneralUpdateScheduler;
 import com.android.tomatoapp.notifications.NotificationHelper;
 import com.android.tomatoapp.notifications.NotificationPermissionHelper;
 import com.android.tomatoapp.notifications.NotificationPreferences;
+import com.android.tomatoapp.notifications.MorningRemindersScheduler;
 import com.android.tomatoapp.settings.data.SettingsPreferences;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -67,6 +75,7 @@ public class SettingsActivity extends BaseBottomNavActivity {
     private com.google.android.material.button.MaterialButton btnImportData;
     private com.google.android.material.button.MaterialButton btnClearLocalData;
     private com.google.android.material.button.MaterialButton btnLogout;
+    private ActivityResultLauncher<String[]> importDataLauncher;
 
     // Cultivar list (from Workprogram.java)
     private final String[] cultivars = {
@@ -91,6 +100,7 @@ public class SettingsActivity extends BaseBottomNavActivity {
         }
         
         initializeViews();
+        setupImportLauncher();
         loadSettings();
         setupClickListeners();
     }
@@ -229,9 +239,11 @@ public class SettingsActivity extends BaseBottomNavActivity {
                 if (isChecked) {
                     if (NotificationPermissionHelper.ensurePermission(this)) {
                         GeneralUpdateScheduler.ensureDailyTipScheduled(this);
+                                            MorningRemindersScheduler.ensureMorningRemindersScheduled(this);
                     }
                 } else {
                     GeneralUpdateScheduler.cancelDailyTip(this);
+                                    MorningRemindersScheduler.cancelMorningReminders(this);
                 }
             });
         }
@@ -293,13 +305,30 @@ public class SettingsActivity extends BaseBottomNavActivity {
             btnExportData.setOnClickListener(v -> {
                 com.google.firebase.auth.FirebaseUser currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
                 if (currentUser != null) {
-                    String jsonData = LocalDataManager.getInstance(this).exportAllData(currentUser.getUid());
-                    if (jsonData != null) {
-                        // For now, just show a toast. In a full implementation, you'd save to a file or share
-                        android.widget.Toast.makeText(this, "Data exported successfully", android.widget.Toast.LENGTH_SHORT).show();
-                    } else {
-                        android.widget.Toast.makeText(this, "Failed to export data", android.widget.Toast.LENGTH_SHORT).show();
-                    }
+                    new Thread(() -> {
+                        String jsonData = LocalDataManager.getInstance(this).exportAllData(currentUser.getUid());
+                        runOnUiThread(() -> {
+                            if (jsonData == null) {
+                                Toast.makeText(this, "Failed to export data", Toast.LENGTH_SHORT).show();
+                                return;
+                            }
+
+                            try {
+                                File downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
+                                if (!downloadsDir.exists()) {
+                                    downloadsDir.mkdirs();
+                                }
+                                String fileName = "TomatoApp_Backup_" + System.currentTimeMillis() + ".json";
+                                File outFile = new File(downloadsDir, fileName);
+                                try (FileWriter writer = new FileWriter(outFile)) {
+                                    writer.write(jsonData);
+                                }
+                                Toast.makeText(this, "Exported to Downloads/" + fileName, Toast.LENGTH_LONG).show();
+                            } catch (Exception e) {
+                                Toast.makeText(this, "Failed to write backup file", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }).start();
                 } else {
                     android.widget.Toast.makeText(this, "Please log in to export data", android.widget.Toast.LENGTH_SHORT).show();
                 }
@@ -310,7 +339,9 @@ public class SettingsActivity extends BaseBottomNavActivity {
         btnImportData = findViewById(R.id.btnImportData);
         if (btnImportData != null) {
             btnImportData.setOnClickListener(v -> {
-                android.widget.Toast.makeText(this, "Import functionality coming soon", android.widget.Toast.LENGTH_SHORT).show();
+                if (importDataLauncher != null) {
+                    importDataLauncher.launch(new String[]{"application/json", "text/plain", "*/*"});
+                }
             });
         }
         
@@ -348,6 +379,49 @@ public class SettingsActivity extends BaseBottomNavActivity {
                     .show();
         });
     }
+
+    private void setupImportLauncher() {
+        importDataLauncher = registerForActivityResult(
+                new ActivityResultContracts.OpenDocument(),
+                this::handleImportDocument
+        );
+    }
+
+    private void handleImportDocument(Uri uri) {
+        if (uri == null) {
+            return;
+        }
+
+        com.google.firebase.auth.FirebaseUser currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) {
+            Toast.makeText(this, "Please log in to import data", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                StringBuilder builder = new StringBuilder();
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(getContentResolver().openInputStream(uri)))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        builder.append(line);
+                    }
+                }
+
+                boolean imported = LocalDataManager.getInstance(this).importAllData(this, currentUser.getUid(), builder.toString());
+                runOnUiThread(() -> {
+                    if (imported) {
+                        Toast.makeText(this, "Data imported successfully", Toast.LENGTH_LONG).show();
+                        recreate();
+                    } else {
+                        Toast.makeText(this, "Failed to import data", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(this, "Failed to import data", Toast.LENGTH_SHORT).show());
+            }
+        }).start();
+    }
     
     private void showLanguageDialog() {
         String[] languages = {"English", "Filipino"};
@@ -362,7 +436,6 @@ public class SettingsActivity extends BaseBottomNavActivity {
                     editTextLanguage.setText(languages[which]);
                     backupSettings();
                     dialog.dismiss();
-                    Toast.makeText(this, "Language changed. Restart app to apply.", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
@@ -387,7 +460,6 @@ public class SettingsActivity extends BaseBottomNavActivity {
                     editTextTheme.setText(themes[which]);
                     backupSettings();
                     dialog.dismiss();
-                    Toast.makeText(this, "Theme changed. Restart app to apply.", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
@@ -520,6 +592,7 @@ public class SettingsActivity extends BaseBottomNavActivity {
                     SettingsPreferences.setNotificationHour(this, selectedHour);
                     SettingsPreferences.setNotificationMinute(this, selectedMinute);
                     editTextNotificationTime.setText(String.format("%02d:%02d", selectedHour, selectedMinute));
+                    backupSettings();
                 },
                 hour, minute, true);
         timePicker.setTitle("Select Notification Time");
@@ -563,6 +636,26 @@ public class SettingsActivity extends BaseBottomNavActivity {
         if (currentUser != null) {
             LocalDataManager.getInstance(this).syncSettingsToLocal(this, currentUser.getUid());
         }
+        promptAppRestart();
+    }
+
+    private void promptAppRestart() {
+        new AlertDialog.Builder(this)
+                .setTitle("Restart required")
+                .setMessage("Settings were updated. Restart the app now to apply the changes.")
+                .setCancelable(false)
+                .setPositiveButton("Restart", (dialog, which) -> restartApp())
+                .setNegativeButton("Later", null)
+                .show();
+    }
+
+    private void restartApp() {
+        Intent launchIntent = getPackageManager().getLaunchIntentForPackage(getPackageName());
+        if (launchIntent != null) {
+            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(launchIntent);
+        }
+        finishAffinity();
     }
     
     @Override

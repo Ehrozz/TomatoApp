@@ -143,19 +143,6 @@
             android:layout_marginTop="8dp" />
     </LinearLayout>
 
-    <!-- Premium FAB -->
-    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-        android:id="@+id/fabNewCalculation"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true"
-        android:layout_marginBottom="32dp"
-        android:text="New Calculation"
-        android:textColor="@color/white"
-        android:backgroundTint="@color/red"
-        app:icon="@android:drawable/ic_input_add"
-        app:iconTint="@color/white"
-        app:elevation="8dp" />
+    <!-- FAB removed: add action disabled per UX decision -->
 
 </RelativeLayout>

@@ -61,6 +61,8 @@ import android.widget.PopupMenu;
 import android.location.Location;
 import android.location.Geocoder;
 import android.location.Address;
+import android.os.Handler;
+import android.os.Looper;
 import java.util.Locale;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -94,6 +96,9 @@ public class MainActivity extends BaseBottomNavActivity {
     View IPMCard;
     View projectedIncomeCard;
     com.google.android.material.button.MaterialButton btnViewWorkprogram;
+    private ImageView userAvatarImage;
+    private TextView userInitials;
+    private boolean tutorialRequested;
 
     // Weather UI
     private TextView weatherCondition;
@@ -126,6 +131,7 @@ public class MainActivity extends BaseBottomNavActivity {
         NotificationChannels.ensureCreated(this);
         NotificationPermissionHelper.ensurePermission(this);
         GeneralUpdateScheduler.ensureDailyTipScheduled(this);
+        com.android.tomatoapp.notifications.TaskNotificationScheduler.ensureTaskNotificationsScheduled(this);
 
         mAuth = FirebaseAuth.getInstance();
         user = mAuth.getCurrentUser();
@@ -182,10 +188,11 @@ public class MainActivity extends BaseBottomNavActivity {
         if (user != null) {
             // Update UI with user info
             TextView userNameText = findViewById(R.id.userName);
-            TextView userInitials = findViewById(R.id.userInitials); 
+            userInitials = findViewById(R.id.userInitials);
+            userAvatarImage = findViewById(R.id.userAvatarImage);
             
             String name = user.getDisplayName();
-            if (!name.isEmpty()) {
+            if (name != null && !name.isEmpty()) {
                 userNameText.setText(name);
                 userInitials.setText(getInitials(name));
             } else {
@@ -196,16 +203,31 @@ public class MainActivity extends BaseBottomNavActivity {
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
                         if (snapshot.exists()) {
                             String dbName = snapshot.child("fullName").getValue(String.class);
+                            String photoUri = snapshot.child("photoUri").getValue(String.class);
                             if (dbName != null) {
                                 userNameText.setText(dbName);
                                 userInitials.setText(getInitials(dbName));
                             }
+                            loadProfilePhoto(photoUri);
                         }
                     }
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {}
                 });
             }
+            
+            // Load profile photo if stored
+            DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("users").child(user.getUid());
+            userRef.child("photoUri").addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                    String photoUri = snapshot.getValue(String.class);
+                    loadProfilePhoto(photoUri);
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError error) { }
+            });
 
             LocalDataManager manager = LocalDataManager.getInstance(this);
             manager.syncWorkProgramsFromFirebase(user.getUid());
@@ -213,6 +235,7 @@ public class MainActivity extends BaseBottomNavActivity {
             manager.syncDetectionHistoryFromFirebase(this, user.getUid());
             manager.syncSettingsToLocal(this, user.getUid());
             WeatherDataCollector.updateWeatherForAllActivePrograms(this);
+            maybeStartTutorial();
             
             expensesBarChart = findViewById(R.id.expensesBarChart);
             setupExpensesOverviewChart();
@@ -620,6 +643,51 @@ public class MainActivity extends BaseBottomNavActivity {
         loc.setLatitude(lat);
         loc.setLongitude(lon);
         fetchAndDisplayWeather(loc, fullLabel);
+    }
+
+    private void loadProfilePhoto(String photoUri) {
+        if (userAvatarImage == null || userInitials == null) {
+            return;
+        }
+
+        if (photoUri == null || photoUri.trim().isEmpty()) {
+            userAvatarImage.setImageResource(R.drawable.ic_person);
+            userAvatarImage.setVisibility(View.VISIBLE);
+            userInitials.setVisibility(View.VISIBLE);
+            return;
+        }
+
+        try {
+            android.net.Uri uri = android.net.Uri.parse(photoUri);
+            try (java.io.InputStream inputStream = getContentResolver().openInputStream(uri)) {
+                if (inputStream != null) {
+                    userAvatarImage.setImageBitmap(android.graphics.BitmapFactory.decodeStream(inputStream));
+                    userInitials.setVisibility(View.GONE);
+                    userAvatarImage.setVisibility(View.VISIBLE);
+                    return;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+
+        userAvatarImage.setImageResource(R.drawable.ic_person);
+        userAvatarImage.setVisibility(View.VISIBLE);
+        userInitials.setVisibility(View.VISIBLE);
+    }
+
+    private void maybeStartTutorial() {
+        if (tutorialRequested || user == null) {
+            return;
+        }
+
+        tutorialRequested = true;
+        if (TutorialManager.shouldShowTutorial(this, user.getUid())) {
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                if (!isFinishing()) {
+                    TutorialManager.startTutorial(this, user.getUid());
+                }
+            }, 900);
+        }
     }
 
     private double[] getLatsForRegion(int index) {

@@ -525,6 +525,17 @@ public class LocalDataManager {
                 settingsObj.put("language", settings.language);
                 settingsObj.put("theme", settings.theme);
                 settingsObj.put("defaultCultivar", settings.defaultCultivar);
+                settingsObj.put("weatherUnit", settings.weatherUnit);
+                settingsObj.put("measurementUnit", settings.measurementUnit);
+                settingsObj.put("dateFormat", settings.dateFormat);
+                settingsObj.put("taskNotifications", settings.taskNotifications);
+                settingsObj.put("monitoringNotifications", settings.monitoringNotifications);
+                settingsObj.put("generalNotifications", settings.generalNotifications);
+                settingsObj.put("notificationSound", settings.notificationSound);
+                settingsObj.put("notificationTime", settings.notificationTime);
+                settingsObj.put("quietHoursEnabled", settings.quietHoursEnabled);
+                settingsObj.put("quietHoursStart", settings.quietHoursStart);
+                settingsObj.put("quietHoursEnd", settings.quietHoursEnd);
                 exportData.put("settings", settingsObj);
             }
 
@@ -532,6 +543,140 @@ public class LocalDataManager {
         } catch (JSONException e) {
             Log.e(TAG, "Error exporting data", e);
             return null;
+        }
+    }
+
+    public boolean importAllData(Context context, String userId, String jsonData) {
+        if (context == null || userId == null || userId.isEmpty() || jsonData == null || jsonData.isEmpty()) {
+            return false;
+        }
+
+        try {
+            JSONObject root = new JSONObject(jsonData);
+
+            database.calculationDao().deleteAllByUser(userId);
+            database.detectionHistoryDao().deleteAllByUser(userId);
+            SettingsEntity currentSettings = database.settingsDao().getByUser(userId);
+            if (currentSettings != null) {
+                database.settingsDao().delete(currentSettings);
+            }
+
+            JSONArray calculations = root.optJSONArray("calculations");
+            if (calculations != null) {
+                for (int i = 0; i < calculations.length(); i++) {
+                    JSONObject obj = calculations.getJSONObject(i);
+                    CalculationEntity entity = new CalculationEntity(
+                            obj.optString("id", ""),
+                            userId,
+                            obj.optString("programId", null),
+                            obj.optDouble("grossIncome", 0),
+                            obj.optDouble("totalExpenses", 0),
+                            obj.optDouble("netIncome", 0),
+                            obj.optDouble("hectare", 0),
+                            obj.optString("dateCreated", null),
+                            obj.optString("dateSaved", null),
+                            obj.optString("cultivarName", null),
+                            System.currentTimeMillis()
+                    );
+                    if (!entity.id.isEmpty()) {
+                        database.calculationDao().insert(entity);
+                    }
+                }
+            }
+
+            JSONArray detections = root.optJSONArray("detectionHistory");
+            if (detections != null) {
+                for (int i = 0; i < detections.length(); i++) {
+                    JSONObject obj = detections.getJSONObject(i);
+                    DetectionHistoryEntity entity = new DetectionHistoryEntity(
+                            obj.optString("id", ""),
+                            userId,
+                            null,
+                            obj.optString("imageUri", null),
+                            obj.optString("disease", null),
+                            obj.optString("accuracy", null),
+                            obj.optString("description", null),
+                            obj.optString("symptoms", null),
+                            obj.optString("cause", null),
+                            obj.optString("cure", null),
+                            obj.optString("prevention", null),
+                            obj.optString("pestTitle", null),
+                            obj.optString("pestDescription", null),
+                            obj.optString("pestImageUri", null),
+                            obj.optLong("timestamp", System.currentTimeMillis()),
+                            obj.optString("cultivar", null),
+                            obj.optInt("phase", 0),
+                            System.currentTimeMillis()
+                    );
+                    if (!entity.id.isEmpty()) {
+                        database.detectionHistoryDao().insert(entity);
+                    }
+                }
+            }
+
+            JSONObject settingsObj = root.optJSONObject("settings");
+            if (settingsObj != null) {
+                SettingsEntity settings = new SettingsEntity(
+                        userId,
+                        settingsObj.optString("language", null),
+                        settingsObj.optString("theme", null),
+                        settingsObj.optString("defaultCultivar", null),
+                        settingsObj.optString("weatherUnit", null),
+                        settingsObj.optString("measurementUnit", null),
+                        settingsObj.optString("dateFormat", null),
+                        settingsObj.optBoolean("taskNotifications", true),
+                        settingsObj.optBoolean("monitoringNotifications", true),
+                        settingsObj.optBoolean("generalNotifications", true),
+                        settingsObj.optString("notificationSound", null),
+                        settingsObj.optString("notificationTime", null),
+                        settingsObj.optBoolean("quietHoursEnabled", false),
+                        settingsObj.optString("quietHoursStart", null),
+                        settingsObj.optString("quietHoursEnd", null),
+                        System.currentTimeMillis()
+                );
+                database.settingsDao().insert(settings);
+
+                if (settings.language != null) SettingsPreferences.setLanguage(context, settings.language);
+                if (settings.theme != null) SettingsPreferences.setTheme(context, settings.theme);
+                if (settings.defaultCultivar != null) SettingsPreferences.setDefaultCultivar(context, settings.defaultCultivar);
+                if (settings.weatherUnit != null) SettingsPreferences.setWeatherUnit(context, settings.weatherUnit);
+                if (settings.measurementUnit != null) SettingsPreferences.setMeasurementUnit(context, settings.measurementUnit);
+                if (settings.dateFormat != null) SettingsPreferences.setDateFormat(context, settings.dateFormat);
+                if (settings.notificationSound != null) SettingsPreferences.setNotificationSound(context, settings.notificationSound);
+                if (settings.notificationTime != null && settings.notificationTime.contains(":")) {
+                    String[] parts = settings.notificationTime.split(":");
+                    if (parts.length == 2) {
+                        try {
+                            SettingsPreferences.setNotificationHour(context, Integer.parseInt(parts[0]));
+                            SettingsPreferences.setNotificationMinute(context, Integer.parseInt(parts[1]));
+                        } catch (NumberFormatException ignored) { }
+                    }
+                }
+                SettingsPreferences.setQuietHoursEnabled(context, settings.quietHoursEnabled);
+                if (settings.quietHoursStart != null && settings.quietHoursStart.contains(":")) {
+                    String[] parts = settings.quietHoursStart.split(":");
+                    if (parts.length == 2) {
+                        try {
+                            SettingsPreferences.setQuietHoursStartHour(context, Integer.parseInt(parts[0]));
+                            SettingsPreferences.setQuietHoursStartMinute(context, Integer.parseInt(parts[1]));
+                        } catch (NumberFormatException ignored) { }
+                    }
+                }
+                if (settings.quietHoursEnd != null && settings.quietHoursEnd.contains(":")) {
+                    String[] parts = settings.quietHoursEnd.split(":");
+                    if (parts.length == 2) {
+                        try {
+                            SettingsPreferences.setQuietHoursEndHour(context, Integer.parseInt(parts[0]));
+                            SettingsPreferences.setQuietHoursEndMinute(context, Integer.parseInt(parts[1]));
+                        } catch (NumberFormatException ignored) { }
+                    }
+                }
+            }
+
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Error importing data", e);
+            return false;
         }
     }
 

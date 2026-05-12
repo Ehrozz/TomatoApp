@@ -1,5 +1,9 @@
 package com.android.tomatoapp.common.utils;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 public class PhilippineLocations {
     
     // Region 1 (Ilocos Region) - All cities and municipalities
@@ -3158,6 +3162,27 @@ public class PhilippineLocations {
             this.latitude = latitude;
             this.longitude = longitude;
         }
+    }
+    
+    /**
+     * Get all available locations across all regions
+     */
+    public static String[] getAllLocations() {
+        List<String> allLocations = new ArrayList<>();
+        allLocations.addAll(Arrays.asList(REGION_1_LABELS));
+        allLocations.addAll(Arrays.asList(REGION_2_LABELS));
+        allLocations.addAll(Arrays.asList(REGION_3_LABELS));
+        allLocations.addAll(Arrays.asList(REGION_4_LABELS));
+        allLocations.addAll(Arrays.asList(REGION_5_LABELS));
+        allLocations.addAll(Arrays.asList(REGION_6_LABELS));
+        allLocations.addAll(Arrays.asList(REGION_7_LABELS));
+        allLocations.addAll(Arrays.asList(REGION_8_LABELS));
+        allLocations.addAll(Arrays.asList(REGION_9_LABELS));
+        allLocations.addAll(Arrays.asList(REGION_10_LABELS));
+        allLocations.addAll(Arrays.asList(REGION_11_LABELS));
+        allLocations.addAll(Arrays.asList(REGION_12_LABELS));
+        allLocations.addAll(Arrays.asList(REGION_13_LABELS));
+        return allLocations.toArray(new String[0]);
     }
 }
 

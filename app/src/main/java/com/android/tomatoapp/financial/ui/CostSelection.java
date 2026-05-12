@@ -30,7 +30,7 @@ import com.google.android.material.textfield.TextInputLayout;
 import androidx.cardview.widget.CardView;
 import androidx.core.content.ContextCompat;
 
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
+// FloatingActionButton removed: add action disabled
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -49,7 +49,7 @@ import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 import com.github.mikephil.charting.formatter.ValueFormatter;
-import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
+// ExtendedFloatingActionButton removed: add action disabled
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.auth.ui.Login;
@@ -63,7 +63,6 @@ import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
 public class CostSelection extends BaseBottomNavActivity {
 
     private RecyclerView recyclerView;
-    private ExtendedFloatingActionButton btnAdd;
     private CultivarAdapter adapter;
     private List<Cultivar> cultivarList = new ArrayList<>();
     private TextView programCountText;
@@ -86,7 +85,7 @@ public class CostSelection extends BaseBottomNavActivity {
         adapter = new CultivarAdapter(cultivarList);
         recyclerView.setAdapter(adapter);
 
-        btnAdd = findViewById(R.id.fabNewCalculation);
+        // FAB removed from layout; add action is disabled
         programCountText = findViewById(R.id.programCountText);
         emptyState = findViewById(R.id.emptyState);
         headerMenuButton = findViewById(R.id.headerMenuButton);
@@ -139,7 +138,7 @@ public class CostSelection extends BaseBottomNavActivity {
             }
         });
 
-        btnAdd.setOnClickListener(v -> showAddCalculationDialog());
+        // Add button previously opened calculate dialog; feature removed
 
         setupBottomNavigation();
 

@@ -195,9 +195,9 @@ public class SeasonComparisonActivity extends BaseBottomNavActivity {
                 if (title != null) title.setText("📊 Season Comparison");
                 if (metric1 != null) {
                     metric1.setText(String.format(Locale.getDefault(), 
-                        "Profit Difference: ₱%,.2f (%.1f%%)", 
-                        comp.getProfitDifference(), 
-                        comp.getProfitDifferencePercent()));
+                        "Adjusted Profit Difference: ₱%,.2f (%.1f%%)", 
+                        comp.getAdjustedProfitDifference(), 
+                        comp.getAdjustedProfitDifferencePercent()));
                 }
                 if (metric2 != null) {
                     metric2.setText(String.format(Locale.getDefault(), 
@@ -225,7 +225,7 @@ public class SeasonComparisonActivity extends BaseBottomNavActivity {
                 }
                 if (metric2 != null) {
                     metric2.setText(String.format(Locale.getDefault(), 
-                        "Profit: ₱%,.2f (₱%,.2f/ha)", summary.getProfit(), summary.getProfitPerArea()));
+                        "Adjusted Profit: ₱%,.2f (₱%,.2f/ha)", summary.getAdjustedProfit(), summary.getProfitPerArea()));
                 }
                 if (metric3 != null) {
                     metric3.setText(String.format(Locale.getDefault(), 

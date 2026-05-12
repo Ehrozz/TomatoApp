@@ -42,15 +42,28 @@
             android:layout_marginEnd="12dp"
             android:clickable="true"
             android:focusable="true">
-            <TextView
-                android:id="@+id/userInitials"
+            <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:text="U"
-                android:gravity="center"
-                android:textColor="@color/white"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+                android:layout_height="match_parent">
+
+                <ImageView
+                    android:id="@+id/userAvatarImage"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/ic_person"
+                    android:contentDescription="User profile photo" />
+
+                <TextView
+                    android:id="@+id/userInitials"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:text="U"
+                    android:gravity="center"
+                    android:textColor="@color/white"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+            </FrameLayout>
         </com.google.android.material.card.MaterialCardView>
 
         <LinearLayout

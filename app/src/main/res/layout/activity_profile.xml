@@ -40,21 +40,36 @@
                 android:layout_marginBottom="30dp">
 
                 <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/profileAvatarCard"
                     android:layout_width="100dp"
                     android:layout_height="100dp"
                     app:cardCornerRadius="50dp"
                     app:cardElevation="6dp"
                     app:strokeWidth="3dp"
                     app:strokeColor="@color/white">
-                    
-                    <TextView
-                        android:id="@+id/profileAvatarEmoji"
+
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent">
+
+                        <ImageView
+                            android:id="@+id/profileAvatarImage"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop"
+                            android:src="@drawable/ic_person"
+                            android:background="@color/white"
+                            android:contentDescription="Profile photo" />
+
+                        <TextView
+                            android:id="@+id/profileAvatarEmoji"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:text="👨‍🌾"
                         android:gravity="center"
                         android:textSize="48sp"
-                        android:background="@color/white" />
+                            android:background="@color/white" />
+                    </FrameLayout>
                 </com.google.android.material.card.MaterialCardView>
 
                 <TextView

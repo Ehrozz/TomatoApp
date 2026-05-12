@@ -11,6 +11,10 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.IconButton
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -38,7 +42,8 @@ fun AppTextField(
     borderColor: Color = Border,
     textColor: Color = TextPrimary
 ) {
-    val visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None
+    val showPassword = remember { mutableStateOf(false) }
+    val visualTransformation = if (isPassword && !showPassword.value) PasswordVisualTransformation() else VisualTransformation.None
 
     TextField(
         value = value,
@@ -82,7 +87,15 @@ fun AppTextField(
             cursorColor = TextPrimary
         ),
         shape = RoundedCornerShape(PillRadius),
-        singleLine = true
+        singleLine = true,
+        trailingIcon = if (isPassword) {
+            {
+                IconButton(onClick = { showPassword.value = !showPassword.value }) {
+                    val icon = if (showPassword.value) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                    Icon(icon, contentDescription = if (showPassword.value) "Hide password" else "Show password")
+                }
+            }
+        } else null
     )
 }
 

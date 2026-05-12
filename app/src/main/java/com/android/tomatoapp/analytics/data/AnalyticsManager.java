@@ -20,6 +20,7 @@ public class AnalyticsManager {
         public double totalAdjustedIncome;
         public double totalAdjustedExpenses;
         public double totalCompletionRate;
+        public double totalCompletionWeight;
         public double totalYield; // Total kg harvested
         public double totalActualYield; // Total kg/hectare
         public int programCount;
@@ -32,16 +33,16 @@ public class AnalyticsManager {
             return totalIncome - totalExpenses;
         }
 
+        public double getAdjustedProfit() {
+            return totalAdjustedIncome - totalAdjustedExpenses;
+        }
+
         public double getIncomePerArea() {
             return totalArea > 0 ? totalIncome / totalArea : 0;
         }
 
         public double getProfitPerArea() {
-            return totalArea > 0 ? getProfit() / totalArea : 0;
-        }
-
-        public double getAdjustedProfit() {
-            return totalAdjustedIncome - totalAdjustedExpenses;
+            return totalArea > 0 ? getAdjustedProfit() / totalArea : 0;
         }
 
         public double getAdjustedProfitPerArea() {
@@ -49,6 +50,9 @@ public class AnalyticsManager {
         }
 
         public double getAverageCompletionRate() {
+            if (totalCompletionWeight > 0) {
+                return totalCompletionRate / totalCompletionWeight;
+            }
             return programCount > 0 ? totalCompletionRate / programCount : 0;
         }
         
@@ -73,6 +77,7 @@ public class AnalyticsManager {
         public double totalAdjustedIncome;
         public double totalAdjustedExpenses;
         public double totalCompletionRate;
+        public double totalCompletionWeight;
         public double totalYield;
         public double totalActualYield;
         
@@ -83,12 +88,19 @@ public class AnalyticsManager {
         public double getProfit() {
             return totalIncome - totalExpenses;
         }
+
+        public double getAdjustedProfit() {
+            return totalAdjustedIncome - totalAdjustedExpenses;
+        }
         
         public double getProfitPerArea() {
-            return totalArea > 0 ? getProfit() / totalArea : 0;
+            return totalArea > 0 ? getAdjustedProfit() / totalArea : 0;
         }
         
         public double getAverageCompletionRate() {
+            if (totalCompletionWeight > 0) {
+                return totalCompletionRate / totalCompletionWeight;
+            }
             return programCount > 0 ? totalCompletionRate / programCount : 0;
         }
         
@@ -116,9 +128,8 @@ public class AnalyticsManager {
             s.totalExpenses += e.projectedExpenses;
             s.totalAdjustedIncome += e.adjustedIncome;
             s.totalAdjustedExpenses += e.adjustedExpenses;
-            if (e.completionRate > 0) {
-                s.totalCompletionRate += e.completionRate;
-            }
+            s.totalCompletionRate += e.completionRate * e.areaSize;
+            s.totalCompletionWeight += e.areaSize;
             s.totalYield += e.totalYield;
             s.totalActualYield += e.actualYield;
             s.programCount++;
@@ -150,9 +161,8 @@ public class AnalyticsManager {
             s.totalExpenses += e.projectedExpenses;
             s.totalAdjustedIncome += e.adjustedIncome;
             s.totalAdjustedExpenses += e.adjustedExpenses;
-            if (e.completionRate > 0) {
-                s.totalCompletionRate += e.completionRate;
-            }
+            s.totalCompletionRate += e.completionRate * e.areaSize;
+            s.totalCompletionWeight += e.areaSize;
             s.totalYield += e.totalYield;
             s.totalActualYield += e.actualYield;
         }
@@ -172,10 +182,20 @@ public class AnalyticsManager {
             if (onSeason == null || offSeason == null) return 0;
             return offSeason.getProfit() - onSeason.getProfit();
         }
+
+        public double getAdjustedProfitDifference() {
+            if (onSeason == null || offSeason == null) return 0;
+            return offSeason.getAdjustedProfit() - onSeason.getAdjustedProfit();
+        }
         
         public double getProfitDifferencePercent() {
             if (onSeason == null || onSeason.getProfit() == 0) return 0;
             return (getProfitDifference() / onSeason.getProfit()) * 100;
+        }
+
+        public double getAdjustedProfitDifferencePercent() {
+            if (onSeason == null || onSeason.getAdjustedProfit() == 0) return 0;
+            return (getAdjustedProfitDifference() / onSeason.getAdjustedProfit()) * 100;
         }
         
         public double getYieldDifference() {

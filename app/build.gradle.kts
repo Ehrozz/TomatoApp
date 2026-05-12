@@ -14,7 +14,7 @@ plugins {
  */
 val versionMajor = 1
 val versionMinor = 0
-val versionPatch = 0
+val versionPatch = 1
 
 fun Project.buildNumberOrNull(): Int? {
     val fromEnv = System.getenv("BUILD_NUMBER")?.trim()?.takeIf { it.isNotEmpty() }

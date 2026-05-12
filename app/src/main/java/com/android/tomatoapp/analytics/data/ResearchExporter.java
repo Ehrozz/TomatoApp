@@ -185,7 +185,7 @@ public class ResearchExporter {
             return null;
         }
     }
-    
+
     private static String escapeCsv(String value) {
         if (value == null) {
             return "";

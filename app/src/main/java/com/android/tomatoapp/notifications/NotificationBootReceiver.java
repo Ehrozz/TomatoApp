@@ -14,6 +14,7 @@ public class NotificationBootReceiver extends BroadcastReceiver {
         if (intent == null || intent.getAction() == null) return;
         if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
             GeneralUpdateScheduler.ensureDailyTipScheduled(context);
+                    MorningRemindersScheduler.ensureMorningRemindersScheduled(context);
         }
     }
 }

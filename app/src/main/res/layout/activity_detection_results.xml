@@ -312,7 +312,13 @@
                             android:textSize="13sp"
                             android:lineSpacingExtra="5dp"
                             android:layout_marginBottom="16dp"
-                            android:paddingStart="36dp" />
+                            android:paddingStart="36dp"
+                            android:maxLines="3"
+                            android:ellipsize="end"
+                            android:cursorVisible="false"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?attr/selectableItemBackground" />
 
                         <!-- Treatment sub-section -->
                         <LinearLayout
@@ -356,7 +362,12 @@
                             android:textColor="@color/text_secondary"
                             android:textSize="13sp"
                             android:lineSpacingExtra="5dp"
-                            android:paddingStart="36dp" />
+                            android:paddingStart="36dp"
+                            android:maxLines="3"
+                            android:ellipsize="end"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?attr/selectableItemBackground" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -555,7 +566,12 @@
                                 android:text="Improve air circulation and avoid overhead watering."
                                 android:textColor="@color/text_primary"
                                 android:textSize="13sp"
-                                android:lineSpacingExtra="3dp" />
+                                android:lineSpacingExtra="3dp"
+                                android:maxLines="2"
+                                android:ellipsize="end"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:foreground="?attr/selectableItemBackground" />
                         </LinearLayout>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>

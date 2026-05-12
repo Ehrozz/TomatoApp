@@ -85,6 +85,7 @@
                     android:layout_height="50dp"
                     android:background="@drawable/bg_pill_input"
                     android:hint="John Doe"
+                    android:textColor="@color/text_primary"
                     android:textColorHint="@color/muted"
                     android:paddingStart="18dp"
                     android:paddingEnd="18dp"
@@ -107,6 +108,7 @@
                     android:layout_height="50dp"
                     android:background="@drawable/bg_pill_input"
                     android:hint="Poblacion, Bukidnon"
+                    android:textColor="@color/text_primary"
                     android:textColorHint="@color/muted"
                     android:paddingStart="18dp"
                     android:paddingEnd="18dp"
@@ -145,18 +147,25 @@
                     android:textColor="@color/muted"
                     android:layout_marginBottom="6dp" />
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/password"
+                <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
-                    android:layout_height="50dp"
-                    android:background="@drawable/bg_pill_input"
-                    android:hint="••••••••"
-                    android:textColorHint="@color/muted"
-                    android:paddingStart="18dp"
-                    android:paddingEnd="18dp"
-                    android:textSize="14sp"
-                    android:inputType="textPassword"
-                    android:layout_marginBottom="24dp" />
+                    android:layout_height="wrap_content"
+                    app:endIconMode="password_toggle"
+                    android:layout_marginBottom="24dp">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/password"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:background="@drawable/bg_pill_input"
+                        android:hint="••••••••"
+                        android:textColorHint="@color/muted"
+                        android:paddingStart="18dp"
+                        android:paddingEnd="18dp"
+                        android:textSize="14sp"
+                        android:inputType="textPassword" />
+
+                </com.google.android.material.textfield.TextInputLayout>
 
                 <android.widget.Button
                     android:id="@+id/btn_register"

@@ -14,6 +14,7 @@ public final class NotificationPreferences {
     private static final String KEY_MONITORING_ENABLED = "monitoring_enabled";
     private static final String KEY_GENERAL_ENABLED = "general_enabled";
     private static final String KEY_GENERAL_SCHEDULED = "general_scheduled";
+    private static final String KEY_TASK_SCHEDULED = "task_scheduled";
 
     private NotificationPreferences() {
     }
@@ -28,6 +29,14 @@ public final class NotificationPreferences {
 
     public static void setTaskNotificationsEnabled(Context context, boolean enabled) {
         prefs(context).edit().putBoolean(KEY_TASK_ENABLED, enabled).apply();
+    }
+
+    public static boolean areTaskRemindersScheduled(Context context) {
+        return prefs(context).getBoolean(KEY_TASK_SCHEDULED, false);
+    }
+
+    public static void setTaskRemindersScheduled(Context context, boolean scheduled) {
+        prefs(context).edit().putBoolean(KEY_TASK_SCHEDULED, scheduled).apply();
     }
 
     public static boolean areMonitoringNotificationsEnabled(Context context) {

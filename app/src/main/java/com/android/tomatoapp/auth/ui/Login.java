@@ -148,7 +148,6 @@ public class Login extends AppCompatActivity {
         textView.setOnClickListener(v -> {
             Intent intent = new Intent(getApplicationContext(), Register.class);
             startActivity(intent);
-            finish();
         });
 
         // Email/Username/Phone login
@@ -207,10 +206,34 @@ public class Login extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == RC_SIGN_IN) {
+            // Add null check for data to prevent crashes
+            if (data == null) {
+                Log.w("GoogleSignIn", "Google sign in returned null data");
+                if (progressBar != null) {
+                    progressBar.setVisibility(View.GONE);
+                }
+                if (buttonGoogleSignIn != null) {
+                    buttonGoogleSignIn.setEnabled(true);
+                }
+                Toast.makeText(this, getString(R.string.error_google_signin_failed), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
             Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
             try {
                 GoogleSignInAccount account = task.getResult(ApiException.class);
-                firebaseAuthWithGoogle(account.getIdToken());
+                if (account != null && account.getIdToken() != null) {
+                    firebaseAuthWithGoogle(account.getIdToken());
+                } else {
+                    Log.w("GoogleSignIn", "Google account or ID token is null");
+                    if (progressBar != null) {
+                        progressBar.setVisibility(View.GONE);
+                    }
+                    if (buttonGoogleSignIn != null) {
+                        buttonGoogleSignIn.setEnabled(true);
+                    }
+                    Toast.makeText(this, getString(R.string.error_google_signin_failed), Toast.LENGTH_SHORT).show();
+                }
             } catch (ApiException e) {
                 Log.w("GoogleSignIn", "Google sign in failed", e);
                 if (progressBar != null) {

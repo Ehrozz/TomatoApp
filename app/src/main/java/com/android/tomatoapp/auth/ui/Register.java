@@ -8,6 +8,7 @@ import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.util.Log;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
@@ -24,9 +25,11 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.auth.data.User;
+import com.android.tomatoapp.common.utils.PhilippineLocations;
 import com.android.tomatoapp.core.network.FirebaseErrorHandler;
 import com.android.tomatoapp.core.ui.MainActivity;
 
@@ -112,6 +115,11 @@ public class Register extends AppCompatActivity {
             finish();
             return;
         }
+        
+        // Add location picker to address field
+        if (editTextAddress != null) {
+            editTextAddress.setOnClickListener(v -> showLocationPicker());
+        }
     }
 
     private void attemptRegistration() {
@@ -154,6 +162,8 @@ public class Register extends AppCompatActivity {
                         }
 
                     // Create user with null values for username and phone fields
+                    try {
+                        // Create user with null values for username and phone fields
                         User newUser = new User(
                                 fullName,
                             null,  // username
@@ -178,6 +188,12 @@ public class Register extends AppCompatActivity {
                                     setButtonsEnabled(true);
                                     Toast.makeText(Register.this, getString(R.string.error_save_user_data), Toast.LENGTH_LONG).show();
                                 });
+                    } catch (Exception e) {
+                        progressBar.setVisibility(View.GONE);
+                        setButtonsEnabled(true);
+                        Toast.makeText(Register.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        Log.e("Register", "Error during user creation", e);
+                    }
                     });
             });
     }
@@ -307,5 +323,24 @@ public class Register extends AppCompatActivity {
 
     private interface AvailabilityCallback {
         void onResult(boolean available);
+    }
+    
+    private void showLocationPicker() {
+        // Get all available locations
+        String[] locations = PhilippineLocations.getAllLocations();
+        if (locations == null || locations.length == 0) {
+            Toast.makeText(this, "No locations available", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Show location selection dialog
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Select Farm Location")
+                .setItems(locations, (dialog, which) -> {
+                    String selectedLocation = locations[which];
+                    editTextAddress.setText(selectedLocation);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 }

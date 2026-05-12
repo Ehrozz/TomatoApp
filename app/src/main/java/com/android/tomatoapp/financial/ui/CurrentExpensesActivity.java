@@ -67,7 +67,7 @@ public class CurrentExpensesActivity extends BaseBottomNavActivity {
         setupBottomNavigation();
 
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle("Current Expenses");
+            getSupportActionBar().setTitle("Daily Expenses Overview");
         }
 
         // Get intent data
@@ -602,7 +602,7 @@ public class CurrentExpensesActivity extends BaseBottomNavActivity {
             // Title
             paint.setTextSize(24);
             paint.setFakeBoldText(true);
-            canvas.drawText("Current Expenses Report", margin, y, paint);
+            canvas.drawText("Daily Expenses Overview Report", margin, y, paint);
             y += 40;
             
             paint.setTextSize(14);

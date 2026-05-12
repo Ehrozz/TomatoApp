@@ -1,13 +1,19 @@
 package com.android.tomatoapp.auth.ui;
 
 import android.os.Bundle;
+import android.content.Intent;
 import android.text.TextUtils;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -23,6 +29,9 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Activity for viewing and editing user profile information.
@@ -41,6 +50,10 @@ public class ProfileActivity extends BaseBottomNavActivity {
     private ProgressBar progressBar;
     private TextView profileNameHeader;
     private TextView profileEmailHeader;
+    private ImageView profileAvatarImage;
+    private TextView profileAvatarEmoji;
+    private String profilePhotoUri;
+    private ActivityResultLauncher<String[]> photoPickerLauncher;
     
     private FirebaseAuth mAuth;
     private FirebaseUser currentUser;
@@ -72,6 +85,7 @@ public class ProfileActivity extends BaseBottomNavActivity {
         userRef = FirebaseDatabase.getInstance().getReference("users").child(currentUser.getUid());
         
         initializeViews();
+        setupPhotoPicker();
         setupSaveButton();
         loadUserData();
     }
@@ -88,6 +102,13 @@ public class ProfileActivity extends BaseBottomNavActivity {
         progressBar = findViewById(R.id.progressBarProfile);
         profileNameHeader = findViewById(R.id.profileNameHeader);
         profileEmailHeader = findViewById(R.id.profileEmailHeader);
+        profileAvatarImage = findViewById(R.id.profileAvatarImage);
+        profileAvatarEmoji = findViewById(R.id.profileAvatarEmoji);
+
+        View avatarCard = findViewById(R.id.profileAvatarCard);
+        if (avatarCard != null) {
+            avatarCard.setOnClickListener(v -> launchPhotoPicker());
+        }
         
         // Set email from Firebase Auth (read-only)
         if (currentUser.getEmail() != null) {
@@ -162,6 +183,8 @@ public class ProfileActivity extends BaseBottomNavActivity {
         if (user.address != null) {
             editTextAddress.setText(user.address);
         }
+        profilePhotoUri = user.photoUri;
+        loadProfilePhoto(profilePhotoUri);
         // Email is already set from Firebase Auth
     }
     
@@ -181,25 +204,19 @@ public class ProfileActivity extends BaseBottomNavActivity {
             return;
         }
         
-        // Create User object with null values for username and phone fields
-        User user = new User(
-                fullName,
-                null,  // username
-                null,  // usernameLower
-                address,
-                email,
-                null,  // phone
-                null,  // phoneInternational
-                null   // phoneLocal
-        );
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("fullName", fullName);
+        updates.put("address", address);
+        updates.put("email", email);
+        updates.put("photoUri", profilePhotoUri);
         
         // Show progress
         progressBar.setVisibility(View.VISIBLE);
         btnSave.setEnabled(false);
         isLoading = true;
         
-        // Save to Firebase
-        userRef.setValue(user)
+        // Save only changed profile fields to preserve username/phone from registration flow.
+        userRef.updateChildren(updates)
                 .addOnSuccessListener(aVoid -> {
                     progressBar.setVisibility(View.GONE);
                     btnSave.setEnabled(true);
@@ -238,6 +255,61 @@ public class ProfileActivity extends BaseBottomNavActivity {
     
     private void clearErrors() {
         layoutFullName.setError(null);
+    }
+
+    private void setupPhotoPicker() {
+        photoPickerLauncher = registerForActivityResult(
+                new ActivityResultContracts.OpenDocument(),
+                this::handlePickedPhoto
+        );
+    }
+
+    private void launchPhotoPicker() {
+        if (photoPickerLauncher != null) {
+            photoPickerLauncher.launch(new String[]{"image/*"});
+        }
+    }
+
+    private void handlePickedPhoto(Uri uri) {
+        if (uri == null) {
+            return;
+        }
+
+        try {
+            getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        } catch (SecurityException ignored) {
+        }
+
+        profilePhotoUri = uri.toString();
+        loadProfilePhoto(profilePhotoUri);
+    }
+
+    private void loadProfilePhoto(String uriString) {
+        if (profileAvatarImage == null || profileAvatarEmoji == null) {
+            return;
+        }
+
+        if (TextUtils.isEmpty(uriString)) {
+            profileAvatarImage.setImageResource(R.drawable.ic_person);
+            profileAvatarEmoji.setVisibility(View.VISIBLE);
+            profileAvatarImage.setVisibility(View.VISIBLE);
+            return;
+        }
+
+        try {
+            Uri uri = Uri.parse(uriString);
+            try (java.io.InputStream inputStream = getContentResolver().openInputStream(uri)) {
+                if (inputStream != null) {
+                    profileAvatarImage.setImageBitmap(BitmapFactory.decodeStream(inputStream));
+                    profileAvatarEmoji.setVisibility(View.GONE);
+                    profileAvatarImage.setVisibility(View.VISIBLE);
+                }
+            }
+        } catch (Exception e) {
+            profileAvatarImage.setImageResource(R.drawable.ic_person);
+            profileAvatarEmoji.setVisibility(View.VISIBLE);
+            profileAvatarImage.setVisibility(View.VISIBLE);
+        }
     }
 
 }

@@ -7,6 +7,7 @@ import android.view.View;
 import android.view.Window;
 import android.widget.TextView;
 import com.android.tomatoapp.R;
+import android.widget.ProgressBar;
 
 import androidx.annotation.NonNull;
 
@@ -34,6 +35,7 @@ public class TutorialDialog extends Dialog {
     private MaterialButton btnPrevious;
     private MaterialButton btnSkip;
     private MaterialButton btnNext;
+        private ProgressBar progressBar;
     
     /**
      * Tutorial step data structure.
@@ -220,6 +222,7 @@ public class TutorialDialog extends Dialog {
         btnPrevious = findViewById(R.id.btnTutorialPrevious);
         btnSkip = findViewById(R.id.btnTutorialSkip);
         btnNext = findViewById(R.id.btnTutorialNext);
+            progressBar = findViewById(R.id.progressTutorial);
         
         if (txtTitle == null || txtContent == null || txtProgress == null ||
             btnPrevious == null || btnSkip == null || btnNext == null) {
@@ -245,6 +248,12 @@ public class TutorialDialog extends Dialog {
         
         // Update progress
         txtProgress.setText(String.format("Step %d of %d", currentStep + 1, steps.size()));
+        
+                // Update progress bar
+                if (progressBar != null) {
+                    int progress = (int) (((double)(currentStep + 1) / steps.size()) * 100);
+                    progressBar.setProgress(progress);
+                }
         
         // Update button visibility
         btnPrevious.setVisibility(currentStep > 0 ? View.VISIBLE : View.GONE);

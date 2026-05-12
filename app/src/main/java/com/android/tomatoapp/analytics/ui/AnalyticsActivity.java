@@ -24,6 +24,7 @@ import com.android.tomatoapp.analytics.data.AnalyticsManager;
 import com.android.tomatoapp.analytics.data.AnalyticsPdfExporter;
 import com.android.tomatoapp.analytics.data.ResearchExporter;
 import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
+import com.android.tomatoapp.financial.ui.CurrentExpensesActivity;
 import com.android.tomatoapp.workprogram.data.WorkProgramDataHelper;
 import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
 import com.android.tomatoapp.workprogram.data.WorkProgramRepository;
@@ -64,7 +65,11 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
 
     private final List<WorkProgramEntity> allPrograms = new ArrayList<>();
     private final List<AnalyticsManager.CultivarSummary> summaries = new ArrayList<>();
-    private ExpandableCultivarAdapter expandableAdapter;
+    private final List<WorkProgramEntity> displayedPrograms = new ArrayList<>();
+    private final List<AnalyticsManager.CultivarSummary> displayedSummaries = new ArrayList<>();
+    private WorkProgramCardAdapter workProgramCardAdapter;
+    private TextView tvNetProfitStat;
+    private TextView tvCompletionStat;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -88,6 +93,8 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
         completionChart = findViewById(R.id.completionChart);
         progressBar = findViewById(R.id.analyticsProgress);
         emptyText = findViewById(R.id.emptyText);
+        tvNetProfitStat = findViewById(R.id.tvNetProfitStat);
+        tvCompletionStat = findViewById(R.id.tvCompletionStat);
         Button btnExportPdf = findViewById(R.id.btnExportPdf);
         Button btnExportCsv = findViewById(R.id.btnExportCsv);
 
@@ -105,16 +112,35 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
     }
 
     private void setupViewModeSelector() {
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(
                 this,
                 android.R.layout.simple_spinner_item,
                 new String[]{"Table", "Chart"}
-        );
+        ) {
+            @Override
+            public View getView(int position, View convertView, android.view.ViewGroup parent) {
+                View view = super.getView(position, convertView, parent);
+                TextView tv = (TextView) view;
+                tv.setTextColor(getResources().getColor(R.color.text_primary, null));
+                return view;
+            }
+
+            @Override
+            public View getDropDownView(int position, View convertView, android.view.ViewGroup parent) {
+                View view = super.getDropDownView(position, convertView, parent);
+                TextView tv = (TextView) view;
+                tv.setTextColor(getResources().getColor(R.color.text_primary, null));
+                return view;
+            }
+        };
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         viewModeSpinner.setAdapter(adapter);
         viewModeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (view instanceof TextView) {
+                    ((TextView) view).setTextColor(getResources().getColor(R.color.text_primary, null));
+                }
                 updateViewMode(position == 0 ? "table" : "chart");
             }
 
@@ -125,8 +151,8 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
 
     private void setupRecyclerView() {
         tableRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        expandableAdapter = new ExpandableCultivarAdapter(summaries, allPrograms);
-        tableRecyclerView.setAdapter(expandableAdapter);
+        workProgramCardAdapter = new WorkProgramCardAdapter(displayedPrograms);
+        tableRecyclerView.setAdapter(workProgramCardAdapter);
     }
 
     private void loadData() {
@@ -169,16 +195,35 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
         seasons.add("On-season");
         seasons.add("Off-season");
         
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(
                 this,
                 android.R.layout.simple_spinner_item,
                 seasons
-        );
+        ) {
+            @Override
+            public View getView(int position, View convertView, android.view.ViewGroup parent) {
+                View view = super.getView(position, convertView, parent);
+                TextView tv = (TextView) view;
+                tv.setTextColor(getResources().getColor(R.color.text_primary, null));
+                return view;
+            }
+
+            @Override
+            public View getDropDownView(int position, View convertView, android.view.ViewGroup parent) {
+                View view = super.getDropDownView(position, convertView, parent);
+                TextView tv = (TextView) view;
+                tv.setTextColor(getResources().getColor(R.color.text_primary, null));
+                return view;
+            }
+        };
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         seasonFilterSpinner.setAdapter(adapter);
         seasonFilterSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (view instanceof TextView) {
+                    ((TextView) view).setTextColor(getResources().getColor(R.color.text_primary, null));
+                }
                 String selected = position == 0 ? null : (position == 1 ? "on-season" : "off-season");
                 filterBySeason(selected);
             }
@@ -196,16 +241,35 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
                 cultivars.add(e.cultivarName);
             }
         }
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(
                 this,
                 android.R.layout.simple_spinner_item,
                 cultivars
-        );
+        ) {
+            @Override
+            public View getView(int position, View convertView, android.view.ViewGroup parent) {
+                View view = super.getView(position, convertView, parent);
+                TextView tv = (TextView) view;
+                tv.setTextColor(getResources().getColor(R.color.text_primary, null));
+                return view;
+            }
+
+            @Override
+            public View getDropDownView(int position, View convertView, android.view.ViewGroup parent) {
+                View view = super.getDropDownView(position, convertView, parent);
+                TextView tv = (TextView) view;
+                tv.setTextColor(getResources().getColor(R.color.text_primary, null));
+                return view;
+            }
+        };
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         cultivarFilterSpinner.setAdapter(adapter);
         cultivarFilterSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (view instanceof TextView) {
+                    ((TextView) view).setTextColor(getResources().getColor(R.color.text_primary, null));
+                }
                 String selected = position == 0 ? null : cultivars.get(position);
                 filterSummaries(selected);
             }
@@ -219,7 +283,12 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
         summaries.clear();
         summaries.addAll(analyticsManager.summarizeByCultivar(allPrograms));
         Collections.sort(summaries, (a, b) -> Double.compare(b.getProfitPerArea(), a.getProfitPerArea()));
-        expandableAdapter.updateData(summaries, allPrograms);
+        displayedPrograms.clear();
+        displayedPrograms.addAll(allPrograms);
+        displayedSummaries.clear();
+        displayedSummaries.addAll(summaries);
+        workProgramCardAdapter.updateData(displayedPrograms);
+        updateTopStatsFromPrograms(displayedPrograms);
         updateChart();
         updateCompletionChart();
     }
@@ -256,9 +325,43 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
         // Recalculate summaries with filtered programs
         List<AnalyticsManager.CultivarSummary> filtered = analyticsManager.summarizeByCultivar(filteredPrograms);
         Collections.sort(filtered, (a, b) -> Double.compare(b.getProfitPerArea(), a.getProfitPerArea()));
-        expandableAdapter.updateData(filtered, filteredPrograms);
+        displayedPrograms.clear();
+        displayedPrograms.addAll(filteredPrograms);
+        displayedSummaries.clear();
+        displayedSummaries.addAll(filtered);
+        workProgramCardAdapter.updateData(displayedPrograms);
+        updateTopStatsFromPrograms(displayedPrograms);
         updateChart();
         updateCompletionChart();
+    }
+
+    private void updateTopStatsFromPrograms(List<WorkProgramEntity> programs) {
+        if (tvNetProfitStat == null || tvCompletionStat == null) {
+            return;
+        }
+        if (programs == null || programs.isEmpty()) {
+            tvNetProfitStat.setText("₱0.0k");
+            tvCompletionStat.setText("0%");
+            return;
+        }
+
+        double totalProfit = 0.0;
+        double weightedCompletionSum = 0.0;
+        double weightedCompletionArea = 0.0;
+        for (WorkProgramEntity program : programs) {
+            totalProfit += (program.adjustedIncome - program.adjustedExpenses);
+            if (program.areaSize > 0) {
+                weightedCompletionSum += program.completionRate * program.areaSize;
+                weightedCompletionArea += program.areaSize;
+            } else {
+                weightedCompletionSum += program.completionRate;
+                weightedCompletionArea += 1.0;
+            }
+        }
+
+        double avgCompletion = weightedCompletionArea > 0 ? weightedCompletionSum / weightedCompletionArea : 0.0;
+        tvNetProfitStat.setText(String.format(Locale.getDefault(), "₱%.1fk", totalProfit / 1000.0));
+        tvCompletionStat.setText(String.format(Locale.getDefault(), "%.0f%%", avgCompletion));
     }
 
     private void updateViewMode(String mode) {
@@ -287,15 +390,14 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
     }
 
     private void updateChart() {
-        if (summaries.isEmpty()) {
+        if (displayedSummaries.isEmpty()) {
             barChart.clear();
             return;
         }
         List<BarEntry> entries = new ArrayList<>();
         List<String> labels = new ArrayList<>();
         int index = 0;
-        // Use all summaries for chart (not filtered)
-        List<AnalyticsManager.CultivarSummary> chartSummaries = analyticsManager.summarizeByCultivar(allPrograms);
+        List<AnalyticsManager.CultivarSummary> chartSummaries = new ArrayList<>(displayedSummaries);
         Collections.sort(chartSummaries, (a, b) -> Double.compare(b.getProfitPerArea(), a.getProfitPerArea()));
         for (AnalyticsManager.CultivarSummary s : chartSummaries) {
             entries.add(new BarEntry(index, (float) s.getProfitPerArea()));
@@ -336,14 +438,14 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
         if (completionChart == null) {
             return;
         }
-        if (summaries.isEmpty()) {
+        if (displayedSummaries.isEmpty()) {
             completionChart.clear();
             return;
         }
 
         List<Entry> entries = new ArrayList<>();
         List<String> labels = new ArrayList<>();
-        List<AnalyticsManager.CultivarSummary> chartSummaries = analyticsManager.summarizeByCultivar(allPrograms);
+        List<AnalyticsManager.CultivarSummary> chartSummaries = new ArrayList<>(displayedSummaries);
         Collections.sort(chartSummaries, (a, b) -> Double.compare(b.getAverageCompletionRate(), a.getAverageCompletionRate()));
 
         int index = 0;
@@ -386,79 +488,64 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
         completionChart.invalidate();
     }
 
-    // --- Adapter for Cultivars (navigates to details screen on click) ---
-    class ExpandableCultivarAdapter extends RecyclerView.Adapter<ExpandableCultivarAdapter.CultivarViewHolder> {
-        private List<AnalyticsManager.CultivarSummary> cultivarSummaries;
-        private List<WorkProgramEntity> allPrograms;
+    // --- Adapter for individual work programs ---
+    class WorkProgramCardAdapter extends RecyclerView.Adapter<WorkProgramCardAdapter.WorkProgramViewHolder> {
+        private List<WorkProgramEntity> items;
 
-        ExpandableCultivarAdapter(List<AnalyticsManager.CultivarSummary> summaries, List<WorkProgramEntity> programs) {
-            this.cultivarSummaries = summaries;
-            this.allPrograms = programs;
+        WorkProgramCardAdapter(List<WorkProgramEntity> items) {
+            this.items = items;
         }
 
-        void updateData(List<AnalyticsManager.CultivarSummary> summaries, List<WorkProgramEntity> programs) {
-            this.cultivarSummaries = summaries;
-            this.allPrograms = programs;
+        void updateData(List<WorkProgramEntity> items) {
+            this.items = items;
             notifyDataSetChanged();
         }
 
         @Override
-        public CultivarViewHolder onCreateViewHolder(android.view.ViewGroup parent, int viewType) {
+        public WorkProgramViewHolder onCreateViewHolder(android.view.ViewGroup parent, int viewType) {
             View view = android.view.LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.item_cultivar_expandable, parent, false);
-            return new CultivarViewHolder(view);
+                    .inflate(R.layout.item_work_program_analytics_card, parent, false);
+            return new WorkProgramViewHolder(view);
         }
 
         @Override
-        public void onBindViewHolder(CultivarViewHolder holder, int position) {
-            AnalyticsManager.CultivarSummary summary = cultivarSummaries.get(position);
+        public void onBindViewHolder(WorkProgramViewHolder holder, int position) {
+            WorkProgramEntity program = items.get(position);
+            String title = program.cultivarName != null ? program.cultivarName : "Saved work program";
+            holder.programTitle.setText(title);
+            holder.programSubtitle.setText(String.format(Locale.getDefault(), "Start: %s | Area: %.2f ha", 
+                    program.startingDate != null ? program.startingDate : "N/A", program.areaSize));
+            holder.adjustedIncome.setText(String.format(Locale.getDefault(), "Adj income: ₱%,.0f", program.adjustedIncome));
+            holder.adjustedExpenses.setText(String.format(Locale.getDefault(), "Adj expenses: ₱%,.0f", program.adjustedExpenses));
+            holder.adjustedProfit.setText(String.format(Locale.getDefault(), "Adj profit: ₱%,.0f", program.adjustedIncome - program.adjustedExpenses));
+            holder.projectedProfit.setText(String.format(Locale.getDefault(), "Projected profit: ₱%,.0f", program.projectedIncome - program.projectedExpenses));
+            holder.completionRate.setText(String.format(Locale.getDefault(), "Completion: %.0f%%", program.completionRate));
 
-            // Set cultivar header info
-            holder.cultivarName.setText(summary.cultivarName);
-            
-            int programCount = summary.programCount;
-            holder.programCount.setText(programCount + (programCount == 1 ? " program" : " programs"));
-
-            // Set summary stats
-            holder.totalArea.setText(String.format(Locale.getDefault(), "%.2f hectare", summary.totalArea));
-            holder.totalProfit.setText(String.format(Locale.getDefault(), "₱%,.0f", summary.getProfit()));
-            holder.profitPerArea.setText(String.format(Locale.getDefault(), "₱%,.0f", summary.getProfitPerArea()));
-            holder.avgCompletionRate.setText(String.format(Locale.getDefault(), "%.0f%%", summary.getAverageCompletionRate()));
-            holder.adjustedProfit.setText(String.format(Locale.getDefault(), "₱%,.0f", summary.getAdjustedProfit()));
-
-            // Navigate to details screen on click
-            holder.itemView.setOnClickListener(v -> {
-                Intent intent = new Intent(AnalyticsActivity.this, CultivarDetailsActivity.class);
-                intent.putExtra("cultivar_name", summary.cultivarName);
-                startActivity(intent);
-            });
-
-            // Hide expand icon and work programs list (no longer needed)
-            holder.expandIcon.setVisibility(View.GONE);
-            holder.workProgramsRecyclerView.setVisibility(View.GONE);
+            holder.openProgramButton.setOnClickListener(v -> openWorkProgram(program));
+            holder.financeButton.setOnClickListener(v -> openFinance(program));
+            holder.itemView.setOnClickListener(v -> openFinance(program));
         }
 
         @Override
         public int getItemCount() {
-            return cultivarSummaries.size();
+            return items.size();
         }
 
-        class CultivarViewHolder extends RecyclerView.ViewHolder {
-            TextView cultivarName, programCount, totalArea, totalProfit, profitPerArea, avgCompletionRate, adjustedProfit;
-            ImageView expandIcon;
-            RecyclerView workProgramsRecyclerView;
+        class WorkProgramViewHolder extends RecyclerView.ViewHolder {
+            TextView programTitle, programSubtitle, adjustedIncome, adjustedExpenses, adjustedProfit, projectedProfit, completionRate;
+            com.google.android.material.button.MaterialButton openProgramButton, financeButton;
 
-            CultivarViewHolder(View itemView) {
+            WorkProgramViewHolder(View itemView) {
                 super(itemView);
-                cultivarName = itemView.findViewById(R.id.cultivarNameHeader);
-                programCount = itemView.findViewById(R.id.cultivarProgramCount);
-                totalArea = itemView.findViewById(R.id.totalArea);
-                totalProfit = itemView.findViewById(R.id.totalProfit);
-                profitPerArea = itemView.findViewById(R.id.profitPerArea);
-                avgCompletionRate = itemView.findViewById(R.id.avgCompletionRate);
+                programTitle = itemView.findViewById(R.id.programTitle);
+                programSubtitle = itemView.findViewById(R.id.programSubtitle);
+                adjustedIncome = itemView.findViewById(R.id.adjustedIncome);
+                adjustedExpenses = itemView.findViewById(R.id.adjustedExpenses);
                 adjustedProfit = itemView.findViewById(R.id.adjustedProfit);
-                expandIcon = itemView.findViewById(R.id.expandIcon);
-                workProgramsRecyclerView = itemView.findViewById(R.id.workProgramsRecyclerView);
+                projectedProfit = itemView.findViewById(R.id.projectedProfit);
+                completionRate = itemView.findViewById(R.id.completionRate);
+                openProgramButton = itemView.findViewById(R.id.btnOpenProgram);
+                financeButton = itemView.findViewById(R.id.btnOpenFinance);
             }
         }
     }
@@ -563,10 +650,10 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
             AnalyticsManager.CultivarSummary s = items.get(position);
             holder.name.setText(s.cultivarName);
             holder.area.setText(String.format(Locale.getDefault(), "Area: %.2f hectare", s.totalArea));
-            holder.income.setText(String.format(Locale.getDefault(), "Income: ₱%,.0f", s.totalIncome));
-            holder.expenses.setText(String.format(Locale.getDefault(), "Expenses: ₱%,.0f", s.totalExpenses));
-            holder.profit.setText(String.format(Locale.getDefault(), "Profit: ₱%,.0f", s.getProfit()));
-            holder.profitPerArea.setText(String.format(Locale.getDefault(), "Profit/Area: ₱%,.0f", s.getProfitPerArea()));
+            holder.income.setText(String.format(Locale.getDefault(), "Income: ₱%,.0f", s.totalAdjustedIncome));
+            holder.expenses.setText(String.format(Locale.getDefault(), "Expenses: ₱%,.0f", s.totalAdjustedExpenses));
+            holder.profit.setText(String.format(Locale.getDefault(), "Adjusted Profit: ₱%,.0f", s.getAdjustedProfit()));
+            holder.profitPerArea.setText(String.format(Locale.getDefault(), "Adj Profit/Area: ₱%,.0f", s.getAdjustedProfitPerArea()));
             holder.completionRate.setText(String.format(Locale.getDefault(), "Completion: %.0f%%", s.getAverageCompletionRate()));
             holder.adjustedProfit.setText(String.format(Locale.getDefault(), "Adjusted Profit: ₱%,.0f", s.getAdjustedProfit()));
         }
@@ -680,11 +767,29 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
             runOnUiThread(() -> {
                 progressBar.setVisibility(View.GONE);
                 if (filePath != null) {
-                    Toast.makeText(this, "CSV exported to Downloads: " + filePath, Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, "Data exported to Downloads: " + filePath, Toast.LENGTH_LONG).show();
                 } else {
-                    Toast.makeText(this, "Failed to export CSV", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Failed to export data", Toast.LENGTH_SHORT).show();
                 }
             });
         }).start();
+    }
+
+    private void openWorkProgram(WorkProgramEntity program) {
+        if (program == null || program.id == null) return;
+        Intent intent = new Intent(this, com.android.tomatoapp.workprogram.ui.Workprogram.class);
+        intent.putExtra("programId", program.id);
+        intent.putExtra("cultivar", program.cultivarName);
+        intent.putExtra("startDate", program.startingDate);
+        startActivity(intent);
+    }
+
+    private void openFinance(WorkProgramEntity program) {
+        if (program == null || program.id == null) return;
+        Intent intent = new Intent(this, CurrentExpensesActivity.class);
+        intent.putExtra("programId", program.id);
+        intent.putExtra("cultivar", program.cultivarName);
+        intent.putExtra("startDate", program.startingDate);
+        startActivity(intent);
     }
 }
