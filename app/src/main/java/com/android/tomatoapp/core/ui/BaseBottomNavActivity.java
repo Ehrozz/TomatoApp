@@ -139,6 +139,27 @@ public abstract class BaseBottomNavActivity extends AppCompatActivity {
         });
     }
 
+    @Override
+    public boolean onSupportNavigateUp() {
+        // Default up behavior: delegate to back pressed handling for consistency
+        onBackPressed();
+        return true;
+    }
+
+    @Override
+    public void onBackPressed() {
+        // If this activity is the root of the task (launched externally), navigate
+        // to MainActivity to provide a consistent landing page instead of exiting.
+        if (isTaskRoot() && !(this instanceof MainActivity)) {
+            Intent intent = new Intent(this, MainActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            startActivity(intent);
+            finish();
+            return;
+        }
+        super.onBackPressed();
+    }
+
     private void updateBottomNavSelection() {
         if (bottomNavigationView == null) return;
         

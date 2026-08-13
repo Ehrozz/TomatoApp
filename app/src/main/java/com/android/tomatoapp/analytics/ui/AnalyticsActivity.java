@@ -91,6 +91,21 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
         tableRecyclerView = findViewById(R.id.tableRecyclerView);
         barChart = findViewById(R.id.barChart);
         completionChart = findViewById(R.id.completionChart);
+        // Enable scrolling/interaction on charts so users can pan/zoom when data is wide
+        if (barChart != null) {
+            barChart.setTouchEnabled(true);
+            barChart.setDragEnabled(true);
+            barChart.setScaleEnabled(true);
+            barChart.setPinchZoom(true);
+            barChart.setAutoScaleMinMaxEnabled(true);
+        }
+        if (completionChart != null) {
+            completionChart.setTouchEnabled(true);
+            completionChart.setDragEnabled(true);
+            completionChart.setScaleEnabled(true);
+            completionChart.setPinchZoom(true);
+            completionChart.setAutoScaleMinMaxEnabled(true);
+        }
         progressBar = findViewById(R.id.analyticsProgress);
         emptyText = findViewById(R.id.emptyText);
         tvNetProfitStat = findViewById(R.id.tvNetProfitStat);

@@ -119,18 +119,13 @@
                         </LinearLayout>
 
                         <!-- Add Labor Item Button -->
+                        <!-- Add Labor Item removed per UX decision (placeholder kept for compatibility) -->
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnAddLaborItem"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="+ Add Labor Item"
-                            android:textColor="@color/fresh_green"
-                            android:backgroundTint="@android:color/transparent"
-                            android:outlineProvider="none"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
-                            app:strokeColor="@color/fresh_green"
-                            android:layout_marginTop="8dp"
-                            android:enabled="false" />
+                            android:visibility="gone"
+                            android:text="+ Add Labor Item" />
 
                         <TextView
                             android:id="@+id/tvLaborTotal"
@@ -180,18 +175,13 @@
                         </LinearLayout>
 
                         <!-- Add Material Item Button -->
+                        <!-- Add Material Item removed per UX decision (placeholder kept for compatibility) -->
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnAddMaterialItem"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="+ Add Material Item"
-                            android:textColor="@color/fresh_green"
-                            android:backgroundTint="@android:color/transparent"
-                            android:outlineProvider="none"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
-                            app:strokeColor="@color/fresh_green"
-                            android:layout_marginTop="8dp"
-                            android:enabled="false" />
+                            android:visibility="gone"
+                            android:text="+ Add Material Item" />
 
                         <TextView
                             android:id="@+id/tvMaterialTotal"
@@ -241,18 +231,13 @@
                         </LinearLayout>
 
                         <!-- Add Equipment Item Button -->
+                        <!-- Add Equipment Item removed per UX decision (placeholder kept for compatibility) -->
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnAddEquipmentItem"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="+ Add Equipment Item"
-                            android:textColor="@color/fresh_green"
-                            android:backgroundTint="@android:color/transparent"
-                            android:outlineProvider="none"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
-                            app:strokeColor="@color/fresh_green"
-                            android:layout_marginTop="8dp"
-                            android:enabled="false" />
+                            android:visibility="gone"
+                            android:text="+ Add Equipment Item" />
 
                         <TextView
                             android:id="@+id/tvEquipmentTotal"
@@ -302,18 +287,13 @@
                         </LinearLayout>
 
                         <!-- Add Miscellaneous Item Button -->
+                        <!-- Add Miscellaneous Item removed per UX decision (placeholder kept for compatibility) -->
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnAddMiscItem"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="+ Add Miscellaneous Item"
-                            android:textColor="@color/fresh_green"
-                            android:backgroundTint="@android:color/transparent"
-                            android:outlineProvider="none"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
-                            app:strokeColor="@color/fresh_green"
-                            android:layout_marginTop="8dp"
-                            android:enabled="false" />
+                            android:visibility="gone"
+                            android:text="+ Add Miscellaneous Item" />
 
                         <TextView
                             android:id="@+id/tvMiscTotal"

@@ -67,7 +67,7 @@ public class CurrentExpensesActivity extends BaseBottomNavActivity {
         setupBottomNavigation();
 
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle("Daily Expenses Overview");
+            getSupportActionBar().setTitle("Expenses Overview");
         }
 
         // Get intent data

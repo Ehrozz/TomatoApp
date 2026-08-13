@@ -98,6 +98,7 @@ public class MainActivity extends BaseBottomNavActivity {
     com.google.android.material.button.MaterialButton btnViewWorkprogram;
     private ImageView userAvatarImage;
     private TextView userInitials;
+    private TextView greetingText;
     private boolean tutorialRequested;
 
     // Weather UI
@@ -188,6 +189,7 @@ public class MainActivity extends BaseBottomNavActivity {
         if (user != null) {
             // Update UI with user info
             TextView userNameText = findViewById(R.id.userName);
+            greetingText = findViewById(R.id.greetingText);
             userInitials = findViewById(R.id.userInitials);
             userAvatarImage = findViewById(R.id.userAvatarImage);
             
@@ -195,6 +197,7 @@ public class MainActivity extends BaseBottomNavActivity {
             if (name != null && !name.isEmpty()) {
                 userNameText.setText(name);
                 userInitials.setText(getInitials(name));
+                updateGreeting(name, null);
             } else {
                 // Fetch from Database if DisplayName is not set
                 DatabaseReference ref = FirebaseDatabase.getInstance().getReference("Users").child(user.getUid());
@@ -207,6 +210,7 @@ public class MainActivity extends BaseBottomNavActivity {
                             if (dbName != null) {
                                 userNameText.setText(dbName);
                                 userInitials.setText(getInitials(dbName));
+                                updateGreeting(dbName, null);
                             }
                             loadProfilePhoto(photoUri);
                         }
@@ -437,21 +441,61 @@ public class MainActivity extends BaseBottomNavActivity {
                         weatherLocation.setSelected(true); // For marquee if needed
                     }
                     if (weatherIcon != null) weatherIcon.setImageResource(selectIconForCode(wcode));
+                    updateGreeting(null, condition);
                 });
             } else {
                 runOnUiThread(() -> {
                     if (weatherCondition != null) weatherCondition.setText("Weather unavailable");
                     if (weatherTemp != null) weatherTemp.setText("--");
+                    updateGreeting(null, null);
                 });
             }
         } catch (Exception e) {
             runOnUiThread(() -> {
                 if (weatherCondition != null) weatherCondition.setText("Weather unavailable");
+                updateGreeting(null, null);
             });
         } finally {
             if (reader != null) try { reader.close(); } catch (Exception ignored) {}
             if (conn != null) conn.disconnect();
         }
+    }
+
+    private void updateGreeting(String nameOverride, String weatherConditionText) {
+        if (greetingText == null) {
+            return;
+        }
+
+        String name = nameOverride;
+        if (name == null || name.isEmpty()) {
+            TextView userNameView = findViewById(R.id.userName);
+            if (userNameView != null) {
+                CharSequence current = userNameView.getText();
+                if (current != null) {
+                    name = current.toString();
+                }
+            }
+        }
+        if (name == null || name.isEmpty()) {
+            name = "farmer";
+        }
+
+        int hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
+        String timePart;
+        if (hour < 12) {
+            timePart = "Good morning,";
+        } else if (hour < 18) {
+            timePart = "Good afternoon,";
+        } else {
+            timePart = "Good evening,";
+        }
+
+        String weatherPart = "";
+        if (weatherConditionText != null && !weatherConditionText.isEmpty() && !"Weather unavailable".equals(weatherConditionText)) {
+            weatherPart = " · " + weatherConditionText;
+        }
+
+        greetingText.setText(timePart + " " + name + weatherPart);
     }
 
     private void openPhilippinesLocationPicker() {
