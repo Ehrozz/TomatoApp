@@ -62,9 +62,6 @@
             android:name=".detection.ui.DiseaseView"
             android:exported="false" />
         <activity
-            android:name=".Cost"
-            android:exported="false" />
-        <activity
             android:name=".workprogram.ui.WorkProgramSelection"
             android:exported="false" />
         <activity

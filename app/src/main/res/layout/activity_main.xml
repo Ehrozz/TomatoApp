@@ -84,7 +84,7 @@
                 android:id="@+id/userName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Juan Dela Cruz"
+                android:text="Farmer"
                 android:textColor="@color/white"
                 android:textSize="22sp"
                 android:fontFamily="serif"

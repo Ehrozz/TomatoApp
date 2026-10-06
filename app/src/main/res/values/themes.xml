@@ -40,6 +40,12 @@
         <item name="android:textColor">@color/text_secondary</item>
     </style>
 
+    <style name="TextAppearance.TomatoApp.SettingsInputLabel" parent="TextAppearance.Material3.LabelMedium">
+        <item name="android:textColor">@color/black</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
     <!-- Shape Appearances -->
     <style name="ShapeAppearance.TomatoApp.Circle" parent="ShapeAppearance.Material3.MediumComponent">
         <item name="cornerFamily">rounded</item>

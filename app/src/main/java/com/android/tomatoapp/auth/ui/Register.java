@@ -8,6 +8,7 @@ import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.AutoCompleteTextView;
 import android.util.Log;
 
 import androidx.activity.EdgeToEdge;
@@ -26,10 +27,12 @@ import com.google.firebase.database.ValueEventListener;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.auth.data.User;
 import com.android.tomatoapp.common.utils.PhilippineLocations;
+import com.android.tomatoapp.common.utils.QuezonBarangays;
 import com.android.tomatoapp.core.network.FirebaseErrorHandler;
 import com.android.tomatoapp.core.ui.MainActivity;
 
@@ -326,21 +329,126 @@ public class Register extends AppCompatActivity {
     }
     
     private void showLocationPicker() {
-        // Get all available locations
-        String[] locations = PhilippineLocations.getAllLocations();
-        if (locations == null || locations.length == 0) {
-            Toast.makeText(this, "No locations available", Toast.LENGTH_SHORT).show();
-            return;
+        androidx.appcompat.app.AlertDialog.Builder builder =
+                new androidx.appcompat.app.AlertDialog.Builder(this, R.style.CustomAlertDialog);
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_location_picker, null);
+        androidx.appcompat.app.AlertDialog dialog = builder.setView(dialogView).create();
+
+        AutoCompleteTextView provinceSpinner = dialogView.findViewById(R.id.provinceAutoComplete);
+        AutoCompleteTextView citySpinner = dialogView.findViewById(R.id.cityAutoComplete);
+        AutoCompleteTextView brgySpinner = dialogView.findViewById(R.id.brgyAutoComplete);
+        com.google.android.material.textfield.TextInputLayout cityLayout = dialogView.findViewById(R.id.cityLayout);
+        com.google.android.material.textfield.TextInputLayout brgyLayout = dialogView.findViewById(R.id.brgyLayout);
+        android.widget.Button btnApply = dialogView.findViewById(R.id.btnApply);
+        android.widget.Button btnCancel = dialogView.findViewById(R.id.btnCancel);
+
+        final String[] provinceSelected = {""};
+        final String[] citySelected = {""};
+        final String[] brgySelected = {""};
+
+        List<String> provinces = new ArrayList<>();
+        for (int region = 0; region <= 17; region++) {
+            for (String label : getLabelsForRegion(region)) {
+                String[] parts = label.split(", ");
+                if (parts.length > 1 && !provinces.contains(parts[1])) {
+                    provinces.add(parts[1]);
+                }
+            }
         }
-        
-        // Show location selection dialog
-        new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("Select Farm Location")
-                .setItems(locations, (dialog, which) -> {
-                    String selectedLocation = locations[which];
-                    editTextAddress.setText(selectedLocation);
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        Collections.sort(provinces);
+        provinceSpinner.setAdapter(createBlackTextAdapter(provinces));
+
+        provinceSpinner.setOnItemClickListener((parent, view, position, id) -> {
+            provinceSelected[0] = (String) parent.getItemAtPosition(position);
+            citySelected[0] = "";
+            brgySelected[0] = "";
+            citySpinner.setText("");
+            brgySpinner.setText("");
+            cityLayout.setEnabled(true);
+            brgyLayout.setEnabled(false);
+            btnApply.setEnabled(false);
+
+            List<String> cities = new ArrayList<>();
+            for (int region = 0; region <= 17; region++) {
+                for (String label : getLabelsForRegion(region)) {
+                    if (label.endsWith(", " + provinceSelected[0])) {
+                        cities.add(label.split(", ")[0]);
+                    }
+                }
+            }
+            Collections.sort(cities);
+            citySpinner.setAdapter(createBlackTextAdapter(cities));
+        });
+
+        citySpinner.setOnItemClickListener((parent, view, position, id) -> {
+            citySelected[0] = (String) parent.getItemAtPosition(position);
+            brgySelected[0] = "";
+            brgySpinner.setText("");
+            brgyLayout.setEnabled(true);
+            btnApply.setEnabled(false);
+            brgySpinner.setAdapter(createBlackTextAdapter(Arrays.asList(getBarangays(citySelected[0]))));
+        });
+
+        brgySpinner.setOnItemClickListener((parent, view, position, id) -> {
+            brgySelected[0] = (String) parent.getItemAtPosition(position);
+            btnApply.setEnabled(true);
+        });
+
+        btnApply.setOnClickListener(v -> {
+            editTextAddress.setText(brgySelected[0] + ", " + citySelected[0] + ", " + provinceSelected[0]);
+            dialog.dismiss();
+        });
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
+    }
+
+    private android.widget.ArrayAdapter<String> createBlackTextAdapter(List<String> options) {
+        return new android.widget.ArrayAdapter<String>(this, android.R.layout.simple_dropdown_item_1line, options) {
+            @Override
+            public View getView(int position, View convertView, android.view.ViewGroup parent) {
+                View view = super.getView(position, convertView, parent);
+                TextView textView = view.findViewById(android.R.id.text1);
+                if (textView != null) textView.setTextColor(android.graphics.Color.BLACK);
+                view.setBackgroundColor(android.graphics.Color.WHITE);
+                return view;
+            }
+
+            @Override
+            public View getDropDownView(int position, View convertView, android.view.ViewGroup parent) {
+                View view = super.getDropDownView(position, convertView, parent);
+                TextView textView = view.findViewById(android.R.id.text1);
+                if (textView != null) textView.setTextColor(android.graphics.Color.BLACK);
+                view.setBackgroundColor(android.graphics.Color.WHITE);
+                return view;
+            }
+        };
+    }
+
+    private String[] getBarangays(String city) {
+        String[] barangays = QuezonBarangays.getBarangays(city);
+        return barangays != null ? barangays : new String[]{"Poblacion", "San Jose", "Santa Maria", "San Pedro", "San Juan"};
+    }
+
+    private String[] getLabelsForRegion(int index) {
+        switch (index) {
+            case 0: return PhilippineLocations.getRegion1Labels();
+            case 1: return PhilippineLocations.getRegion2Labels();
+            case 2: return PhilippineLocations.getRegion3Labels();
+            case 3: return PhilippineLocations.getRegion4Labels();
+            case 4: return PhilippineLocations.getRegion4BLabels();
+            case 5: return PhilippineLocations.getRegion5Labels();
+            case 6: return PhilippineLocations.getRegion6Labels();
+            case 7: return PhilippineLocations.getRegion7Labels();
+            case 8: return PhilippineLocations.getRegion8Labels();
+            case 9: return PhilippineLocations.getRegion9Labels();
+            case 10: return PhilippineLocations.getRegion10Labels();
+            case 11: return PhilippineLocations.getRegion11Labels();
+            case 12: return PhilippineLocations.getRegion12Labels();
+            case 13: return PhilippineLocations.getRegion13Labels();
+            case 14: return PhilippineLocations.getRegion14Labels();
+            case 15: return PhilippineLocations.getRegion15Labels();
+            case 16: return PhilippineLocations.getRegion16Labels();
+            default: return PhilippineLocations.getRegion17Labels();
+        }
     }
 }

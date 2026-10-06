@@ -131,6 +131,7 @@
                     android:layout_height="50dp"
                     android:background="@drawable/bg_pill_input"
                     android:hint="farmer@example.com"
+                    android:textColor="@android:color/black"
                     android:textColorHint="@color/muted"
                     android:paddingStart="18dp"
                     android:paddingEnd="18dp"
@@ -151,6 +152,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     app:endIconMode="password_toggle"
+                    app:endIconTint="@android:color/black"
                     android:layout_marginBottom="24dp">
 
                     <com.google.android.material.textfield.TextInputEditText
@@ -158,8 +160,9 @@
                         android:layout_width="match_parent"
                         android:layout_height="50dp"
                         android:background="@drawable/bg_pill_input"
-                        android:hint="••••••••"
+                        android:textColor="@android:color/black"
                         android:textColorHint="@color/muted"
+                        android:gravity="center_vertical"
                         android:paddingStart="18dp"
                         android:paddingEnd="18dp"
                         android:textSize="14sp"
@@ -173,7 +176,7 @@
                     android:layout_height="50dp"
                     android:background="@drawable/bg_pill_button_red"
                     android:text="Create Account"
-                    android:textColor="@color/white"
+                    android:textColor="@android:color/white"
                     android:textSize="14sp"
                     android:textStyle="bold"
                     android:textAllCaps="false" />

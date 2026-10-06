@@ -127,7 +127,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="SCAN CONTEXT"
-                android:textColor="@color/muted"
+                android:textColor="@android:color/black"
                 android:textSize="9sp"
                 android:textStyle="bold"
                 android:letterSpacing="0.12"
@@ -152,7 +152,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="🌱  CULTIVAR"
-                        android:textColor="@color/muted"
+                        android:textColor="@android:color/black"
                         android:textStyle="bold"
                         android:textSize="9sp"
                         android:letterSpacing="0.06"
@@ -162,7 +162,9 @@
                         android:id="@+id/spinnerCultivar"
                         android:layout_width="match_parent"
                         android:layout_height="36dp"
-                        android:background="@drawable/bg_spinner_minimal" />
+                        android:background="@drawable/bg_spinner_minimal"
+                        android:backgroundTint="@android:color/white"
+                        android:textColor="@android:color/black" />
                 </LinearLayout>
 
                 <!-- Vertical divider -->
@@ -185,7 +187,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="🌿  GROWTH STAGE"
-                        android:textColor="@color/muted"
+                        android:textColor="@android:color/black"
                         android:textStyle="bold"
                         android:textSize="9sp"
                         android:letterSpacing="0.06"
@@ -195,7 +197,9 @@
                         android:id="@+id/spinnerPhase"
                         android:layout_width="match_parent"
                         android:layout_height="36dp"
-                        android:background="@drawable/bg_spinner_minimal" />
+                        android:background="@drawable/bg_spinner_minimal"
+                        android:backgroundTint="@android:color/white"
+                        android:textColor="@android:color/black" />
                 </LinearLayout>
             </LinearLayout>
 
@@ -241,7 +245,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="DAILY TASK"
-                        android:textColor="@color/muted"
+                        android:textColor="@android:color/black"
                         android:textSize="9sp"
                         android:textStyle="bold"
                         android:letterSpacing="0.08" />
@@ -263,6 +267,8 @@
                     android:id="@+id/scanTypeBadge"
                     android:layout_width="wrap_content"
                     android:layout_height="26dp"
+                    android:clickable="false"
+                    android:focusable="false"
                     app:cardCornerRadius="13dp"
                     app:cardElevation="0dp"
                     app:cardBackgroundColor="@color/green_light"
@@ -273,7 +279,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="match_parent"
                         android:text="Disease"
-                        android:textColor="@color/sidebar_dark_green"
+                        android:textColor="@android:color/black"
                         android:textSize="11sp"
                         android:textStyle="bold"
                         android:gravity="center"

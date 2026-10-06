@@ -4,7 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="24dp">
+    android:padding="24dp"
+    android:background="@android:color/white">
 
     <TextView
         android:id="@+id/txtTitle"
@@ -30,7 +31,7 @@
             android:layout_marginBottom="16dp"
             android:lineSpacingExtra="4dp"
             android:text="@string/terms_full_text"
-            android:textColor="@color/text_primary"
+            android:textColor="@android:color/black"
             android:textSize="14sp" />
     </ScrollView>
 
@@ -39,6 +40,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/terms_agree_checkbox"
+        android:textColor="@android:color/black"
         android:textSize="14sp"
         android:paddingTop="8dp"
         android:paddingBottom="8dp" />

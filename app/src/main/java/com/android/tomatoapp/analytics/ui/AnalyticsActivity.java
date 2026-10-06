@@ -136,7 +136,8 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
             public View getView(int position, View convertView, android.view.ViewGroup parent) {
                 View view = super.getView(position, convertView, parent);
                 TextView tv = (TextView) view;
-                tv.setTextColor(getResources().getColor(R.color.text_primary, null));
+                tv.setTextColor(android.graphics.Color.BLACK);
+                view.setBackgroundColor(android.graphics.Color.WHITE);
                 return view;
             }
 
@@ -144,7 +145,8 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
             public View getDropDownView(int position, View convertView, android.view.ViewGroup parent) {
                 View view = super.getDropDownView(position, convertView, parent);
                 TextView tv = (TextView) view;
-                tv.setTextColor(getResources().getColor(R.color.text_primary, null));
+                tv.setTextColor(android.graphics.Color.BLACK);
+                view.setBackgroundColor(android.graphics.Color.WHITE);
                 return view;
             }
         };
@@ -154,7 +156,7 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 if (view instanceof TextView) {
-                    ((TextView) view).setTextColor(getResources().getColor(R.color.text_primary, null));
+                    ((TextView) view).setTextColor(android.graphics.Color.BLACK);
                 }
                 updateViewMode(position == 0 ? "table" : "chart");
             }
@@ -219,7 +221,8 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
             public View getView(int position, View convertView, android.view.ViewGroup parent) {
                 View view = super.getView(position, convertView, parent);
                 TextView tv = (TextView) view;
-                tv.setTextColor(getResources().getColor(R.color.text_primary, null));
+                tv.setTextColor(android.graphics.Color.BLACK);
+                view.setBackgroundColor(android.graphics.Color.WHITE);
                 return view;
             }
 
@@ -227,7 +230,8 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
             public View getDropDownView(int position, View convertView, android.view.ViewGroup parent) {
                 View view = super.getDropDownView(position, convertView, parent);
                 TextView tv = (TextView) view;
-                tv.setTextColor(getResources().getColor(R.color.text_primary, null));
+                tv.setTextColor(android.graphics.Color.BLACK);
+                view.setBackgroundColor(android.graphics.Color.WHITE);
                 return view;
             }
         };
@@ -237,7 +241,7 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 if (view instanceof TextView) {
-                    ((TextView) view).setTextColor(getResources().getColor(R.color.text_primary, null));
+                    ((TextView) view).setTextColor(android.graphics.Color.BLACK);
                 }
                 String selected = position == 0 ? null : (position == 1 ? "on-season" : "off-season");
                 filterBySeason(selected);
@@ -265,7 +269,8 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
             public View getView(int position, View convertView, android.view.ViewGroup parent) {
                 View view = super.getView(position, convertView, parent);
                 TextView tv = (TextView) view;
-                tv.setTextColor(getResources().getColor(R.color.text_primary, null));
+                tv.setTextColor(android.graphics.Color.BLACK);
+                view.setBackgroundColor(android.graphics.Color.WHITE);
                 return view;
             }
 
@@ -273,7 +278,8 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
             public View getDropDownView(int position, View convertView, android.view.ViewGroup parent) {
                 View view = super.getDropDownView(position, convertView, parent);
                 TextView tv = (TextView) view;
-                tv.setTextColor(getResources().getColor(R.color.text_primary, null));
+                tv.setTextColor(android.graphics.Color.BLACK);
+                view.setBackgroundColor(android.graphics.Color.WHITE);
                 return view;
             }
         };
@@ -283,7 +289,7 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 if (view instanceof TextView) {
-                    ((TextView) view).setTextColor(getResources().getColor(R.color.text_primary, null));
+                    ((TextView) view).setTextColor(android.graphics.Color.BLACK);
                 }
                 String selected = position == 0 ? null : cultivars.get(position);
                 filterSummaries(selected);

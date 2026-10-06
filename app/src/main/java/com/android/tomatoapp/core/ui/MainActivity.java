@@ -41,6 +41,7 @@ import com.android.tomatoapp.common.managers.TutorialManager;
 import com.android.tomatoapp.common.models.IPM;
 import com.android.tomatoapp.common.ui.dialogs.TermsDialog;
 import com.android.tomatoapp.common.utils.PhilippineLocations;
+import com.android.tomatoapp.common.utils.QuezonBarangays;
 import com.android.tomatoapp.core.network.LocalDataManager;
 import com.android.tomatoapp.financial.ui.CostSelection;
 import com.android.tomatoapp.notifications.GeneralUpdateScheduler;
@@ -200,7 +201,7 @@ public class MainActivity extends BaseBottomNavActivity {
                 updateGreeting(name, null);
             } else {
                 // Fetch from Database if DisplayName is not set
-                DatabaseReference ref = FirebaseDatabase.getInstance().getReference("Users").child(user.getUid());
+                DatabaseReference ref = FirebaseDatabase.getInstance().getReference("users").child(user.getUid());
                 ref.addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -490,12 +491,7 @@ public class MainActivity extends BaseBottomNavActivity {
             timePart = "Good evening,";
         }
 
-        String weatherPart = "";
-        if (weatherConditionText != null && !weatherConditionText.isEmpty() && !"Weather unavailable".equals(weatherConditionText)) {
-            weatherPart = " · " + weatherConditionText;
-        }
-
-        greetingText.setText(timePart + " " + name + weatherPart);
+        greetingText.setText(timePart + " " + name);
     }
 
     private void openPhilippinesLocationPicker() {
@@ -537,7 +533,7 @@ public class MainActivity extends BaseBottomNavActivity {
             }
         }
         Collections.sort(allProvincesList);
-        android.widget.ArrayAdapter<String> provinceAdapter = new android.widget.ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, allProvincesList);
+        android.widget.ArrayAdapter<String> provinceAdapter = createBlackTextAdapter(allProvincesList);
         provinceSpinner.setAdapter(provinceAdapter);
 
         // Province Listener
@@ -564,7 +560,7 @@ public class MainActivity extends BaseBottomNavActivity {
                 }
             }
             Collections.sort(citiesInProvince);
-            android.widget.ArrayAdapter<String> cityAdapter = new android.widget.ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, citiesInProvince);
+            android.widget.ArrayAdapter<String> cityAdapter = createBlackTextAdapter(citiesInProvince);
             citySpinner.setAdapter(cityAdapter);
         });
 
@@ -577,8 +573,8 @@ public class MainActivity extends BaseBottomNavActivity {
             btnApply.setEnabled(false);
 
             // Populate mock Barangays
-            String[] barangays = getMockBarangays(citySelected[0]);
-            android.widget.ArrayAdapter<String> brgyAdapter = new android.widget.ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, barangays);
+            String[] barangays = getBarangays(citySelected[0]);
+            android.widget.ArrayAdapter<String> brgyAdapter = createBlackTextAdapter(java.util.Arrays.asList(barangays));
             brgySpinner.setAdapter(brgyAdapter);
         });
 
@@ -633,8 +629,35 @@ public class MainActivity extends BaseBottomNavActivity {
         dialog.show();
     }
 
+    private android.widget.ArrayAdapter<String> createBlackTextAdapter(List<String> options) {
+        return new android.widget.ArrayAdapter<String>(this, android.R.layout.simple_dropdown_item_1line, options) {
+            @Override
+            public View getView(int position, View convertView, android.view.ViewGroup parent) {
+                View view = super.getView(position, convertView, parent);
+                TextView textView = view.findViewById(android.R.id.text1);
+                if (textView != null) textView.setTextColor(android.graphics.Color.BLACK);
+                view.setBackgroundColor(getResources().getColor(R.color.cream, getTheme()));
+                return view;
+            }
+
+            @Override
+            public View getDropDownView(int position, View convertView, android.view.ViewGroup parent) {
+                View view = super.getDropDownView(position, convertView, parent);
+                TextView textView = view.findViewById(android.R.id.text1);
+                if (textView != null) textView.setTextColor(android.graphics.Color.BLACK);
+                view.setBackgroundColor(getResources().getColor(R.color.cream, getTheme()));
+                return view;
+            }
+        };
+    }
+
     private String[] getMockBarangays(String city) {
         return new String[]{"Poblacion", "San Jose", "Santa Maria", "San Pedro", "Santo Niño", "San Juan", "Santa Cruz", "San Roque", "Maligaya", "Bagong Pag-asa"};
+    }
+
+    private String[] getBarangays(String city) {
+        String[] barangays = QuezonBarangays.getBarangays(city);
+        return barangays != null ? barangays : getMockBarangays(city);
     }
 
     private String[] getLabelsForRegion(int index) {

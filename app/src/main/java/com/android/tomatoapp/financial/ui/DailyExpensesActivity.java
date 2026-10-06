@@ -1,5 +1,7 @@
 package com.android.tomatoapp.financial.ui;
 
+
+
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -369,6 +371,28 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         float density = getResources().getDisplayMetrics().density;
         return Math.round(dp * density);
     }
+
+    private ArrayAdapter<String> createBlackSpinnerAdapter(String[] options) {
+        return new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, options) {
+            @Override
+            public View getView(int position, View convertView, android.view.ViewGroup parent) {
+                View view = super.getView(position, convertView, parent);
+                TextView textView = view.findViewById(android.R.id.text1);
+                if (textView != null) textView.setTextColor(android.graphics.Color.BLACK);
+                view.setBackgroundColor(android.graphics.Color.WHITE);
+                return view;
+            }
+
+            @Override
+            public View getDropDownView(int position, View convertView, android.view.ViewGroup parent) {
+                View view = super.getDropDownView(position, convertView, parent);
+                TextView textView = view.findViewById(android.R.id.text1);
+                if (textView != null) textView.setTextColor(android.graphics.Color.BLACK);
+                view.setBackgroundColor(android.graphics.Color.WHITE);
+                return view;
+            }
+        };
+    }
     
     // Helper method to convert usage to hours
     private double convertToHours(double value, String unit) {
@@ -409,7 +433,7 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         TextView title = new TextView(this);
         title.setText("Labor Item #" + (index + 1));
         title.setTextSize(16);
-        title.setTextColor(getResources().getColor(R.color.text_primary));
+        title.setTextColor(android.graphics.Color.BLACK);
         title.setTypeface(null, android.graphics.Typeface.BOLD);
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
             0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
@@ -467,15 +491,14 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         TextView activityLabel = new TextView(this);
         activityLabel.setText("Activity:");
         activityLabel.setTextSize(14);
-        activityLabel.setTextColor(getResources().getColor(R.color.text_secondary));
+        activityLabel.setTextColor(android.graphics.Color.BLACK);
         activityLabel.setPadding(0, dpToPx(4), 0, dpToPx(4));
         
         Spinner notesSpinner = new Spinner(this);
         notesSpinner.setTag("notes_" + index);
         notesSpinner.setPadding(0, 0, 0, dpToPx(8));
         String[] notesOptions = {"Plowing", "Harrowing", "Pruning", "Others"};
-        ArrayAdapter<String> notesAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, notesOptions);
-        notesAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        ArrayAdapter<String> notesAdapter = createBlackSpinnerAdapter(notesOptions);
         notesSpinner.setAdapter(notesAdapter);
         
         // Custom activity input field (initially hidden)
@@ -619,7 +642,7 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         TextView title = new TextView(this);
         title.setText("Material Item #" + (index + 1));
         title.setTextSize(16);
-        title.setTextColor(getResources().getColor(R.color.text_primary));
+        title.setTextColor(android.graphics.Color.BLACK);
         title.setTypeface(null, android.graphics.Typeface.BOLD);
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
             0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
@@ -656,8 +679,7 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         Spinner materialNameSpinner = new Spinner(this);
         materialNameSpinner.setTag("materialName_" + index);
         String[] materialOptions = {"seeds", "fertilizer", "pesticide", "compost", "Others"};
-        ArrayAdapter<String> materialAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, materialOptions);
-        materialAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        ArrayAdapter<String> materialAdapter = createBlackSpinnerAdapter(materialOptions);
         materialNameSpinner.setAdapter(materialAdapter);
         
         // Custom material input field (initially hidden)
@@ -754,8 +776,7 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         Spinner quantityUnitSpinner = new Spinner(this);
         quantityUnitSpinner.setTag("quantityUnit_" + index);
         String[] unitOptions = {"kg", "grams", "liters", "pieces"};
-        ArrayAdapter<String> unitAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, unitOptions);
-        unitAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        ArrayAdapter<String> unitAdapter = createBlackSpinnerAdapter(unitOptions);
         quantityUnitSpinner.setAdapter(unitAdapter);
         if (item.quantityUnit != null && !item.quantityUnit.isEmpty()) {
             for (int i = 0; i < unitOptions.length; i++) {
@@ -865,7 +886,7 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         TextView title = new TextView(this);
         title.setText("Equipment/Tools Item #" + (index + 1));
         title.setTextSize(16);
-        title.setTextColor(getResources().getColor(R.color.text_primary));
+        title.setTextColor(android.graphics.Color.BLACK);
         title.setTypeface(null, android.graphics.Typeface.BOLD);
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
             0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
@@ -930,8 +951,7 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         Spinner usageUnitSpinner = new Spinner(this);
         usageUnitSpinner.setTag("usageUnit_" + index);
         String[] unitOptions = {"minutes", "hours"};
-        ArrayAdapter<String> unitAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, unitOptions);
-        unitAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        ArrayAdapter<String> unitAdapter = createBlackSpinnerAdapter(unitOptions);
         usageUnitSpinner.setAdapter(unitAdapter);
         if (item.usageUnit != null && !item.usageUnit.isEmpty()) {
             for (int i = 0; i < unitOptions.length; i++) {
@@ -1080,7 +1100,7 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         TextView title = new TextView(this);
         title.setText("Miscellaneous Item #" + (index + 1));
         title.setTextSize(16);
-        title.setTextColor(getResources().getColor(R.color.text_primary));
+        title.setTextColor(android.graphics.Color.BLACK);
         title.setTypeface(null, android.graphics.Typeface.BOLD);
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
             0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
@@ -1135,8 +1155,7 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
             "Miscellaneous Supplies",
             "Others"
         };
-        ArrayAdapter<String> expenseAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, expenseOptions);
-        expenseAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        ArrayAdapter<String> expenseAdapter = createBlackSpinnerAdapter(expenseOptions);
         expenseNameSpinner.setAdapter(expenseAdapter);
         
         // Custom expense input field (initially hidden)

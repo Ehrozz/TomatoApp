@@ -97,6 +97,8 @@
                         android:layout_marginBottom="16dp"
                         android:hint="Language"
                         app:hintEnabled="true"
+                        app:hintTextColor="@color/black"
+                        app:hintTextAppearance="@style/TextAppearance.TomatoApp.SettingsInputLabel"
                         app:boxStrokeWidth="2dp"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
@@ -107,6 +109,8 @@
                             android:inputType="none"
                             android:focusable="false"
                             android:clickable="true"
+                            android:textColor="@android:color/black"
+                            android:textColorHint="@android:color/black"
                             android:maxLines="1" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -118,6 +122,8 @@
                         android:layout_marginBottom="16dp"
                         android:hint="Theme"
                         app:hintEnabled="true"
+                        app:hintTextColor="@color/black"
+                        app:hintTextAppearance="@style/TextAppearance.TomatoApp.SettingsInputLabel"
                         app:boxStrokeWidth="2dp"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
@@ -128,6 +134,8 @@
                             android:inputType="none"
                             android:focusable="false"
                             android:clickable="true"
+                            android:textColor="@android:color/black"
+                            android:textColorHint="@android:color/black"
                             android:maxLines="1" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -138,6 +146,8 @@
                         android:layout_height="wrap_content"
                         android:hint="Default Cultivar"
                         app:hintEnabled="true"
+                        app:hintTextColor="@color/black"
+                        app:hintTextAppearance="@style/TextAppearance.TomatoApp.SettingsInputLabel"
                         app:boxStrokeWidth="2dp"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
@@ -148,6 +158,8 @@
                             android:inputType="none"
                             android:focusable="false"
                             android:clickable="true"
+                            android:textColor="@android:color/black"
+                            android:textColorHint="@android:color/black"
                             android:maxLines="1" />
                     </com.google.android.material.textfield.TextInputLayout>
                 </LinearLayout>
@@ -185,6 +197,8 @@
                         android:layout_marginBottom="16dp"
                         android:hint="Weather Unit"
                         app:hintEnabled="true"
+                        app:hintTextColor="@color/black"
+                        app:hintTextAppearance="@style/TextAppearance.TomatoApp.SettingsInputLabel"
                         app:boxStrokeWidth="2dp"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
@@ -195,6 +209,8 @@
                             android:inputType="none"
                             android:focusable="false"
                             android:clickable="true"
+                            android:textColor="@android:color/black"
+                            android:textColorHint="@android:color/black"
                             android:maxLines="1" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -206,6 +222,8 @@
                         android:layout_marginBottom="16dp"
                         android:hint="Measurement Unit"
                         app:hintEnabled="true"
+                        app:hintTextColor="@color/black"
+                        app:hintTextAppearance="@style/TextAppearance.TomatoApp.SettingsInputLabel"
                         app:boxStrokeWidth="2dp"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
@@ -216,6 +234,8 @@
                             android:inputType="none"
                             android:focusable="false"
                             android:clickable="true"
+                            android:textColor="@android:color/black"
+                            android:textColorHint="@android:color/black"
                             android:maxLines="1" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -226,6 +246,8 @@
                         android:layout_height="wrap_content"
                         android:hint="Date Format"
                         app:hintEnabled="true"
+                        app:hintTextColor="@color/black"
+                        app:hintTextAppearance="@style/TextAppearance.TomatoApp.SettingsInputLabel"
                         app:boxStrokeWidth="2dp"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
@@ -236,6 +258,8 @@
                             android:inputType="none"
                             android:focusable="false"
                             android:clickable="true"
+                            android:textColor="@android:color/black"
+                            android:textColorHint="@android:color/black"
                             android:maxLines="1" />
                     </com.google.android.material.textfield.TextInputLayout>
                 </LinearLayout>
@@ -322,6 +346,8 @@
                         android:layout_marginBottom="16dp"
                         android:hint="Notification Sound"
                         app:hintEnabled="true"
+                        app:hintTextColor="@color/black"
+                        app:hintTextAppearance="@style/TextAppearance.TomatoApp.SettingsInputLabel"
                         app:boxStrokeWidth="2dp"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
@@ -332,6 +358,8 @@
                             android:inputType="none"
                             android:focusable="false"
                             android:clickable="true"
+                            android:textColor="@android:color/black"
+                            android:textColorHint="@android:color/black"
                             android:maxLines="1" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -343,6 +371,8 @@
                         android:layout_marginBottom="16dp"
                         android:hint="Notification Time"
                         app:hintEnabled="true"
+                        app:hintTextColor="@color/black"
+                        app:hintTextAppearance="@style/TextAppearance.TomatoApp.SettingsInputLabel"
                         app:boxStrokeWidth="2dp"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
@@ -353,6 +383,8 @@
                             android:inputType="none"
                             android:focusable="false"
                             android:clickable="true"
+                            android:textColor="@android:color/black"
+                            android:textColorHint="@android:color/black"
                             android:maxLines="1" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -374,6 +406,8 @@
                         android:hint="Quiet Hours Start"
                         android:visibility="gone"
                         app:hintEnabled="true"
+                        app:hintTextColor="@color/black"
+                        app:hintTextAppearance="@style/TextAppearance.TomatoApp.SettingsInputLabel"
                         app:boxStrokeWidth="2dp"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
@@ -384,6 +418,8 @@
                             android:inputType="none"
                             android:focusable="false"
                             android:clickable="true"
+                            android:textColor="@android:color/black"
+                            android:textColorHint="@android:color/black"
                             android:maxLines="1" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -395,6 +431,8 @@
                         android:hint="Quiet Hours End"
                         android:visibility="gone"
                         app:hintEnabled="true"
+                        app:hintTextColor="@color/black"
+                        app:hintTextAppearance="@style/TextAppearance.TomatoApp.SettingsInputLabel"
                         app:boxStrokeWidth="2dp"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
@@ -405,6 +443,8 @@
                             android:inputType="none"
                             android:focusable="false"
                             android:clickable="true"
+                            android:textColor="@android:color/black"
+                            android:textColorHint="@android:color/black"
                             android:maxLines="1" />
                     </com.google.android.material.textfield.TextInputLayout>
 

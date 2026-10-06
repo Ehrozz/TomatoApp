@@ -127,7 +127,7 @@ public class CameraInterface extends BaseBottomNavActivity {
         for (int i = 1; i <= 5; i++) {
             phaseOptions.add(getString(R.string.detection_phase_placeholder, i));
         }
-        phaseAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, phaseOptions);
+        phaseAdapter = createBlackTextAdapter(phaseOptions);
         phaseAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         phaseSpinner.setAdapter(phaseAdapter);
         phaseSpinner.setSelection(Math.max(0, selectedPhase - 1));
@@ -145,7 +145,7 @@ public class CameraInterface extends BaseBottomNavActivity {
     private void setupCultivarSpinner() {
         cultivarOptions.clear();
         cultivarOptions.add(getString(R.string.detection_cultivar_unspecified));
-        cultivarAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, cultivarOptions);
+        cultivarAdapter = createBlackTextAdapter(cultivarOptions);
         cultivarAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         cultivarSpinner.setAdapter(cultivarAdapter);
         cultivarSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -189,6 +189,32 @@ public class CameraInterface extends BaseBottomNavActivity {
             cultivarAdapter.notifyDataSetChanged();
             applyLinkedProgramSelection();
         }));
+    }
+
+    private ArrayAdapter<String> createBlackTextAdapter(ArrayList<String> options) {
+        return new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, options) {
+            @Override
+            public View getView(int position, View convertView, android.view.ViewGroup parent) {
+                View view = super.getView(position, convertView, parent);
+                TextView textView = view.findViewById(android.R.id.text1);
+                if (textView != null) {
+                    textView.setTextColor(android.graphics.Color.BLACK);
+                }
+                view.setBackgroundColor(android.graphics.Color.WHITE);
+                return view;
+            }
+
+            @Override
+            public View getDropDownView(int position, View convertView, android.view.ViewGroup parent) {
+                View view = super.getDropDownView(position, convertView, parent);
+                TextView textView = view.findViewById(android.R.id.text1);
+                if (textView != null) {
+                    textView.setTextColor(android.graphics.Color.BLACK);
+                }
+                view.setBackgroundColor(android.graphics.Color.WHITE);
+                return view;
+            }
+        };
     }
 
     private String buildCultivarLabel(WorkProgramEntity entity) {
@@ -315,14 +341,7 @@ public class CameraInterface extends BaseBottomNavActivity {
         if (taskContextLabel != null && linkedCultivarName != null && !linkedCultivarName.isEmpty()) {
             taskContextLabel.setText(linkedCultivarName);
         }
-        if (scanTypeLabel != null) {
-            // Map model type to a human-readable chip label
-            switch (currentModelType) {
-                case LEAVES: scanTypeLabel.setText("Leaves"); break;
-                case PEST:   scanTypeLabel.setText("Pest");   break;
-                default:     scanTypeLabel.setText("Fruits"); break;
-            }
-        }
+        updateScanTypeLabel();
 
         // Load labels from assets
         loadLabels();
@@ -336,6 +355,44 @@ public class CameraInterface extends BaseBottomNavActivity {
                     new String[]{Manifest.permission.CAMERA},
                     CAMERA_PERMISSION_CODE
             );
+        }
+    }
+
+    private void showDetectionTypeDialog() {
+        DetectionTypeDialog dialog = new DetectionTypeDialog(this, type -> {
+            switch (type) {
+                case LEAVES:
+                    currentModelType = ModelType.LEAVES;
+                    break;
+                case PEST:
+                    currentModelType = ModelType.PEST;
+                    break;
+                case FRUIT:
+                default:
+                    currentModelType = ModelType.FRUITS;
+                    break;
+            }
+
+            // Force the next scan to load the model and labels for the new type.
+            loadedModelType = null;
+            loadLabels();
+            updateScanTypeLabel();
+        });
+        dialog.show();
+    }
+
+    private void updateScanTypeLabel() {
+        if (scanTypeLabel == null) return;
+        switch (currentModelType) {
+            case LEAVES:
+                scanTypeLabel.setText("Leaves");
+                break;
+            case PEST:
+                scanTypeLabel.setText("Pest");
+                break;
+            default:
+                scanTypeLabel.setText("Fruits");
+                break;
         }
     }
 

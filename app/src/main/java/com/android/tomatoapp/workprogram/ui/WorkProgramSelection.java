@@ -149,39 +149,10 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
 
         // Cultivar data
         final String[][] cultivarsData = {
-                {"Victory F1", "Semi-determinate", "90", "110"},
-                {"HOPE F1", "Semi-determinate", "90", "110"},
-                {"Maganda F1", "Semi-determinate", "80", "100"},
-                {"Malakas F1", "Semi-determinate", "95", "115"},
-                {"Rocky 1 F1", "Semi-determinate", "90", "110"},
                 {"Improved KS Apollo", "Semi-determinate", "85", "105"},
-                {"Improved Pope", "Semi-determinate", "85", "105"},
-                {"Super Pope", "Semi-determinate", "85", "105"},
-                {"Maguilas", "Determinate", "85", "105"},
-                {"Maunlad", "Determinate", "80", "100"},
-                {"Mapalad", "Determinate", "80", "100"},
-                {"Abiona F1", "Semi-determinate", "95", "115"},
-                {"Akna F1", "Semi-determinate", "105", "125"},
-                {"Amari F1", "Semi-determinate", "110", "130"},
-                {"Anita F1", "Semi-determinate", "110", "130"},
-                {"Colette F1", "Determinate", "105", "125"},
-                {"Danica F1", "Semi-determinate", "105", "125"},
-                {"Granger F1", "Semi-determinate", "105", "125"},
-                {"Janet F1", "Semi-determinate", "120", "140"},
-                {"Platinum F1", "Semi-determinate", "100", "120"},
-                {"Reina F1", "Semi-determinate", "105", "125"},
-                {"Renata F1", "Semi-determinate", "105", "125"},
-                {"Rubellite F1", "Semi-determinate", "90", "110"},
-                {"TOM-055 F1", "Semi-determinate", "60", "75"},
-                {"TOM-262 OP", "Determinate", "60", "75"},
-                {"Dalwangan Tm1", "Determinate", "90", "110"},
-                {"Dalwangan Tm2", "Determinate", "90", "110"},
-                {"NSIC 1999 Tm09", "Determinate", "100", "120"},
-                {"Mara", "Determinate", "78", "95"},
-                {"AniMax 1", "Determinate", "87", "105"},
-                {"AniMax 2", "Semi-determinate", "87", "105"},
-                {"Golden Globe", "Semi-determinate", "92", "112"},
-                {"Maxxime", "Indeterminate", "105", "125"}
+            {"Diamante max", "Semi-determinate", "85", "105"},
+            {"Jewel f1", "Determinate", "85", "105"},
+            {"Marimar", "Determinate", "85", "105"}
         };
 
         String[] cultivarNames = new String[cultivarsData.length];
@@ -189,8 +160,26 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
             cultivarNames[i] = cultivarsData[i][0];
         }
 
-        android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<>(this,
-                android.R.layout.simple_dropdown_item_1line, cultivarNames);
+        android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<String>(this,
+                android.R.layout.simple_dropdown_item_1line, cultivarNames) {
+            @Override
+            public View getView(int position, View convertView, android.view.ViewGroup parent) {
+                View view = super.getView(position, convertView, parent);
+                android.widget.TextView textView = view.findViewById(android.R.id.text1);
+                if (textView != null) textView.setTextColor(android.graphics.Color.BLACK);
+                view.setBackgroundColor(android.graphics.Color.WHITE);
+                return view;
+            }
+
+            @Override
+            public View getDropDownView(int position, View convertView, android.view.ViewGroup parent) {
+                View view = super.getDropDownView(position, convertView, parent);
+                android.widget.TextView textView = view.findViewById(android.R.id.text1);
+                if (textView != null) textView.setTextColor(android.graphics.Color.BLACK);
+                view.setBackgroundColor(android.graphics.Color.WHITE);
+                return view;
+            }
+        };
         cultivarSpinner.setAdapter(adapter);
 
         // Date Picker logic

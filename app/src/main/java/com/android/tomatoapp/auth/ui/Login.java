@@ -235,14 +235,16 @@ public class Login extends AppCompatActivity {
                     Toast.makeText(this, getString(R.string.error_google_signin_failed), Toast.LENGTH_SHORT).show();
                 }
             } catch (ApiException e) {
-                Log.w("GoogleSignIn", "Google sign in failed", e);
+                Log.e("GoogleSignIn", "Google sign in failed with status code " + e.getStatusCode(), e);
                 if (progressBar != null) {
                     progressBar.setVisibility(View.GONE);
                 }
                 if (buttonGoogleSignIn != null) {
                     buttonGoogleSignIn.setEnabled(true);
                 }
-                Toast.makeText(this, getString(R.string.error_google_signin_failed), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this,
+                        getString(R.string.error_google_signin_failed) + " (code " + e.getStatusCode() + ")",
+                        Toast.LENGTH_LONG).show();
             }
         }
     }

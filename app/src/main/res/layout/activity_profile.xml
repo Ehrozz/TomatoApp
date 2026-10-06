@@ -125,6 +125,8 @@
                         android:layout_marginBottom="16dp"
                         android:hint="Full Name"
                         app:startIconDrawable="@drawable/ic_person"
+                        app:startIconTint="@android:color/black"
+                        app:hintTextColor="@android:color/black"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -132,6 +134,8 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:inputType="textPersonName"
+                            android:textColor="@android:color/black"
+                            android:textColorHint="@android:color/black"
                             android:maxLines="1" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -143,7 +147,8 @@
                         android:layout_marginBottom="16dp"
                         android:hint="Email Address"
                         app:startIconDrawable="@drawable/ic_bell"
-                        app:startIconTint="@color/muted"
+                        app:startIconTint="@android:color/black"
+                        app:hintTextColor="@android:color/black"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -152,7 +157,8 @@
                             android:layout_height="wrap_content"
                             android:inputType="textEmailAddress"
                             android:enabled="false"
-                            android:textColor="@color/muted" />
+                            android:textColor="@android:color/black"
+                            android:textColorHint="@android:color/black" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <!-- Address -->
@@ -162,7 +168,9 @@
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="8dp"
                         android:hint="Farm Location / Address"
-                        app:startIconDrawable="@drawable/ic_weather_clear"
+                        app:startIconDrawable="@drawable/ic_map_pin_area"
+                        app:startIconTint="@android:color/black"
+                        app:hintTextColor="@android:color/black"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -172,6 +180,8 @@
                             android:inputType="textPostalAddress|textMultiLine"
                             android:minLines="2"
                             android:maxLines="4"
+                            android:textColor="@android:color/black"
+                            android:textColorHint="@android:color/black"
                             android:gravity="top|start" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -184,6 +194,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
                 android:text="Save Changes"
+                android:textColor="@android:color/white"
                 android:textSize="16sp"
                 android:textStyle="bold"
                 app:cornerRadius="16dp"

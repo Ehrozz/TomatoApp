@@ -27,7 +27,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Select your farming location for accurate local weather data and insights."
-            android:textColor="@color/muted"
+            android:textColor="@android:color/black"
             android:textSize="14sp"
             android:layout_marginBottom="24dp" />
 
@@ -61,6 +61,8 @@
                 android:inputType="text"
                 android:paddingVertical="16dp"
                 android:textSize="16sp"
+                android:textColor="@android:color/black"
+                android:textColorHint="@android:color/black"
                 app:startIconDrawable="@android:drawable/ic_menu_search" />
         </com.google.android.material.textfield.TextInputLayout>
 
@@ -95,6 +97,8 @@
                 android:inputType="text"
                 android:paddingVertical="16dp"
                 android:textSize="16sp"
+                android:textColor="@android:color/black"
+                android:textColorHint="@android:color/black"
                 app:startIconDrawable="@android:drawable/ic_menu_search" />
         </com.google.android.material.textfield.TextInputLayout>
 
@@ -129,6 +133,8 @@
                 android:inputType="text"
                 android:paddingVertical="16dp"
                 android:textSize="16sp"
+                android:textColor="@android:color/black"
+                android:textColorHint="@android:color/black"
                 app:startIconDrawable="@android:drawable/ic_menu_search" />
         </com.google.android.material.textfield.TextInputLayout>
 
@@ -145,7 +151,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Cancel"
-                android:textColor="@color/muted"
+                android:textColor="@android:color/black"
                 android:layout_marginEnd="8dp" />
 
             <com.google.android.material.button.MaterialButton

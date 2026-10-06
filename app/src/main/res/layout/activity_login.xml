@@ -11,7 +11,7 @@
     <LinearLayout
         android:id="@+id/heroSection"
         android:layout_width="match_parent"
-        android:layout_height="480dp"
+        android:layout_height="300dp"
         android:background="@drawable/bg_red_gradient"
         android:orientation="vertical"
         android:padding="24dp"
@@ -52,16 +52,22 @@
     </LinearLayout>
 
     <!-- Login Form Card -->
-    <LinearLayout
+    <ScrollView
         android:id="@+id/loginCard"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_below="@id/heroSection"
         android:layout_marginTop="-28dp"
         android:background="@drawable/bg_card_top_rounded"
-        android:orientation="vertical"
-        android:padding="28dp"
-        android:paddingBottom="12dp">
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        android:paddingBottom="32dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="28dp">
 
         <TextView
             android:layout_width="wrap_content"
@@ -99,6 +105,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:endIconMode="password_toggle"
+            app:endIconTint="@android:color/black"
             android:layout_marginBottom="16dp">
 
             <com.google.android.material.textfield.TextInputEditText
@@ -106,9 +113,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="50dp"
                 android:background="@drawable/bg_pill_input"
-                android:hint="••••••••"
                 android:textColor="@color/text_primary"
                 android:textColorHint="@color/muted"
+                android:gravity="center_vertical"
                 android:paddingStart="18dp"
                 android:paddingEnd="18dp"
                 android:textSize="14sp"
@@ -179,7 +186,8 @@
                 android:textStyle="bold"
                 android:textSize="12sp" />
         </LinearLayout>
-    </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
 
     <ProgressBar
         android:id="@+id/progressBar"

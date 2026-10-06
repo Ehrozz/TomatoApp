@@ -22,6 +22,7 @@ import com.android.tomatoapp.workprogram.ui.Workprogram;
 import com.android.tomatoapp.task.ui.DailyTask;
 import com.android.tomatoapp.monitoring.ui.PlantMonitoringActivity;
 import com.android.tomatoapp.detection.ui.CameraInterface;
+import com.android.tomatoapp.detection.ui.DetectionTypeDialog;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -111,8 +112,13 @@ public abstract class BaseBottomNavActivity extends AppCompatActivity {
                 return true;
             } else if (itemId == R.id.nav_scan) {
                 if (!(this instanceof CameraInterface)) {
-                    startActivity(new Intent(this, CameraInterface.class));
-                    finish();
+                    DetectionTypeDialog dialog = new DetectionTypeDialog(this, detectionType -> {
+                        Intent intent = new Intent(this, CameraInterface.class);
+                        intent.putExtra(CameraInterface.EXTRA_DETECTION_TYPE, detectionType.name());
+                        startActivity(intent);
+                        finish();
+                    });
+                    dialog.show();
                 }
                 return true;
             } else if (itemId == R.id.nav_analytics) {

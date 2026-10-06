@@ -47,8 +47,8 @@ class LoginViewModel : ViewModel() {
 
 // HOME SCREEN
 data class HomeState(
-    val userName: String = "Juan Dela Cruz",
-    val userInitials: String = "JD",
+    val userName: String = "Farmer",
+    val userInitials: String = "F",
     val temperature: String = "31°C",
     val feelsLike: String = "34°",
     val weather: String = "Partly Cloudy",
