@@ -17,10 +17,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.Calendar
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
@@ -28,9 +24,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -39,11 +32,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.android.tomatoapp.navigation.Routes
-import com.android.tomatoapp.ui.components.AppBottomNavBar
 import com.android.tomatoapp.ui.components.AppCard
 import com.android.tomatoapp.ui.components.AppProgressBar
-import com.android.tomatoapp.ui.components.BottomNavItem
 import com.android.tomatoapp.ui.theme.Border
 import com.android.tomatoapp.ui.theme.CreamBackground
 import com.android.tomatoapp.ui.theme.DmSansFamily
@@ -66,8 +56,6 @@ fun HomeScreen(
     onFinanceClick: () -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
-    var selectedNavItem by remember { mutableStateOf(Routes.HOME) }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -391,22 +379,6 @@ fun HomeScreen(
             }
         }
 
-        // Bottom Navigation
-        val navItems = listOf(
-            BottomNavItem("Home", Icons.Filled.Home, Routes.HOME),
-            BottomNavItem("Program", Icons.Outlined.Calendar, Routes.WORK_PROGRAM),
-            BottomNavItem("IPM", Icons.Filled.Search, Routes.IPM),
-            BottomNavItem("Analytics", Icons.Filled.Settings, Routes.ANALYTICS)
-        )
-
-        AppBottomNavBar(
-            items = navItems,
-            selectedRoute = selectedNavItem,
-            onItemSelected = {
-                selectedNavItem = it
-                onNavigate(it)
-            }
-        )
     }
 }
 

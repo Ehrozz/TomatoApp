@@ -14,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.settings.data.SettingsPreferences;
+import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -28,7 +29,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-public class ForecastActivity extends AppCompatActivity {
+public class ForecastActivity extends BaseBottomNavActivity {
 
     private TextView locationTitle;
     private LinearLayout forecastContainer;
@@ -276,7 +277,6 @@ public class ForecastActivity extends AppCompatActivity {
         }
     }
 }
-
 
 
 

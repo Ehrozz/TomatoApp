@@ -1,9 +1,17 @@
 package com.android.tomatoapp.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Calendar
+import androidx.compose.material3.Scaffold
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.android.tomatoapp.ui.screens.login.LoginScreen
 import com.android.tomatoapp.ui.screens.home.HomeScreen
@@ -12,6 +20,8 @@ import com.android.tomatoapp.ui.screens.calculator.CalculatorScreen
 import com.android.tomatoapp.ui.screens.ipm.IPMScreen
 import com.android.tomatoapp.ui.screens.analytics.AnalyticsScreen
 import com.android.tomatoapp.ui.screens.disease.DiseaseDetailScreen
+import com.android.tomatoapp.ui.components.AppBottomNavBar
+import com.android.tomatoapp.ui.components.BottomNavItem
 
 object Routes {
     const val LOGIN = "login"
@@ -28,10 +38,40 @@ fun TomatoAppNavigation(
     navController: NavHostController = rememberNavController(),
     startDestination: String = Routes.LOGIN
 ) {
-    NavHost(
-        navController = navController,
-        startDestination = startDestination
-    ) {
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = currentBackStackEntry?.destination?.route
+    val showBottomBar = currentRoute != Routes.LOGIN
+    val bottomNavItems = listOf(
+        BottomNavItem("Home", Icons.Default.Home, Routes.HOME),
+        BottomNavItem("Program", Icons.Outlined.Calendar, Routes.WORK_PROGRAM),
+        BottomNavItem("IPM", Icons.Default.Search, Routes.IPM),
+        BottomNavItem("Analytics", Icons.Default.Settings, Routes.ANALYTICS)
+    )
+
+    Scaffold(
+        bottomBar = {
+            if (showBottomBar) {
+                AppBottomNavBar(
+                    items = bottomNavItems,
+                    selectedRoute = currentRoute,
+                    onItemSelected = { route ->
+                        if (route != currentRoute) {
+                            navController.navigate(route) {
+                                popUpTo(Routes.HOME) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    }
+                )
+            }
+        }
+    ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = startDestination,
+            modifier = androidx.compose.ui.Modifier.padding(innerPadding)
+        ) {
         composable(Routes.LOGIN) {
             LoginScreen(
                 onSignInClick = {
@@ -123,6 +163,7 @@ fun TomatoAppNavigation(
                     navController.popBackStack()
                 }
             )
+        }
         }
     }
 }

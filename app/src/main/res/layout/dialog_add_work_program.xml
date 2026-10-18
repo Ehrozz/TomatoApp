@@ -15,7 +15,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Start New Program"
-            android:textColor="@color/text_primary"
+            android:textColor="@android:color/black"
             android:textSize="22sp"
             android:textStyle="bold"
             android:layout_marginBottom="8dp" />
@@ -24,7 +24,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Fill in the details to generate your planting schedule."
-            android:textColor="@color/text_secondary"
+            android:textColor="@android:color/black"
             android:textSize="14sp"
             android:layout_marginBottom="24dp" />
 
@@ -112,7 +112,7 @@
             android:layout_width="match_parent"
             android:layout_height="60dp"
             android:text="Initialize Program"
-            android:textColor="@android:color/white"
+            android:textColor="@android:color/black"
             android:textSize="16sp"
             android:textStyle="bold"
             app:cornerRadius="16dp"

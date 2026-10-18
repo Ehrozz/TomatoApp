@@ -38,8 +38,9 @@ import java.text.SimpleDateFormat;
 import java.util.Locale;
 import java.util.concurrent.ExecutionException;
 import com.android.tomatoapp.R;
+import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 
-public class SimpleCaptureActivity extends AppCompatActivity {
+public class SimpleCaptureActivity extends BaseBottomNavActivity {
 
     private static final String TAG = "SimpleCaptureActivity";
 
@@ -271,4 +272,3 @@ public class SimpleCaptureActivity extends AppCompatActivity {
         }
     }
 }
-

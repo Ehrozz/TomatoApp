@@ -1,5 +1,7 @@
-0 healty
-1 Early Blight
-2 Late Blight
-3 Leaf Mold
-4 Leaf Curl
+0 bacterial spot
+1 early blight
+2 healthy
+3 late blight
+4 leaf mold
+5 TYLC
+6 Mosaic virus

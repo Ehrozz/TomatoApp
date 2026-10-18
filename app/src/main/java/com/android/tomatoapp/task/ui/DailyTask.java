@@ -93,6 +93,7 @@ public class DailyTask extends BaseBottomNavActivity {
         startDate = getIntent().getStringExtra("programStartDate");
         growthHabit = getIntent().getStringExtra("growthHabit");
         maturityDays = getIntent().getIntExtra("maturityDays", 0);
+        int adjustedDayNumber = getIntent().getIntExtra("adjustedDayNumber", 0);
 
         // Fallback if startDate is missing
         if (startDate == null || startDate.isEmpty()) {
@@ -132,7 +133,9 @@ public class DailyTask extends BaseBottomNavActivity {
         }
 
         // Calculate day number and get tasks
-        dayNumber = calculateDayNumber(startDate, date);
+        dayNumber = adjustedDayNumber > 0
+                ? adjustedDayNumber
+                : calculateDayNumber(startDate, date);
         if (dayNumber > 0 && growthHabit != null && maturityDays > 0) {
             taskList = TaskSchedule.getTasksForDay(growthHabit, maturityDays, dayNumber);
         }

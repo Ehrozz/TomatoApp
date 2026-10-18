@@ -5,6 +5,9 @@ import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -37,6 +40,40 @@ public abstract class BaseBottomNavActivity extends AppCompatActivity {
 
     protected BottomNavigationView bottomNavigationView;
     private boolean wasOffline = false;
+
+    @Override
+    public void setContentView(int layoutResID) {
+        setContentView(getLayoutInflater().inflate(layoutResID, null, false));
+    }
+
+    @Override
+    public void setContentView(View view) {
+        if (view.findViewById(R.id.bottom_navigation) != null) {
+            super.setContentView(view);
+        } else {
+            LinearLayout screen = new LinearLayout(this);
+            screen.setOrientation(LinearLayout.VERTICAL);
+
+            view.setLayoutParams(new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    0,
+                    1f
+            ));
+            screen.addView(view);
+
+            BottomNavigationView navigation = new BottomNavigationView(this);
+            navigation.setId(R.id.bottom_navigation);
+            navigation.inflateMenu(R.menu.menu_bottom_nav);
+            navigation.setLayoutParams(new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+            ));
+            screen.addView(navigation);
+            super.setContentView(screen);
+        }
+
+        setupBottomNavigation();
+    }
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -93,6 +130,10 @@ public abstract class BaseBottomNavActivity extends AppCompatActivity {
     protected void setupBottomNavigation() {
         bottomNavigationView = findViewById(R.id.bottom_navigation);
         if (bottomNavigationView == null) return;
+
+        // Force a consistent appearance across light/dark mode and device skins.
+        bottomNavigationView.setBackgroundColor(ContextCompat.getColor(this, R.color.white));
+        bottomNavigationView.setItemBackgroundResource(android.R.color.transparent);
 
         // Set global item tint and text color to Black (#0a0a0a) for visibility
         android.content.res.ColorStateList blackColorStateList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#0a0a0a"));

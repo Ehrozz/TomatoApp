@@ -419,26 +419,50 @@ public class Workprogram extends BaseBottomNavActivity {
             HashSet<CalendarDay> phase4 = new HashSet<>();
             HashSet<CalendarDay> phase5 = new HashSet<>();
 
-            // Fill Phase 1
-            for (int d = 0; d < phase1Days; d++) {
-                phase1.add(CalendarDay.from(cal));
-                cal.add(Calendar.DAY_OF_YEAR, 1);
-            }
+            int[] phaseDurations = {
+                    phase1Days,
+                    eachPhase + (extra > 0 ? 1 : 0),
+                    eachPhase + (extra > 1 ? 1 : 0),
+                    eachPhase + (extra > 2 ? 1 : 0),
+                    eachPhase + (extra > 3 ? 1 : 0)
+            };
 
-            // Fill Phases 2–5
-            int currentExtra = extra;
-            for (int phase = 2; phase <= 5; phase++) {
-                int duration = eachPhase + (currentExtra-- > 0 ? 1 : 0);
-                for (int d = 0; d < duration; d++) {
-                    CalendarDay cd = CalendarDay.from(cal);
-                    switch (phase) {
-                        case 2: phase2.add(cd); break;
-                        case 3: phase3.add(cd); break;
-                        case 4: phase4.add(cd); break;
-                        case 5: phase5.add(cd); break;
+            /*
+             * A missed date is retained in the current phase, but it does not
+             * consume a planned program day. This extends that phase and
+             * shifts every subsequent phase by one calendar day.
+             */
+            int missedDays = 0;
+            int totalPlannedDays = maturityDays;
+            for (int calendarDay = 1;
+                 calendarDay <= totalPlannedDays + missedDates.size();
+                 calendarDay++) {
+                CalendarDay currentDate = CalendarDay.from(cal);
+                int plannedDay = calendarDay - missedDays;
+                if (plannedDay > 0 && plannedDay <= totalPlannedDays) {
+                    int phase = phaseDurations.length;
+                    int phaseEnd = 0;
+                    for (int index = 0; index < phaseDurations.length; index++) {
+                        phaseEnd += phaseDurations[index];
+                        if (plannedDay <= phaseEnd) {
+                            phase = index + 1;
+                            break;
+                        }
                     }
-                    cal.add(Calendar.DAY_OF_YEAR, 1);
+
+                    switch (phase) {
+                        case 1: phase1.add(currentDate); break;
+                        case 2: phase2.add(currentDate); break;
+                        case 3: phase3.add(currentDate); break;
+                        case 4: phase4.add(currentDate); break;
+                        case 5: phase5.add(currentDate); break;
+                    }
                 }
+
+                if (missedDates.contains(currentDate)) {
+                    missedDays++;
+                }
+                cal.add(Calendar.DAY_OF_YEAR, 1);
             }
 
             // Use the new drawables for the 5 stages
@@ -652,6 +676,40 @@ public class Workprogram extends BaseBottomNavActivity {
         return 0;
     }
 
+    /**
+     * Returns the program day represented by a calendar date after accounting
+     * for missed days. A missed day does not advance the planned program day,
+     * so every later phase boundary moves forward by one day.
+     */
+    private int calculateAdjustedDayNumber(Date current) {
+        int calendarDay = calculateDayNumber(programStartDate, current);
+        if (calendarDay <= 0) {
+            return calendarDay;
+        }
+
+        int missedBeforeDate = 0;
+        for (CalendarDay missedDate : missedDates) {
+            int missedDay = calculateDayNumber(programStartDate, missedDate.getDate());
+            if (missedDay > 0 && missedDay < calendarDay) {
+                missedBeforeDate++;
+            }
+        }
+        return calendarDay - missedBeforeDate;
+    }
+
+    private int calculateAdjustedDayNumber(String date) {
+        if (date == null || date.isEmpty()) {
+            return -1;
+        }
+        try {
+            Date parsedDate = sdf.parse(date);
+            return calculateAdjustedDayNumber(parsedDate);
+        } catch (ParseException e) {
+            Log.e(TAG, "Error calculating adjusted program day for " + date, e);
+            return -1;
+        }
+    }
+
     private void updateTaskWarningBanner() {
         if (taskWarningBanner == null) return;
         int missedCount = missedDates.size();
@@ -674,7 +732,7 @@ public class Workprogram extends BaseBottomNavActivity {
         }
 
         Date targetDate = target.getDate();
-        int dayNumber = calculateDayNumber(programStartDate, targetDate);
+        int dayNumber = calculateAdjustedDayNumber(targetDate);
         if (dayNumber <= 0) {
             return "";
         }
@@ -785,6 +843,7 @@ public class Workprogram extends BaseBottomNavActivity {
         taskIntent.putExtra("growthHabit", growthHabit);
         taskIntent.putExtra("maturityDays", maturityDays);
         taskIntent.putExtra("programStartDate", programStartDate);
+        taskIntent.putExtra("adjustedDayNumber", calculateAdjustedDayNumber(clickedDate));
         startActivity(taskIntent);
     }
 
@@ -979,7 +1038,7 @@ public class Workprogram extends BaseBottomNavActivity {
         // If today is pending or not yet logged, show tasks count for today
         if (todayStatus == null || "pending".equals(todayStatus)) {
             int maturityDays = getMaturityDays(selectedCultivar);
-            int dayNumber = calculateDayNumber(programStartDate, today);
+            int dayNumber = calculateAdjustedDayNumber(today);
             if (dayNumber > 0 && dayNumber <= maturityDays) {
                 // Fetch task count for the current day from the schedule
                 tasksDue = WorkProgramDataHelper.getTaskCountForDay(selectedCultivar, maturityDays, dayNumber);

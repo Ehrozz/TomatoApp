@@ -17,6 +17,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputLayout;
@@ -153,6 +155,7 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         setContentView(R.layout.activity_daily_expenses);
 
         setupBottomNavigation();
+        setupKeyboardLayout();
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Daily Expenses");
@@ -255,6 +258,21 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         // Initial state: start in edit mode (will be disabled if data exists)
         setEditMode(true);
         loadExistingExpenses();
+    }
+
+    private void setupKeyboardLayout() {
+        View root = findViewById(R.id.main_layout);
+        View bottomNavigation = findViewById(R.id.bottom_navigation);
+        if (root == null || bottomNavigation == null) {
+            return;
+        }
+
+        ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
+            boolean keyboardVisible = insets.isVisible(WindowInsetsCompat.Type.ime());
+            bottomNavigation.setVisibility(keyboardVisible ? View.GONE : View.VISIBLE);
+            return insets;
+        });
+        ViewCompat.requestApplyInsets(root);
     }
 
     // Edit/Save Mode Methods
@@ -1871,5 +1889,4 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         }
     }
 }
-
 

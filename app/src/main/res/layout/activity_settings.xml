@@ -52,14 +52,14 @@
                         android:text="Settings"
                         android:textSize="24sp"
                         android:textStyle="bold"
-                        android:textColor="@color/white" />
+                        android:textColor="@android:color/black" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Manage your app preferences"
                         android:textSize="14sp"
-                        android:textColor="@color/white"
+                        android:textColor="@android:color/black"
                         android:layout_marginTop="4dp"
                         android:alpha="0.9" />
                 </LinearLayout>
@@ -86,7 +86,7 @@
                         android:text="General Settings"
                         android:textSize="18sp"
                         android:textStyle="bold"
-                        android:textColor="@color/text_primary"
+                        android:textColor="@android:color/black"
                         android:layout_marginBottom="16dp" />
 
                     <!-- Language -->
@@ -100,6 +100,8 @@
                         app:hintTextColor="@color/black"
                         app:hintTextAppearance="@style/TextAppearance.TomatoApp.SettingsInputLabel"
                         app:boxStrokeWidth="2dp"
+                        app:boxStrokeColor="@color/black"
+                        app:boxBackgroundColor="@android:color/white"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -111,6 +113,7 @@
                             android:clickable="true"
                             android:textColor="@android:color/black"
                             android:textColorHint="@android:color/black"
+                            android:alpha="1"
                             android:maxLines="1" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -125,6 +128,8 @@
                         app:hintTextColor="@color/black"
                         app:hintTextAppearance="@style/TextAppearance.TomatoApp.SettingsInputLabel"
                         app:boxStrokeWidth="2dp"
+                        app:boxStrokeColor="@color/black"
+                        app:boxBackgroundColor="@android:color/white"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -136,6 +141,7 @@
                             android:clickable="true"
                             android:textColor="@android:color/black"
                             android:textColorHint="@android:color/black"
+                            android:alpha="1"
                             android:maxLines="1" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -149,6 +155,8 @@
                         app:hintTextColor="@color/black"
                         app:hintTextAppearance="@style/TextAppearance.TomatoApp.SettingsInputLabel"
                         app:boxStrokeWidth="2dp"
+                        app:boxStrokeColor="@color/black"
+                        app:boxBackgroundColor="@android:color/white"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -160,6 +168,7 @@
                             android:clickable="true"
                             android:textColor="@android:color/black"
                             android:textColorHint="@android:color/black"
+                            android:alpha="1"
                             android:maxLines="1" />
                     </com.google.android.material.textfield.TextInputLayout>
                 </LinearLayout>
@@ -186,7 +195,7 @@
                         android:text="Display Settings"
                         android:textSize="18sp"
                         android:textStyle="bold"
-                        android:textColor="@color/text_primary"
+                        android:textColor="@android:color/black"
                         android:layout_marginBottom="16dp" />
 
                     <!-- Weather Unit -->
@@ -200,6 +209,8 @@
                         app:hintTextColor="@color/black"
                         app:hintTextAppearance="@style/TextAppearance.TomatoApp.SettingsInputLabel"
                         app:boxStrokeWidth="2dp"
+                        app:boxStrokeColor="@color/black"
+                        app:boxBackgroundColor="@android:color/white"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -211,6 +222,7 @@
                             android:clickable="true"
                             android:textColor="@android:color/black"
                             android:textColorHint="@android:color/black"
+                            android:alpha="1"
                             android:maxLines="1" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -225,6 +237,8 @@
                         app:hintTextColor="@color/black"
                         app:hintTextAppearance="@style/TextAppearance.TomatoApp.SettingsInputLabel"
                         app:boxStrokeWidth="2dp"
+                        app:boxStrokeColor="@color/black"
+                        app:boxBackgroundColor="@android:color/white"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -236,6 +250,7 @@
                             android:clickable="true"
                             android:textColor="@android:color/black"
                             android:textColorHint="@android:color/black"
+                            android:alpha="1"
                             android:maxLines="1" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -249,6 +264,8 @@
                         app:hintTextColor="@color/black"
                         app:hintTextAppearance="@style/TextAppearance.TomatoApp.SettingsInputLabel"
                         app:boxStrokeWidth="2dp"
+                        app:boxStrokeColor="@color/black"
+                        app:boxBackgroundColor="@android:color/white"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -260,6 +277,7 @@
                             android:clickable="true"
                             android:textColor="@android:color/black"
                             android:textColorHint="@android:color/black"
+                            android:alpha="1"
                             android:maxLines="1" />
                     </com.google.android.material.textfield.TextInputLayout>
                 </LinearLayout>
@@ -286,7 +304,7 @@
                         android:text="@string/profile_notifications_title"
                         android:textSize="18sp"
                         android:textStyle="bold"
-                        android:textColor="@color/text_primary"
+                        android:textColor="@android:color/black"
                         android:layout_marginBottom="12dp" />
 
                     <com.google.android.material.materialswitch.MaterialSwitch
@@ -295,6 +313,7 @@
                         android:layout_height="wrap_content"
                         android:text="@string/notification_switch_tasks"
                         android:textSize="14sp"
+                        android:textColor="@android:color/black"
                         android:layout_marginBottom="12dp" />
 
                     <com.google.android.material.materialswitch.MaterialSwitch
@@ -303,6 +322,7 @@
                         android:layout_height="wrap_content"
                         android:text="@string/notification_switch_monitoring"
                         android:textSize="14sp"
+                        android:textColor="@android:color/black"
                         android:layout_marginBottom="12dp" />
 
                     <com.google.android.material.materialswitch.MaterialSwitch
@@ -310,7 +330,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="@string/notification_switch_general"
-                        android:textSize="14sp" />
+                        android:textSize="14sp"
+                        android:textColor="@android:color/black" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -335,7 +356,7 @@
                         android:text="Advanced Settings"
                         android:textSize="18sp"
                         android:textStyle="bold"
-                        android:textColor="@color/text_primary"
+                        android:textColor="@android:color/black"
                         android:layout_marginBottom="16dp" />
 
                     <!-- Notification Sound -->
@@ -349,6 +370,8 @@
                         app:hintTextColor="@color/black"
                         app:hintTextAppearance="@style/TextAppearance.TomatoApp.SettingsInputLabel"
                         app:boxStrokeWidth="2dp"
+                        app:boxStrokeColor="@color/black"
+                        app:boxBackgroundColor="@android:color/white"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -360,6 +383,7 @@
                             android:clickable="true"
                             android:textColor="@android:color/black"
                             android:textColorHint="@android:color/black"
+                            android:alpha="1"
                             android:maxLines="1" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -374,6 +398,8 @@
                         app:hintTextColor="@color/black"
                         app:hintTextAppearance="@style/TextAppearance.TomatoApp.SettingsInputLabel"
                         app:boxStrokeWidth="2dp"
+                        app:boxStrokeColor="@color/black"
+                        app:boxBackgroundColor="@android:color/white"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -385,6 +411,7 @@
                             android:clickable="true"
                             android:textColor="@android:color/black"
                             android:textColorHint="@android:color/black"
+                            android:alpha="1"
                             android:maxLines="1" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -395,6 +422,7 @@
                         android:layout_height="wrap_content"
                         android:text="Enable Quiet Hours"
                         android:textSize="14sp"
+                        android:textColor="@android:color/black"
                         android:layout_marginBottom="16dp" />
 
                     <!-- Quiet Hours Start Time -->
@@ -409,6 +437,8 @@
                         app:hintTextColor="@color/black"
                         app:hintTextAppearance="@style/TextAppearance.TomatoApp.SettingsInputLabel"
                         app:boxStrokeWidth="2dp"
+                        app:boxStrokeColor="@color/black"
+                        app:boxBackgroundColor="@android:color/white"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -420,6 +450,7 @@
                             android:clickable="true"
                             android:textColor="@android:color/black"
                             android:textColorHint="@android:color/black"
+                            android:alpha="1"
                             android:maxLines="1" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -434,6 +465,8 @@
                         app:hintTextColor="@color/black"
                         app:hintTextAppearance="@style/TextAppearance.TomatoApp.SettingsInputLabel"
                         app:boxStrokeWidth="2dp"
+                        app:boxStrokeColor="@color/black"
+                        app:boxBackgroundColor="@android:color/white"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -445,6 +478,7 @@
                             android:clickable="true"
                             android:textColor="@android:color/black"
                             android:textColorHint="@android:color/black"
+                            android:alpha="1"
                             android:maxLines="1" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -455,6 +489,7 @@
                         android:layout_height="wrap_content"
                         android:text="Show Tutorial"
                         android:textAllCaps="false"
+                        android:textColor="@android:color/black"
                         android:icon="@android:drawable/ic_menu_help"
                         android:layout_marginTop="8dp"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
@@ -466,6 +501,7 @@
                         android:layout_height="wrap_content"
                         android:text="Export Data"
                         android:textAllCaps="false"
+                        android:textColor="@android:color/black"
                         android:icon="@android:drawable/ic_menu_share"
                         android:layout_marginTop="8dp"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
@@ -477,6 +513,7 @@
                         android:layout_height="wrap_content"
                         android:text="Import Data"
                         android:textAllCaps="false"
+                        android:textColor="@android:color/black"
                         android:icon="@android:drawable/ic_menu_upload"
                         android:layout_marginTop="8dp"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
@@ -488,6 +525,7 @@
                         android:layout_height="wrap_content"
                         android:text="Clear Local Data"
                         android:textAllCaps="false"
+                        android:textColor="@android:color/black"
                         android:icon="@android:drawable/ic_menu_delete"
                         android:layout_marginTop="8dp"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
@@ -506,7 +544,7 @@
                         android:layout_marginBottom="16dp"
                         app:cornerRadius="16dp"
                         app:backgroundTint="@color/tomato_red"
-                        android:textColor="@color/white" />
+                        android:textColor="@android:color/black" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -526,4 +564,3 @@
         app:elevation="16dp" />
 
 </RelativeLayout>
-

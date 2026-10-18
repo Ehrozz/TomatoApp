@@ -27,13 +27,14 @@ import com.google.firebase.database.ValueEventListener;
 import android.widget.AutoCompleteTextView;
 import com.android.tomatoapp.common.utils.PhilippineLocations;
 import com.android.tomatoapp.common.utils.QuezonBarangays;
+import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import java.util.Collections;
 import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class CityManagementActivity extends AppCompatActivity {
+public class CityManagementActivity extends BaseBottomNavActivity {
 
     private RecyclerView recyclerView;
     private View emptyState;

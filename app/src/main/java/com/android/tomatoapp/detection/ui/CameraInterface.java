@@ -860,12 +860,15 @@ public class CameraInterface extends BaseBottomNavActivity {
                 labelMapping.put("healthy", "Healthy Tomato");
             } else {
                 // Leaves model labels
+                labelMapping.put("bacterial spot", "Bacterial Spot");
                 labelMapping.put("early blight", "Early Blight (Alternaria solani)");
                 labelMapping.put("healty", "Healthy Tomato");
                 labelMapping.put("healthy", "Healthy Tomato");
                 labelMapping.put("late blight", "Late Blight (Phytophthora infestans)");
                 labelMapping.put("leaf mold", "Leaf Mold (Passalora fulva)");
                 labelMapping.put("leaf curl", "Tomato Leaf Curl Virus (TLCV)");
+                labelMapping.put("tylc", "Tomato Leaf Curl Virus (TLCV)");
+                labelMapping.put("mosaic virus", "Mosaic Virus");
             }
 
             String mappedLabel = labelMapping.getOrDefault(rawLabel, rawLabel);
