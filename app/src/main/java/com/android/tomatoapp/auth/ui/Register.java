@@ -16,6 +16,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -42,6 +43,7 @@ public class Register extends AppCompatActivity {
 
     private TextInputEditText editTextFullName;
     private TextInputEditText editTextAddress;
+    private TextInputLayout addressLayout;
     private TextInputEditText editTextEmail;
     private TextInputEditText editTextPassword;
     private View buttonReg;
@@ -105,6 +107,7 @@ public class Register extends AppCompatActivity {
     private void bindViews() {
         editTextFullName = findViewById(R.id.fullName);
         editTextAddress = findViewById(R.id.address);
+        addressLayout = findViewById(R.id.addressLayout);
         editTextEmail = findViewById(R.id.email);
         editTextPassword = findViewById(R.id.password);
         buttonReg = findViewById(R.id.btn_register);
@@ -122,6 +125,9 @@ public class Register extends AppCompatActivity {
         // Add location picker to address field
         if (editTextAddress != null) {
             editTextAddress.setOnClickListener(v -> showLocationPicker());
+        }
+        if (addressLayout != null) {
+            addressLayout.setEndIconOnClickListener(v -> showLocationPicker());
         }
     }
 

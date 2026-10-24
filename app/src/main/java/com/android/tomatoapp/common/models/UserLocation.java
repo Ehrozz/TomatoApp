@@ -29,7 +29,20 @@ public class UserLocation {
     }
 
     public String getFullLabel() {
-        return brgy + ", " + city + ", " + province;
+        StringBuilder label = new StringBuilder();
+        appendPart(label, brgy);
+        appendPart(label, city);
+        appendPart(label, province);
+        return label.toString();
+    }
+
+    private void appendPart(StringBuilder label, String value) {
+        if (value != null && !value.trim().isEmpty()) {
+            if (label.length() > 0) {
+                label.append(", ");
+            }
+            label.append(value.trim());
+        }
     }
 
     @NonNull

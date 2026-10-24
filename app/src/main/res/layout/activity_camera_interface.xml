@@ -290,6 +290,22 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
+    <TextView
+        android:id="@+id/captureGuidance"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/detectionContextPanel"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginEnd="24dp"
+        android:background="#99000000"
+        android:padding="10dp"
+        android:text="For a reliable result: fill the frame with one tomato leaf, fruit, or pest. Use good lighting, hold the camera steady, and avoid unrelated backgrounds."
+        android:textColor="@color/white"
+        android:textSize="12sp"
+        android:gravity="center"
+        android:visibility="visible" />
+
     <!-- ===== BOTTOM CONTROLS ===== -->
     <RelativeLayout
         android:id="@+id/bottomNavBar"

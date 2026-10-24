@@ -57,6 +57,8 @@ import com.android.tomatoapp.workprogram.ui.WorkProgramSelection;
 import com.android.tomatoapp.workprogram.ui.Workprogram;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
+import com.google.android.gms.tasks.CancellationTokenSource;
 import android.widget.AutoCompleteTextView;
 import android.widget.PopupMenu;
 import android.location.Location;
@@ -168,7 +170,6 @@ public class MainActivity extends BaseBottomNavActivity {
         // but for now we'll use long-press on weather card to offer choice
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-        requestWeather();
         
         // Setup bell icon click listener
         View bell = findViewById(R.id.notificationBellIcon);
@@ -306,41 +307,196 @@ public class MainActivity extends BaseBottomNavActivity {
         }
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (fusedLocationClient != null) {
+            requestWeather();
+        }
+    }
+
     private void requestWeather() {
-        // Prefer saved PH location if available
-        SharedPreferences wp = getSharedPreferences(WEATHER_PREF, MODE_PRIVATE);
-        if (wp.contains(KEY_LAT) && wp.contains(KEY_LON)) {
-            double lat = Double.longBitsToDouble(wp.getLong(KEY_LAT, Double.doubleToLongBits(0)));
-            double lon = Double.longBitsToDouble(wp.getLong(KEY_LON, Double.doubleToLongBits(0)));
-            String name = wp.getString(KEY_NAME, "");
-            Location saved = new Location("");
-            saved.setLatitude(lat);
-            saved.setLongitude(lon);
-            if (weatherLocation != null && name != null && !name.isEmpty()) weatherLocation.setText(name);
-            fetchAndDisplayWeather(saved, name);
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            FirebaseDatabase.getInstance().getReference("users")
+                    .child(currentUser.getUid())
+                    .child("locations")
+                    .addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot snapshot) {
+                            UserLocation defaultLocation = null;
+                            for (DataSnapshot child : snapshot.getChildren()) {
+                                UserLocation location = child.getValue(UserLocation.class);
+                                if (location != null && location.isDefault) {
+                                    location.id = child.getKey();
+                                    defaultLocation = location;
+                                    break;
+                                }
+                            }
+
+                            if (defaultLocation != null) {
+                                applyWeatherLocation(
+                                        defaultLocation.lat,
+                                        defaultLocation.lon,
+                                        defaultLocation.getFullLabel()
+                                );
+                            } else {
+                                requestDeviceLocation(true);
+                            }
+                        }
+
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError error) {
+                            requestDeviceLocation(false);
+                        }
+                    });
             return;
         }
 
+        requestDeviceLocation(false);
+    }
+
+    private void requestDeviceLocation(boolean saveAsDefault) {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
                 ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, REQ_LOCATION);
             return;
         }
+
         fusedLocationClient.getLastLocation().addOnSuccessListener(location -> {
             if (location != null) {
-                fetchAndDisplayWeather(location, null);
+                resolveAndApplyDeviceLocation(location, saveAsDefault);
             } else {
-                Location fallback = new Location("");
-                fallback.setLatitude(14.5995);
-                fallback.setLongitude(120.9842);
-                fetchAndDisplayWeather(fallback, "Manila, Philippines");
+                requestCurrentDeviceLocation(saveAsDefault);
             }
         }).addOnFailureListener(e -> {
-            Location fallback = new Location("");
-            fallback.setLatitude(14.5995);
-            fallback.setLongitude(120.9842);
-            fetchAndDisplayWeather(fallback, "Manila, Philippines");
+            requestCurrentDeviceLocation(saveAsDefault);
         });
+    }
+
+    private void requestCurrentDeviceLocation(boolean saveAsDefault) {
+        try {
+            fusedLocationClient.getCurrentLocation(
+                    Priority.PRIORITY_BALANCED_POWER_ACCURACY,
+                    new CancellationTokenSource().getToken()
+            ).addOnSuccessListener(location -> {
+                if (location != null) {
+                    resolveAndApplyDeviceLocation(location, saveAsDefault);
+                } else {
+                    showFallbackWeather();
+                }
+            }).addOnFailureListener(e -> showFallbackWeather());
+        } catch (SecurityException e) {
+            Log.e(TAG, "Unable to request current device location", e);
+            showFallbackWeather();
+        }
+    }
+
+    private void resolveAndApplyDeviceLocation(Location location, boolean saveAsDefault) {
+        new Thread(() -> {
+            String locality = "";
+            try {
+                Geocoder geocoder = new Geocoder(MainActivity.this, Locale.getDefault());
+                List<Address> addresses = geocoder.getFromLocation(
+                        location.getLatitude(), location.getLongitude(), 1
+                );
+                if (addresses != null && !addresses.isEmpty()) {
+                    Address address = addresses.get(0);
+                    String city = address.getLocality();
+                    String admin = address.getAdminArea();
+                    String country = address.getCountryName();
+                    StringBuilder label = new StringBuilder();
+                    if (city != null && !city.isEmpty()) label.append(city);
+                    if (admin != null && !admin.isEmpty()) {
+                        label.append(label.length() > 0 ? ", " : "").append(admin);
+                    }
+                    if (country != null && !country.isEmpty()) {
+                        label.append(label.length() > 0 ? ", " : "").append(country);
+                    }
+                    locality = label.toString();
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Unable to resolve device location name", e);
+            }
+
+            String finalLocality = locality.isEmpty()
+                    ? String.format(Locale.getDefault(), "%.3f, %.3f",
+                    location.getLatitude(), location.getLongitude())
+                    : locality;
+
+            if (saveAsDefault) {
+                saveDetectedLocationAsDefault(location, finalLocality);
+            }
+            applyWeatherLocation(location.getLatitude(), location.getLongitude(), finalLocality);
+        }).start();
+    }
+
+    private void saveDetectedLocationAsDefault(Location location, String label) {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) return;
+
+        DatabaseReference locationsRef = FirebaseDatabase.getInstance().getReference("users")
+                .child(currentUser.getUid())
+                .child("locations");
+        String locationId = locationsRef.push().getKey();
+        if (locationId == null) return;
+
+        UserLocation detectedLocation = new UserLocation(
+                locationId,
+                "",
+                label,
+                "",
+                location.getLatitude(),
+                location.getLongitude(),
+                true
+        );
+
+        locationsRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                for (DataSnapshot child : snapshot.getChildren()) {
+                    child.getRef().child("isDefault").setValue(false);
+                }
+                locationsRef.child(locationId).setValue(detectedLocation);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.e(TAG, "Unable to save detected default location: " + error.getMessage());
+            }
+        });
+    }
+
+    private void applyWeatherLocation(double lat, double lon, String name) {
+        SharedPreferences wp = getSharedPreferences(WEATHER_PREF, MODE_PRIVATE);
+        wp.edit()
+                .putLong(KEY_LAT, Double.doubleToLongBits(lat))
+                .putLong(KEY_LON, Double.doubleToLongBits(lon))
+                .putString(KEY_NAME, name)
+                .apply();
+
+        Location location = new Location("weather");
+        location.setLatitude(lat);
+        location.setLongitude(lon);
+        if (weatherLocation != null && name != null && !name.isEmpty()) {
+            weatherLocation.setText(name);
+        }
+        fetchAndDisplayWeather(location, name);
+    }
+
+    private void showFallbackWeather() {
+        SharedPreferences wp = getSharedPreferences(WEATHER_PREF, MODE_PRIVATE);
+        if (wp.contains(KEY_LAT) && wp.contains(KEY_LON)) {
+            double lat = Double.longBitsToDouble(wp.getLong(KEY_LAT, Double.doubleToLongBits(0)));
+            double lon = Double.longBitsToDouble(wp.getLong(KEY_LON, Double.doubleToLongBits(0)));
+            applyWeatherLocation(lat, lon, wp.getString(KEY_NAME, ""));
+            return;
+        }
+
+        Location fallback = new Location("fallback");
+        fallback.setLatitude(14.5995);
+        fallback.setLongitude(120.9842);
+        fetchAndDisplayWeather(fallback, "Manila, Philippines");
     }
 
     private void fetchAndDisplayWeather(Location location, String savedName) {

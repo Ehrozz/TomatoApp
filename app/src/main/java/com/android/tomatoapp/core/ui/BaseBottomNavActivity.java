@@ -148,7 +148,6 @@ public abstract class BaseBottomNavActivity extends AppCompatActivity {
             if (itemId == R.id.nav_home) {
                 if (!(this instanceof MainActivity)) {
                     startActivity(new Intent(this, MainActivity.class));
-                    finish();
                 }
                 return true;
             } else if (itemId == R.id.nav_scan) {
@@ -157,7 +156,6 @@ public abstract class BaseBottomNavActivity extends AppCompatActivity {
                         Intent intent = new Intent(this, CameraInterface.class);
                         intent.putExtra(CameraInterface.EXTRA_DETECTION_TYPE, detectionType.name());
                         startActivity(intent);
-                        finish();
                     });
                     dialog.show();
                 }
@@ -165,20 +163,17 @@ public abstract class BaseBottomNavActivity extends AppCompatActivity {
             } else if (itemId == R.id.nav_analytics) {
                 if (!(this instanceof AnalyticsActivity)) {
                     startActivity(new Intent(this, AnalyticsActivity.class));
-                    finish();
                 }
                 return true;
             } else if (itemId == R.id.nav_workprogram) {
                 // Fix: Allow staying in Workprogram, DailyTask, or Monitoring screens
                 if (!(this instanceof WorkProgramSelection || this instanceof Workprogram || this instanceof DailyTask || this instanceof PlantMonitoringActivity)) {
                     startActivity(new Intent(this, WorkProgramSelection.class));
-                    finish();
                 }
                 return true;
             } else if (itemId == R.id.nav_settings) {
                 if (!(this instanceof SettingsActivity)) {
                     startActivity(new Intent(this, SettingsActivity.class));
-                    finish();
                 }
                 return true;
             }

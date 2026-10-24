@@ -102,19 +102,28 @@
                     android:textColor="@color/muted"
                     android:layout_marginBottom="6dp" />
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/address"
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/addressLayout"
                     android:layout_width="match_parent"
-                    android:layout_height="50dp"
-                    android:background="@drawable/bg_pill_input"
-                    android:hint="Poblacion, Bukidnon"
-                    android:textColor="@color/text_primary"
-                    android:textColorHint="@color/muted"
-                    android:paddingStart="18dp"
-                    android:paddingEnd="18dp"
-                    android:textSize="14sp"
-                    android:inputType="textPostalAddress"
-                    android:layout_marginBottom="14dp" />
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="14dp"
+                    app:endIconMode="custom"
+                    app:endIconDrawable="@android:drawable/arrow_down_float"
+                    app:endIconContentDescription="Select farm location">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/address"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:background="@drawable/bg_pill_input"
+                        android:hint="Poblacion, Bukidnon"
+                        android:textColor="@color/text_primary"
+                        android:textColorHint="@color/muted"
+                        android:paddingStart="18dp"
+                        android:paddingEnd="18dp"
+                        android:textSize="14sp"
+                        android:inputType="textPostalAddress" />
+                </com.google.android.material.textfield.TextInputLayout>
 
                 <TextView
                     android:layout_width="wrap_content"

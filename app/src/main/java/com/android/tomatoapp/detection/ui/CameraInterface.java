@@ -24,6 +24,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageCapture;
@@ -76,6 +77,10 @@ import com.android.tomatoapp.detection.utils.RipenessClassifier;
 public class CameraInterface extends BaseBottomNavActivity {
 
     private static final String TAG = "CameraInterface";
+    private static final float MIN_ACCEPTED_CONFIDENCE = 0.80f;
+    private static final float MIN_PREDICTION_MARGIN = 0.15f;
+    private static final String DETECTION_DISCLAIMER =
+            "AI-assisted screening only. Results are estimates and should be verified by observing the plant or consulting an agricultural specialist.";
     public static final String EXTRA_LINKED_PROGRAM_ID = "extra_linked_program_id";
     public static final String EXTRA_LINKED_CULTIVAR = "extra_linked_cultivar";
     public static final String EXTRA_LINKED_PHASE = "extra_linked_phase";
@@ -470,6 +475,10 @@ public class CameraInterface extends BaseBottomNavActivity {
                                 Toast.LENGTH_SHORT).show();
 
                         HashMap<String, String> detectionResults = runTeachableMachineDetection(photoUri);
+                        if (!isAcceptedDetection(detectionResults)) {
+                            showRetakeMessage(detectionResults);
+                            return;
+                        }
 
                         // Save detection with all details to history
                         DetectionHistoryManager.addHistory(
@@ -555,6 +564,10 @@ public class CameraInterface extends BaseBottomNavActivity {
             // Check if detection was successful
             if (detectionResults == null || detectionResults.isEmpty()) {
                 Toast.makeText(this, "Detection failed. Please try again.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (!isAcceptedDetection(detectionResults)) {
+                showRetakeMessage(detectionResults);
                 return;
             }
 
@@ -814,6 +827,17 @@ public class CameraInterface extends BaseBottomNavActivity {
             float maxProb = topProbs[0];
             float secondProb = topProbs.length > 1 ? topProbs[1] : 0f;
             float thirdProb = topProbs.length > 2 ? topProbs[2] : 0f;
+            boolean accepted = maxProb >= MIN_ACCEPTED_CONFIDENCE
+                    && (maxProb - secondProb) >= MIN_PREDICTION_MARGIN;
+            results.put("accepted", String.valueOf(accepted));
+            if (!accepted) {
+                results.put("rejectionReason", String.format(Locale.getDefault(),
+                        "Confidence must be at least %.0f%% and lead the next prediction by at least %.0f%%. Current result: %.1f%% confidence and %.1f%% lead.",
+                        MIN_ACCEPTED_CONFIDENCE * 100f,
+                        MIN_PREDICTION_MARGIN * 100f,
+                        maxProb * 100f,
+                        (maxProb - secondProb) * 100f));
+            }
 
             // Adaptive threshold based on model type and dataset quality
             // Adjusted thresholds for better accuracy reporting
@@ -983,6 +1007,7 @@ public class CameraInterface extends BaseBottomNavActivity {
                 } else if (!confidenceWarning.isEmpty()) {
                     fullDescription.append("\n\n").append(confidenceWarning);
                 }
+                fullDescription.append("\n\n").append(DETECTION_DISCLAIMER);
                 
                 results.put("description", fullDescription.toString());
                 
@@ -1012,6 +1037,45 @@ public class CameraInterface extends BaseBottomNavActivity {
             Log.e(TAG, "Error running detection", e);
         }
         return results;
+    }
+
+    private boolean isAcceptedDetection(HashMap<String, String> detectionResults) {
+        return detectionResults != null
+                && "true".equalsIgnoreCase(detectionResults.get("accepted"));
+    }
+
+    private void showRetakeMessage(HashMap<String, String> detectionResults) {
+        String message = detectionResults != null
+                ? detectionResults.get("rejectionReason")
+                : null;
+        if (TextUtils.isEmpty(message)) {
+            message = "The image could not be analyzed reliably.";
+        }
+        message += "\n\nPlease retake a clear photo of one tomato leaf, fruit, or pest.";
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Retake Photo")
+                .setMessage(message)
+                .setPositiveButton("Try Again", null)
+                .create();
+        dialog.setOnShowListener(dialogInterface -> {
+            TextView messageView = dialog.findViewById(android.R.id.message);
+            if (messageView != null) {
+                messageView.setTextSize(18);
+                messageView.setLineSpacing(0f, 1.15f);
+                messageView.setPadding(8, 8, 8, 8);
+            }
+            TextView titleView = dialog.findViewById(
+                    getResources().getIdentifier("alertTitle", "id", getPackageName()));
+            if (titleView != null) {
+                titleView.setTextSize(21);
+            }
+            if (dialog.getWindow() != null) {
+                int width = (int) (getResources().getDisplayMetrics().widthPixels * 0.90f);
+                dialog.getWindow().setLayout(width, android.view.WindowManager.LayoutParams.WRAP_CONTENT);
+            }
+        });
+        dialog.show();
     }
 
     private void applyLinkedProgramSelection() {
