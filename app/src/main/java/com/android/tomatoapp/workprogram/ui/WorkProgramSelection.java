@@ -100,22 +100,44 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 // Only update if online (to avoid conflicts with offline data)
                 if (LocalDataManager.isOnline(WorkProgramSelection.this)) {
-                    cultivarList.clear();
+                    new Thread(() -> {
+                        java.util.Map<String, Integer> localRates = new java.util.HashMap<>();
+                        try {
+                            List<WorkProgramEntity> entities = LocalDataManager.getInstance(WorkProgramSelection.this).getWorkProgramsFromLocal(userId);
+                            for (WorkProgramEntity e : entities) {
+                                if (e != null && e.id != null) {
+                                    localRates.put(e.id, (int) Math.round(e.completionRate));
+                                }
+                            }
+                        } catch (Exception ignored) {}
 
-                    for (DataSnapshot child : snapshot.getChildren()) {
-                        String programId = child.getKey();
-                        String cultivar = child.child("cultivarName").getValue(String.class);
-                        String startDate = child.child("startingDate").getValue(String.class);
+                        runOnUiThread(() -> {
+                            cultivarList.clear();
+                            for (DataSnapshot child : snapshot.getChildren()) {
+                                String programId = child.getKey();
+                                String cultivar = child.child("cultivarName").getValue(String.class);
+                                String startDate = child.child("startingDate").getValue(String.class);
 
-                        if (programId != null && cultivar != null && startDate != null) {
-                            cultivarList.add(new Cultivar(programId, cultivar, startDate, CultivarImageHelper.getCultivarImageResource(cultivar)));
-                        }
-                    }
-                    
-                    updateUI();
-                    
-                    // Sync from Firebase to local to ensure consistency
-                    LocalDataManager.getInstance(WorkProgramSelection.this).syncWorkProgramsFromFirebase(userId);
+                                if (programId != null && cultivar != null && startDate != null) {
+                                    int completionRate = 0;
+                                    if (child.hasChild("completionRate")) {
+                                        Object val = child.child("completionRate").getValue();
+                                        if (val instanceof Number) {
+                                            completionRate = ((Number) val).intValue();
+                                        }
+                                    } else if (localRates.containsKey(programId)) {
+                                        Integer lr = localRates.get(programId);
+                                        if (lr != null) completionRate = lr;
+                                    }
+                                    cultivarList.add(new Cultivar(programId, cultivar, startDate,
+                                            CultivarImageHelper.getCultivarImageResource(cultivar), completionRate));
+                                }
+                            }
+                            updateUI();
+                            // Sync from Firebase to local to ensure consistency
+                            LocalDataManager.getInstance(WorkProgramSelection.this).syncWorkProgramsFromFirebase(userId);
+                        });
+                    }).start();
                 }
             }
 
@@ -313,9 +335,9 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
             LocalDataManager.getInstance(this).processSyncQueue(this, userId);
             // Also sync from Firebase to local (to get any updates)
             LocalDataManager.getInstance(this).syncWorkProgramsFromFirebase(userId);
-            // Reload to show synced data
-            loadWorkPrograms();
         }
+        // Reload to show latest progress rates and data
+        loadWorkPrograms();
     }
 
     private void loadWorkPrograms() {
@@ -324,17 +346,42 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
             dbRef.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot snapshot) {
-                    cultivarList.clear();
-                    for (DataSnapshot child : snapshot.getChildren()) {
-                        String programId = child.getKey();
-                        String cultivar = child.child("cultivarName").getValue(String.class);
-                        String startDate = child.child("startingDate").getValue(String.class);
+                    new Thread(() -> {
+                        java.util.Map<String, Integer> localRates = new java.util.HashMap<>();
+                        try {
+                            List<WorkProgramEntity> entities = LocalDataManager.getInstance(WorkProgramSelection.this).getWorkProgramsFromLocal(userId);
+                            for (WorkProgramEntity e : entities) {
+                                if (e != null && e.id != null) {
+                                    localRates.put(e.id, (int) Math.round(e.completionRate));
+                                }
+                            }
+                        } catch (Exception ignored) {}
 
-                        if (programId != null && cultivar != null && startDate != null) {
-                            cultivarList.add(new Cultivar(programId, cultivar, startDate, CultivarImageHelper.getCultivarImageResource(cultivar)));
-                        }
-                    }
-                    updateUI();
+                        runOnUiThread(() -> {
+                            cultivarList.clear();
+                            for (DataSnapshot child : snapshot.getChildren()) {
+                                String programId = child.getKey();
+                                String cultivar = child.child("cultivarName").getValue(String.class);
+                                String startDate = child.child("startingDate").getValue(String.class);
+
+                                if (programId != null && cultivar != null && startDate != null) {
+                                    int completionRate = 0;
+                                    if (child.hasChild("completionRate")) {
+                                        Object val = child.child("completionRate").getValue();
+                                        if (val instanceof Number) {
+                                            completionRate = ((Number) val).intValue();
+                                        }
+                                    } else if (localRates.containsKey(programId)) {
+                                        Integer lr = localRates.get(programId);
+                                        if (lr != null) completionRate = lr;
+                                    }
+                                    cultivarList.add(new Cultivar(programId, cultivar, startDate,
+                                            CultivarImageHelper.getCultivarImageResource(cultivar), completionRate));
+                                }
+                            }
+                            updateUI();
+                        });
+                    }).start();
                 }
 
                 @Override
@@ -356,7 +403,9 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
                 cultivarList.clear();
                 for (WorkProgramEntity entity : entities) {
                     if (entity.cultivarName != null && entity.startingDate != null) {
-                        cultivarList.add(new Cultivar(entity.id, entity.cultivarName, entity.startingDate, CultivarImageHelper.getCultivarImageResource(entity.cultivarName)));
+                        int rate = (int) Math.round(entity.completionRate);
+                        cultivarList.add(new Cultivar(entity.id, entity.cultivarName, entity.startingDate,
+                                CultivarImageHelper.getCultivarImageResource(entity.cultivarName), rate));
                     }
                 }
                 updateUI();
@@ -425,24 +474,52 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
 
     private void sortPrograms(String sortOrder) {
         currentSortOrder = sortOrder;
-        
+        final SimpleDateFormat dateSdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+        final Date epoch = new Date(0); // fallback for null/unparseable dates
+
         switch (sortOrder) {
             case "date_desc": // Newest first
-                cultivarList.sort((a, b) -> b.date.compareTo(a.date));
+                cultivarList.sort((a, b) -> {
+                    Date da = parseDate(dateSdf, a.date, epoch);
+                    Date db = parseDate(dateSdf, b.date, epoch);
+                    return db.compareTo(da);
+                });
                 break;
             case "date_asc": // Oldest first
-                cultivarList.sort(java.util.Comparator.comparing(a -> a.date));
+                cultivarList.sort((a, b) -> {
+                    Date da = parseDate(dateSdf, a.date, epoch);
+                    Date db = parseDate(dateSdf, b.date, epoch);
+                    return da.compareTo(db);
+                });
                 break;
             case "name_asc": // A-Z
-                cultivarList.sort(java.util.Comparator.comparing(a -> a.name, String.CASE_INSENSITIVE_ORDER));
+                cultivarList.sort((a, b) -> {
+                    String na = a.name != null ? a.name : "";
+                    String nb = b.name != null ? b.name : "";
+                    return na.compareToIgnoreCase(nb);
+                });
                 break;
             case "name_desc": // Z-A
-                cultivarList.sort((a, b) -> b.name.compareToIgnoreCase(a.name));
+                cultivarList.sort((a, b) -> {
+                    String na = a.name != null ? a.name : "";
+                    String nb = b.name != null ? b.name : "";
+                    return nb.compareToIgnoreCase(na);
+                });
                 break;
         }
-        
+
         adapter.notifyDataSetChanged();
         Toast.makeText(this, "Sorted", Toast.LENGTH_SHORT).show();
+    }
+
+    private Date parseDate(SimpleDateFormat sdf, String dateStr, Date fallback) {
+        if (dateStr == null || dateStr.isEmpty()) return fallback;
+        try {
+            Date d = sdf.parse(dateStr);
+            return d != null ? d : fallback;
+        } catch (java.text.ParseException e) {
+            return fallback;
+        }
     }
 
     @Override
@@ -456,12 +533,22 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
     static class Cultivar {
         String programId, name, date;
         int imageRes;
+        int completionRate; // 0-100
 
         Cultivar(String programId, String name, String date, int imageRes) {
             this.programId = programId;
             this.name = name;
             this.date = date;
             this.imageRes = imageRes;
+            this.completionRate = 0;
+        }
+
+        Cultivar(String programId, String name, String date, int imageRes, int completionRate) {
+            this.programId = programId;
+            this.name = name;
+            this.date = date;
+            this.imageRes = imageRes;
+            this.completionRate = completionRate;
         }
     }
 
@@ -504,6 +591,14 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
                 holder.date.setText(String.format(java.util.Locale.getDefault(), "Started: %s", item.date));
             }
             holder.image.setImageResource(item.imageRes);
+
+            // Mini progress bar
+            if (holder.cardProgressBar != null) {
+                holder.cardProgressBar.setProgress(item.completionRate);
+            }
+            if (holder.cardProgressText != null) {
+                holder.cardProgressText.setText(item.completionRate + "% complete");
+            }
             
             // Make image circular
             holder.image.setClipToOutline(true);
@@ -605,6 +700,8 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
             ImageView image, deleteButton;
             CardView card;
             View statusIndicator;
+            android.widget.ProgressBar cardProgressBar;
+            TextView cardProgressText;
 
             CultivarViewHolder(@NonNull View itemView) {
                 super(itemView);
@@ -615,6 +712,8 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
                 statusText = itemView.findViewById(R.id.statusText);
                 statusIndicator = itemView.findViewById(R.id.statusIndicator);
                 deleteButton = itemView.findViewById(R.id.deleteButton);
+                cardProgressBar  = itemView.findViewById(R.id.cardProgressBar);
+                cardProgressText = itemView.findViewById(R.id.cardProgressText);
             }
         }
     }

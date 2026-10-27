@@ -116,6 +116,378 @@
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
+                <!-- ═══════════════════════════════════════════════════ -->
+                <!-- Program Progress Card (collapsible)                 -->
+                <!-- ═══════════════════════════════════════════════════ -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/progressCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="20dp"
+                    app:cardCornerRadius="24dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="@color/white"
+                    app:strokeWidth="0dp"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="20dp">
+
+                        <!-- ── Always-visible summary row ── -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="10dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Program Progress"
+                                android:textColor="@color/text_primary"
+                                android:textSize="18sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/progressPercent"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="0%"
+                                android:textColor="@color/fresh_green"
+                                android:textSize="20sp"
+                                android:textStyle="bold"
+                                android:layout_marginEnd="8dp" />
+
+                            <!-- Collapse toggle chevron -->
+                            <ImageView
+                                android:id="@+id/progressToggleBtn"
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
+                                android:src="@android:drawable/arrow_down_float"
+                                android:padding="4dp"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:background="?attr/selectableItemBackgroundBorderless"
+                                app:tint="@color/muted" />
+                        </LinearLayout>
+
+                        <!-- Overall progress bar -->
+                        <ProgressBar
+                            android:id="@+id/progressBarOverall"
+                            style="@android:style/Widget.ProgressBar.Horizontal"
+                            android:layout_width="match_parent"
+                            android:layout_height="14dp"
+                            android:max="100"
+                            android:progress="0"
+                            android:progressDrawable="@drawable/progress_bar_green"
+                            android:layout_marginBottom="6dp" />
+
+                        <!-- "Day X of Y" label -->
+                        <TextView
+                            android:id="@+id/progressDayLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Day 0 of 105"
+                            android:textColor="@color/muted"
+                            android:textSize="12sp" />
+
+                        <!-- ═══════════════════════════════════════════════ -->
+                        <!-- Collapsible section (GONE by default)           -->
+                        <!-- ═══════════════════════════════════════════════ -->
+                        <LinearLayout
+                            android:id="@+id/progressDetailsSection"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+                            <!-- Divider -->
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="1dp"
+                                android:background="@color/divider"
+                                android:layout_marginTop="16dp"
+                                android:layout_marginBottom="14dp" />
+
+                            <!-- Phase breakdown label -->
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Phase Breakdown"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="13sp"
+                                android:textStyle="bold"
+                                android:layout_marginBottom="12dp" />
+
+                            <!-- Phase 1 — Land Prep -->
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:layout_marginBottom="10dp">
+                                <TextView
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="2.2"
+                                    android:text="🌱 Land Prep"
+                                    android:textColor="@color/text_primary"
+                                    android:textSize="12sp" />
+                                <ProgressBar
+                                    android:id="@+id/progressPhase1"
+                                    style="@android:style/Widget.ProgressBar.Horizontal"
+                                    android:layout_width="0dp"
+                                    android:layout_height="8dp"
+                                    android:layout_weight="4"
+                                    android:max="100"
+                                    android:progress="0"
+                                    android:progressDrawable="@drawable/progress_bar_green" />
+                                <TextView
+                                    android:id="@+id/progressPhase1Pct"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="0%"
+                                    android:textColor="@color/muted"
+                                    android:textSize="11sp"
+                                    android:gravity="end" />
+                            </LinearLayout>
+
+                            <!-- Phase 2 — Vegetative -->
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:layout_marginBottom="10dp">
+                                <TextView
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="2.2"
+                                    android:text="🌿 Vegetative"
+                                    android:textColor="@color/text_primary"
+                                    android:textSize="12sp" />
+                                <ProgressBar
+                                    android:id="@+id/progressPhase2"
+                                    style="@android:style/Widget.ProgressBar.Horizontal"
+                                    android:layout_width="0dp"
+                                    android:layout_height="8dp"
+                                    android:layout_weight="4"
+                                    android:max="100"
+                                    android:progress="0"
+                                    android:progressDrawable="@drawable/progress_bar_green" />
+                                <TextView
+                                    android:id="@+id/progressPhase2Pct"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="0%"
+                                    android:textColor="@color/muted"
+                                    android:textSize="11sp"
+                                    android:gravity="end" />
+                            </LinearLayout>
+
+                            <!-- Phase 3 — Flowering -->
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:layout_marginBottom="10dp">
+                                <TextView
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="2.2"
+                                    android:text="🌸 Flowering"
+                                    android:textColor="@color/text_primary"
+                                    android:textSize="12sp" />
+                                <ProgressBar
+                                    android:id="@+id/progressPhase3"
+                                    style="@android:style/Widget.ProgressBar.Horizontal"
+                                    android:layout_width="0dp"
+                                    android:layout_height="8dp"
+                                    android:layout_weight="4"
+                                    android:max="100"
+                                    android:progress="0"
+                                    android:progressDrawable="@drawable/progress_bar_orange" />
+                                <TextView
+                                    android:id="@+id/progressPhase3Pct"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="0%"
+                                    android:textColor="@color/muted"
+                                    android:textSize="11sp"
+                                    android:gravity="end" />
+                            </LinearLayout>
+
+                            <!-- Phase 4 — Maturity -->
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:layout_marginBottom="10dp">
+                                <TextView
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="2.2"
+                                    android:text="🍅 Maturity"
+                                    android:textColor="@color/text_primary"
+                                    android:textSize="12sp" />
+                                <ProgressBar
+                                    android:id="@+id/progressPhase4"
+                                    style="@android:style/Widget.ProgressBar.Horizontal"
+                                    android:layout_width="0dp"
+                                    android:layout_height="8dp"
+                                    android:layout_weight="4"
+                                    android:max="100"
+                                    android:progress="0"
+                                    android:progressDrawable="@drawable/progress_bar_orange" />
+                                <TextView
+                                    android:id="@+id/progressPhase4Pct"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="0%"
+                                    android:textColor="@color/muted"
+                                    android:textSize="11sp"
+                                    android:gravity="end" />
+                            </LinearLayout>
+
+                            <!-- Phase 5 — Harvest -->
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:layout_marginBottom="16dp">
+                                <TextView
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="2.2"
+                                    android:text="🌾 Harvest"
+                                    android:textColor="@color/text_primary"
+                                    android:textSize="12sp" />
+                                <ProgressBar
+                                    android:id="@+id/progressPhase5"
+                                    style="@android:style/Widget.ProgressBar.Horizontal"
+                                    android:layout_width="0dp"
+                                    android:layout_height="8dp"
+                                    android:layout_weight="4"
+                                    android:max="100"
+                                    android:progress="0"
+                                    android:progressDrawable="@drawable/progress_bar_red" />
+                                <TextView
+                                    android:id="@+id/progressPhase5Pct"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="0%"
+                                    android:textColor="@color/muted"
+                                    android:textSize="11sp"
+                                    android:gravity="end" />
+                            </LinearLayout>
+
+                            <!-- Divider before stats -->
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="1dp"
+                                android:background="@color/divider"
+                                android:layout_marginBottom="14dp" />
+
+                            <!-- Stats row: Done / Missed / Skipped -->
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:weightSum="3">
+
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical"
+                                    android:gravity="center"
+                                    android:background="@drawable/bg_stat_chip_green"
+                                    android:layout_marginEnd="6dp"
+                                    android:padding="10dp">
+                                    <TextView
+                                        android:id="@+id/progressStatCompleted"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="0"
+                                        android:textColor="@color/sidebar_dark_green"
+                                        android:textSize="18sp"
+                                        android:textStyle="bold" />
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="✅ Done"
+                                        android:textColor="@color/sidebar_dark_green"
+                                        android:textSize="11sp" />
+                                </LinearLayout>
+
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical"
+                                    android:gravity="center"
+                                    android:background="@drawable/bg_stat_chip_red"
+                                    android:layout_marginEnd="6dp"
+                                    android:padding="10dp">
+                                    <TextView
+                                        android:id="@+id/progressStatMissed"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="0"
+                                        android:textColor="@color/red_dark"
+                                        android:textSize="18sp"
+                                        android:textStyle="bold" />
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="⚠️ Missed"
+                                        android:textColor="@color/red_dark"
+                                        android:textSize="11sp" />
+                                </LinearLayout>
+
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical"
+                                    android:gravity="center"
+                                    android:background="@drawable/bg_stat_chip_orange"
+                                    android:padding="10dp">
+                                    <TextView
+                                        android:id="@+id/progressStatSkipped"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="0"
+                                        android:textColor="@color/orange"
+                                        android:textSize="18sp"
+                                        android:textStyle="bold" />
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="⏭️ Skipped"
+                                        android:textColor="@color/orange"
+                                        android:textSize="11sp" />
+                                </LinearLayout>
+                            </LinearLayout>
+
+                        </LinearLayout>
+                        <!-- End collapsible section -->
+
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
                 <!-- Calendar Card -->
                 <com.google.android.material.card.MaterialCardView 
                     android:layout_width="match_parent" 
@@ -331,6 +703,14 @@
                         </LinearLayout>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnMilestones"
+                    android:layout_width="match_parent"
+                    android:layout_height="60dp"
+                    android:text="Correct recorded milestones"
+                    android:layout_marginBottom="12dp"
+                    app:cornerRadius="16dp" />
 
                 <com.google.android.material.button.MaterialButton 
                     android:id="@+id/btnCurrentExpenses" 

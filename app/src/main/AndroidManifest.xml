@@ -85,6 +85,9 @@
             android:name=".workprogram.ui.Workprogram"
             android:exported="false" />
         <activity
+            android:name=".workprogram.ui.MilestonesActivity"
+            android:exported="false" />
+        <activity
             android:name=".auth.ui.Register"
             android:exported="false"
             android:theme="@style/Theme.TomatoApp" />

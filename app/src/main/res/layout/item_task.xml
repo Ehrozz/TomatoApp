@@ -74,6 +74,14 @@
             android:layout_marginStart="8dp"
             android:clickable="true"
             android:focusable="true" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/milestoneAction"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="Confirm"
+            android:textSize="12sp"
+            android:visibility="gone" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>
-

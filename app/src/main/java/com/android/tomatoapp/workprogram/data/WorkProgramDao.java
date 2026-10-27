@@ -24,6 +24,9 @@ public interface WorkProgramDao {
 
     @Query("SELECT * FROM work_programs WHERE userId = :userId AND cultivarName = :cultivarName")
     List<WorkProgramEntity> getByCultivar(String userId, String cultivarName);
+
+    @Query("UPDATE work_programs SET completionRate = :rate WHERE id = :programId")
+    void updateCompletionRate(String programId, double rate);
 }
 
 

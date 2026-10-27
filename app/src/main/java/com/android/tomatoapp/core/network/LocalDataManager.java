@@ -834,6 +834,17 @@ public class LocalDataManager {
         });
     }
 
+    public void updateCompletionRate(String programId, double rate) {
+        executorService.execute(() -> {
+            try {
+                database.workProgramDao().updateCompletionRate(programId, rate);
+                Log.d(TAG, "Updated completion rate for " + programId + " to " + rate);
+            } catch (Exception e) {
+                Log.e(TAG, "Error updating completion rate locally", e);
+            }
+        });
+    }
+
     // Helper method to parse WorkProgram from Firebase snapshot
     private WorkProgramEntity parseWorkProgramFromSnapshot(DataSnapshot snapshot, String programId, String userId) {
         try {

@@ -115,33 +115,6 @@
                     android:orientation="vertical"
                     android:padding="16dp">
 
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:layout_marginBottom="12dp"
-                        android:paddingHorizontal="4dp">
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Critical Actions"
-                            android:textColor="@color/muted"
-                            android:textSize="12sp"
-                            android:textAllCaps="true"
-                            android:letterSpacing="0.1"
-                            android:textStyle="bold" />
-                        <TextView
-                            android:id="@+id/taskCountText"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="0/5 done"
-                            android:textColor="@color/fresh_green"
-                            android:textSize="12sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-
                     <androidx.recyclerview.widget.RecyclerView
                         android:id="@+id/taskRecyclerView"
                         android:layout_width="match_parent"
