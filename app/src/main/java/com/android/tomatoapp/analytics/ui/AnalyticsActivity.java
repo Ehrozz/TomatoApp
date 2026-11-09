@@ -9,6 +9,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -43,8 +44,10 @@ import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /**
  * Analytics screen showing cultivar productivity in table and chart form.
@@ -54,11 +57,12 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
     private Spinner viewModeSpinner;
     private Spinner cultivarFilterSpinner;
     private Spinner seasonFilterSpinner;
-    private RecyclerView tableRecyclerView;
+    private LinearLayout programCardsContainer;
     private BarChart barChart;
     private LineChart completionChart;
     private ProgressBar progressBar;
     private TextView emptyText;
+    private final Set<String> expandedProgramIds = new HashSet<>();
 
     private WorkProgramRepository repository;
     private AnalyticsManager analyticsManager;
@@ -67,7 +71,6 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
     private final List<AnalyticsManager.CultivarSummary> summaries = new ArrayList<>();
     private final List<WorkProgramEntity> displayedPrograms = new ArrayList<>();
     private final List<AnalyticsManager.CultivarSummary> displayedSummaries = new ArrayList<>();
-    private WorkProgramCardAdapter workProgramCardAdapter;
     private TextView tvNetProfitStat;
     private TextView tvCompletionStat;
 
@@ -88,7 +91,7 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
         viewModeSpinner = findViewById(R.id.viewModeSpinner);
         cultivarFilterSpinner = findViewById(R.id.cultivarFilterSpinner);
         seasonFilterSpinner = findViewById(R.id.seasonFilterSpinner);
-        tableRecyclerView = findViewById(R.id.tableRecyclerView);
+        programCardsContainer = findViewById(R.id.programCardsContainer);
         barChart = findViewById(R.id.barChart);
         completionChart = findViewById(R.id.completionChart);
         // Enable scrolling/interaction on charts so users can pan/zoom when data is wide
@@ -114,8 +117,6 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
         Button btnExportCsv = findViewById(R.id.btnExportCsv);
 
         setupViewModeSelector();
-        setupRecyclerView();
-        loadData();
 
         if (btnExportPdf != null) {
             btnExportPdf.setOnClickListener(v -> showExportDialog());
@@ -166,19 +167,25 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
         });
     }
 
-    private void setupRecyclerView() {
-        tableRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        workProgramCardAdapter = new WorkProgramCardAdapter(displayedPrograms);
-        tableRecyclerView.setAdapter(workProgramCardAdapter);
+    @Override
+    protected void onResume() {
+        super.onResume();
+        loadData();
     }
 
     private void loadData() {
-        progressBar.setVisibility(View.VISIBLE);
+        if (allPrograms.isEmpty() && progressBar != null) {
+            progressBar.setVisibility(View.VISIBLE);
+        }
         repository.loadAllForCurrentUser(items -> runOnUiThread(() -> {
-            progressBar.setVisibility(View.GONE);
+            if (progressBar != null) progressBar.setVisibility(View.GONE);
             allPrograms.clear();
             if (items != null) {
-                allPrograms.addAll(items);
+                for (WorkProgramEntity item : items) {
+                    if (item != null && item.cultivarName != null && !item.cultivarName.isEmpty()) {
+                        allPrograms.add(item);
+                    }
+                }
             }
 
             View emptyStateCard = findViewById(R.id.emptyStateCard);
@@ -189,7 +196,10 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
                     emptyStateCard.setVisibility(View.VISIBLE);
                 }
                 emptyText.setVisibility(View.VISIBLE);
-                tableRecyclerView.setVisibility(View.GONE);
+                if (programCardsContainer != null) {
+                    programCardsContainer.setVisibility(View.GONE);
+                    programCardsContainer.removeAllViews();
+                }
                 if (chartsContainer != null) {
                     chartsContainer.setVisibility(View.GONE);
                 }
@@ -308,7 +318,7 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
         displayedPrograms.addAll(allPrograms);
         displayedSummaries.clear();
         displayedSummaries.addAll(summaries);
-        workProgramCardAdapter.updateData(displayedPrograms);
+        bindProgramCards(displayedPrograms);
         updateTopStatsFromPrograms(displayedPrograms);
         updateChart();
         updateCompletionChart();
@@ -350,7 +360,7 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
         displayedPrograms.addAll(filteredPrograms);
         displayedSummaries.clear();
         displayedSummaries.addAll(filtered);
-        workProgramCardAdapter.updateData(displayedPrograms);
+        bindProgramCards(displayedPrograms);
         updateTopStatsFromPrograms(displayedPrograms);
         updateChart();
         updateCompletionChart();
@@ -370,7 +380,8 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
         double weightedCompletionSum = 0.0;
         double weightedCompletionArea = 0.0;
         for (WorkProgramEntity program : programs) {
-            totalProfit += (program.adjustedIncome - program.adjustedExpenses);
+            double expenses = program.loggedExpenses > 0 ? program.loggedExpenses : program.adjustedExpenses;
+            totalProfit += (program.adjustedIncome - expenses);
             if (program.areaSize > 0) {
                 weightedCompletionSum += program.completionRate * program.areaSize;
                 weightedCompletionArea += program.areaSize;
@@ -395,7 +406,9 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
             if (completionChart != null) {
                 completionChart.setVisibility(View.VISIBLE);
             }
-            tableRecyclerView.setVisibility(View.GONE);
+            if (programCardsContainer != null) {
+                programCardsContainer.setVisibility(View.GONE);
+            }
             updateChart();
             updateCompletionChart();
         } else {
@@ -406,7 +419,9 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
             if (completionChart != null) {
                 completionChart.setVisibility(View.GONE);
             }
-            tableRecyclerView.setVisibility(View.VISIBLE);
+            if (programCardsContainer != null) {
+                programCardsContainer.setVisibility(View.VISIBLE);
+            }
         }
     }
 
@@ -509,65 +524,105 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
         completionChart.invalidate();
     }
 
-    // --- Adapter for individual work programs ---
-    class WorkProgramCardAdapter extends RecyclerView.Adapter<WorkProgramCardAdapter.WorkProgramViewHolder> {
-        private List<WorkProgramEntity> items;
-
-        WorkProgramCardAdapter(List<WorkProgramEntity> items) {
-            this.items = items;
+    private void bindProgramCards(List<WorkProgramEntity> programs) {
+        if (programCardsContainer == null) return;
+        programCardsContainer.removeAllViews();
+        if (programs == null || programs.isEmpty()) {
+            programCardsContainer.setVisibility(View.GONE);
+            return;
         }
-
-        void updateData(List<WorkProgramEntity> items) {
-            this.items = items;
-            notifyDataSetChanged();
+        if (viewModeSpinner == null || viewModeSpinner.getSelectedItemPosition() == 0) {
+            programCardsContainer.setVisibility(View.VISIBLE);
         }
-
-        @Override
-        public WorkProgramViewHolder onCreateViewHolder(android.view.ViewGroup parent, int viewType) {
-            View view = android.view.LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.item_work_program_analytics_card, parent, false);
-            return new WorkProgramViewHolder(view);
+        LayoutInflater inflater = LayoutInflater.from(this);
+        for (WorkProgramEntity program : programs) {
+            View card = inflater.inflate(R.layout.item_work_program_analytics_card, programCardsContainer, false);
+            bindProgramCard(card, program);
+            programCardsContainer.addView(card);
         }
+    }
 
-        @Override
-        public void onBindViewHolder(WorkProgramViewHolder holder, int position) {
-            WorkProgramEntity program = items.get(position);
-            String title = program.cultivarName != null ? program.cultivarName : "Saved work program";
-            holder.programTitle.setText(title);
-            holder.programSubtitle.setText(String.format(Locale.getDefault(), "Start: %s | Area: %.2f ha", 
+    private void bindProgramCard(View card, WorkProgramEntity program) {
+        TextView programTitle = card.findViewById(R.id.programTitle);
+        TextView programSubtitle = card.findViewById(R.id.programSubtitle);
+        TextView programSummaryPeek = card.findViewById(R.id.programSummaryPeek);
+        TextView adjustedIncome = card.findViewById(R.id.adjustedIncome);
+        TextView adjustedExpenses = card.findViewById(R.id.adjustedExpenses);
+        TextView adjustedProfit = card.findViewById(R.id.adjustedProfit);
+        TextView projectedProfit = card.findViewById(R.id.projectedProfit);
+        TextView completionRate = card.findViewById(R.id.completionRate);
+        TextView loggedExpenses = card.findViewById(R.id.loggedExpenses);
+        android.widget.ProgressBar programProgressBar = card.findViewById(R.id.programProgressBar);
+        View programHeader = card.findViewById(R.id.programHeader);
+        View programDetails = card.findViewById(R.id.programDetails);
+        ImageView expandIcon = card.findViewById(R.id.expandIcon);
+        com.google.android.material.button.MaterialButton openProgramButton = card.findViewById(R.id.btnOpenProgram);
+        com.google.android.material.button.MaterialButton financeButton = card.findViewById(R.id.btnOpenFinance);
+
+        String title = program.cultivarName != null ? program.cultivarName : "Saved work program";
+        if (programTitle != null) programTitle.setText(title);
+        if (programSubtitle != null) {
+            programSubtitle.setText(String.format(Locale.getDefault(), "Start: %s | Area: %.2f ha",
                     program.startingDate != null ? program.startingDate : "N/A", program.areaSize));
-            holder.adjustedIncome.setText(String.format(Locale.getDefault(), "Adj income: ₱%,.0f", program.adjustedIncome));
-            holder.adjustedExpenses.setText(String.format(Locale.getDefault(), "Adj expenses: ₱%,.0f", program.adjustedExpenses));
-            holder.adjustedProfit.setText(String.format(Locale.getDefault(), "Adj profit: ₱%,.0f", program.adjustedIncome - program.adjustedExpenses));
-            holder.projectedProfit.setText(String.format(Locale.getDefault(), "Projected profit: ₱%,.0f", program.projectedIncome - program.projectedExpenses));
-            holder.completionRate.setText(String.format(Locale.getDefault(), "Completion: %.0f%%", program.completionRate));
-
-            holder.openProgramButton.setOnClickListener(v -> openWorkProgram(program));
-            holder.financeButton.setOnClickListener(v -> openFinance(program));
-            holder.itemView.setOnClickListener(v -> openFinance(program));
+        }
+        double displayedExpenses = program.loggedExpenses > 0 ? program.loggedExpenses : program.adjustedExpenses;
+        String peek = String.format(Locale.getDefault(), "Logged expenses: ₱%,.0f · Completion: %.0f%%",
+                displayedExpenses, program.completionRate);
+        if (programSummaryPeek != null) programSummaryPeek.setText(peek);
+        if (adjustedIncome != null) {
+            adjustedIncome.setText(String.format(Locale.getDefault(), "₱%,.0f", program.adjustedIncome));
+        }
+        if (adjustedExpenses != null) {
+            adjustedExpenses.setText(String.format(Locale.getDefault(), "₱%,.0f", displayedExpenses));
+        }
+        if (adjustedProfit != null) {
+            adjustedProfit.setText(String.format(Locale.getDefault(), "Adj profit: ₱%,.0f",
+                    program.adjustedIncome - displayedExpenses));
+        }
+        if (projectedProfit != null) {
+            projectedProfit.setText(String.format(Locale.getDefault(), "Projected profit: ₱%,.0f",
+                    program.projectedIncome - program.projectedExpenses));
+        }
+        if (loggedExpenses != null) {
+            loggedExpenses.setText(String.format(Locale.getDefault(), "Logged expenses: ₱%,.0f", displayedExpenses));
+        }
+        if (completionRate != null) {
+            completionRate.setText(String.format(Locale.getDefault(), "Completion: %.0f%%", program.completionRate));
+        }
+        if (programProgressBar != null) {
+            programProgressBar.setProgress((int) Math.round(Math.max(0, Math.min(100, program.completionRate))));
         }
 
-        @Override
-        public int getItemCount() {
-            return items.size();
-        }
+        boolean expanded = program.id != null && expandedProgramIds.contains(program.id);
+        applyCardExpandedState(programDetails, expandIcon, expanded);
 
-        class WorkProgramViewHolder extends RecyclerView.ViewHolder {
-            TextView programTitle, programSubtitle, adjustedIncome, adjustedExpenses, adjustedProfit, projectedProfit, completionRate;
-            com.google.android.material.button.MaterialButton openProgramButton, financeButton;
-
-            WorkProgramViewHolder(View itemView) {
-                super(itemView);
-                programTitle = itemView.findViewById(R.id.programTitle);
-                programSubtitle = itemView.findViewById(R.id.programSubtitle);
-                adjustedIncome = itemView.findViewById(R.id.adjustedIncome);
-                adjustedExpenses = itemView.findViewById(R.id.adjustedExpenses);
-                adjustedProfit = itemView.findViewById(R.id.adjustedProfit);
-                projectedProfit = itemView.findViewById(R.id.projectedProfit);
-                completionRate = itemView.findViewById(R.id.completionRate);
-                openProgramButton = itemView.findViewById(R.id.btnOpenProgram);
-                financeButton = itemView.findViewById(R.id.btnOpenFinance);
+        View.OnClickListener toggle = v -> {
+            if (program.id == null) return;
+            if (expandedProgramIds.contains(program.id)) {
+                expandedProgramIds.remove(program.id);
+            } else {
+                expandedProgramIds.add(program.id);
             }
+            applyCardExpandedState(programDetails, expandIcon, expandedProgramIds.contains(program.id));
+        };
+        if (programHeader != null) programHeader.setOnClickListener(toggle);
+        card.setOnClickListener(toggle);
+
+        if (openProgramButton != null) {
+            openProgramButton.setOnClickListener(v -> openWorkProgram(program));
+        }
+        if (financeButton != null) {
+            financeButton.setOnClickListener(v -> openFinance(program));
+        }
+    }
+
+    private void applyCardExpandedState(View details, ImageView expandIcon, boolean expanded) {
+        if (details != null) {
+            details.setVisibility(expanded ? View.VISIBLE : View.GONE);
+        }
+        if (expandIcon != null) {
+            expandIcon.setRotation(expanded ? 180f : 0f);
+            expandIcon.setContentDescription(expanded ? "Collapse program details" : "Expand program details");
         }
     }
 

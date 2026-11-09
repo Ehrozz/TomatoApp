@@ -95,15 +95,17 @@ public class TutorialDialog extends Dialog {
         
         // Step 4: Work Programs
         steps.add(new TutorialStep(
-            "Creating Work Programs",
+            "Creating Work Programs & Crop Stage Survey",
             "Work programs help you plan and track your farming activities:\n\n" +
             "1. Go to Work Programs from the home screen or drawer\n" +
             "2. Tap the + button to create a new program\n" +
-            "3. Select your cultivar (tomato variety)\n" +
+            "3. Select your cultivar (from 30+ tomato varieties)\n" +
             "4. Enter your land area in hectares\n" +
             "5. Choose your program start date\n" +
-            "6. Submit to create the program\n\n" +
-            "The app will generate daily tasks based on your cultivar and start date."
+            "6. Answer the quick Crop Stage Survey:\n" +
+            "   • If your land is already prepared or seedlings transplanted, the survey places your program at the exact right phase.\n" +
+            "   • Completed phase tasks are automatically marked done, and you can log past expenses!\n\n" +
+            "The app will generate daily tasks based on your cultivar, start date, and current crop stage."
         ));
         
         // Step 5: Daily Tasks

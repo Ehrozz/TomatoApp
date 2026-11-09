@@ -13,12 +13,16 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.android.tomatoapp.core.database.AppDatabase;
+import com.android.tomatoapp.financial.data.DailyExpenseMath;
 import com.android.tomatoapp.season.data.SeasonHelper;
 
 /**
@@ -79,14 +83,13 @@ public class WorkProgramRepository {
 
     /**
      * Load all work programs for current user, refreshing from Firebase into Room first.
+     * Local Room rows are delivered immediately so newly created programs appear even
+     * before Firebase and completion-stat fetches finish.
      */
     public void loadAllForCurrentUser(LoadCallback callback) {
+        deliverLocalPrograms(callback);
+
         if (workProgramsRef == null || userId == null) {
-            // No logged-in user, just return local (likely empty)
-            ioExecutor.execute(() -> {
-                List<WorkProgramEntity> local = workProgramDao.getAllForUser(userId);
-                if (callback != null) callback.onLoaded(local);
-            });
             return;
         }
 
@@ -96,6 +99,7 @@ public class WorkProgramRepository {
                 List<WorkProgramEntity> buffer = new ArrayList<>();
 
                 for (DataSnapshot child : snapshot.getChildren()) {
+                    try {
                     String id = child.getKey();
                     if (id == null) continue;
 
@@ -106,6 +110,15 @@ public class WorkProgramRepository {
                     String startingDate = child.child("startingDate").getValue(String.class);
                     if (startingDate == null) {
                         startingDate = child.child("startDate").getValue(String.class);
+                    }
+                    if ((cultivarName == null || cultivarName.isEmpty())
+                            && (startingDate == null || startingDate.isEmpty())) {
+                        child.getRef().removeValue();
+                        continue;
+                    }
+                    if (cultivarName == null || cultivarName.isEmpty()
+                            || startingDate == null || startingDate.isEmpty()) {
+                        continue;
                     }
 
                     // Safely parse numeric fields that might be stored as Double, Long, or String in Firebase
@@ -168,22 +181,18 @@ public class WorkProgramRepository {
                     
                     // Parse research fields from Firebase
                     String season = child.child("season").getValue(String.class);
-                    Integer seasonMonthObj = child.child("seasonMonth").getValue(Integer.class);
-                    Boolean isOffSeasonObj = child.child("isOffSeason").getValue(Boolean.class);
-                    Double actualYieldObj = child.child("actualYield").getValue(Double.class);
-                    Double totalYieldObj = child.child("totalYield").getValue(Double.class);
                     String harvestDate = child.child("harvestDate").getValue(String.class);
                     
                     // Auto-detect season if not set
                     if (season == null && startingDate != null) {
                         season = SeasonHelper.getSeason(startingDate);
                     }
-                    int seasonMonth = seasonMonthObj != null ? seasonMonthObj : 
-                                     (startingDate != null ? SeasonHelper.getSeasonMonth(startingDate) : 0);
-                    boolean isOffSeason = isOffSeasonObj != null ? isOffSeasonObj : 
-                                         (startingDate != null ? SeasonHelper.isOffSeason(startingDate) : false);
-                    double actualYield = actualYieldObj != null ? actualYieldObj : 0.0;
-                    double totalYield = totalYieldObj != null ? totalYieldObj : 0.0;
+                    int seasonMonth = toInt(child.child("seasonMonth").getValue(),
+                            startingDate != null ? SeasonHelper.getSeasonMonth(startingDate) : 0);
+                    boolean isOffSeason = toBoolean(child.child("isOffSeason").getValue(),
+                            startingDate != null && SeasonHelper.isOffSeason(startingDate));
+                    double actualYield = toDouble(child.child("actualYield").getValue(), 0.0);
+                    double totalYield = toDouble(child.child("totalYield").getValue(), 0.0);
 
                     WorkProgramEntity entity = new WorkProgramEntity(
                             id,
@@ -214,11 +223,22 @@ public class WorkProgramRepository {
                             totalYield,
                             harvestDate
                     );
+                    entity.loggedExpenses = DailyExpenseMath.sumAllDates(child.child("dailyExpenses"));
+                    if (entity.loggedExpenses <= 0) {
+                        entity.loggedExpenses = DailyExpenseMath.asDouble(child.child("loggedExpensesTotal").getValue());
+                    }
+                    if (entity.loggedExpenses > 0) {
+                        entity.adjustedExpenses = entity.loggedExpenses;
+                    }
                     buffer.add(entity);
+                    } catch (Exception ignored) {
+                        // Skip a malformed child so the rest of the programs still load.
+                    }
                 }
 
+                persistBuffer(callback, buffer);
+
                 if (buffer.isEmpty()) {
-                    persistBuffer(callback, buffer);
                     return;
                 }
 
@@ -243,7 +263,11 @@ public class WorkProgramRepository {
                                                     stats
                                             );
                                     entity.adjustedIncome = projection.adjustedIncome;
-                                    entity.adjustedExpenses = projection.adjustedExpenses;
+                                    if (entity.loggedExpenses > 0) {
+                                        entity.adjustedExpenses = entity.loggedExpenses;
+                                    } else {
+                                        entity.adjustedExpenses = projection.adjustedExpenses;
+                                    }
                                     double[] phaseRates = WorkProgramDataHelper.getPhaseCompletionRates(stats);
                                     if (phaseRates.length >= 5) {
                                         entity.phase1Completion = phaseRates[0];
@@ -264,23 +288,115 @@ public class WorkProgramRepository {
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                ioExecutor.execute(() -> {
-                    List<WorkProgramEntity> local = workProgramDao.getAllForUser(userId);
-                    if (callback != null) callback.onLoaded(local);
-                });
+                deliverLocalPrograms(callback);
             }
+        });
+    }
+
+    private void deliverLocalPrograms(LoadCallback callback) {
+        ioExecutor.execute(() -> {
+            List<WorkProgramEntity> local = workProgramDao.getAllForUser(userId);
+            List<WorkProgramEntity> filtered = new ArrayList<>();
+            if (local != null) {
+                for (WorkProgramEntity entity : local) {
+                    if (entity != null && entity.cultivarName != null && !entity.cultivarName.isEmpty()) {
+                        filtered.add(entity);
+                    }
+                }
+            }
+            if (callback != null) callback.onLoaded(sortedCopy(filtered));
         });
     }
 
     private void persistBuffer(LoadCallback callback, List<WorkProgramEntity> buffer) {
         ioExecutor.execute(() -> {
-            for (WorkProgramEntity e : buffer) {
-                workProgramDao.upsert(e);
+            Map<String, WorkProgramEntity> remoteById = new HashMap<>();
+            if (buffer != null) {
+                for (WorkProgramEntity e : buffer) {
+                    workProgramDao.upsert(e);
+                    if (e != null && e.id != null) {
+                        remoteById.put(e.id, e);
+                    }
+                }
             }
             List<WorkProgramEntity> local = workProgramDao.getAllForUser(userId);
-            if (callback != null) callback.onLoaded(local);
+            List<WorkProgramEntity> merged = new ArrayList<>();
+            if (local != null) {
+                for (WorkProgramEntity e : local) {
+                    if (e != null && e.id != null && !remoteById.containsKey(e.id)
+                            && System.currentTimeMillis() - e.lastUpdated > 120000) {
+                        workProgramDao.deleteById(e.id);
+                        continue;
+                    }
+                    WorkProgramEntity remote = e.id != null ? remoteById.get(e.id) : null;
+                    if (remote != null) {
+                        e.loggedExpenses = remote.loggedExpenses;
+                        e.completionRate = remote.completionRate;
+                        e.adjustedIncome = remote.adjustedIncome;
+                        e.adjustedExpenses = remote.loggedExpenses > 0
+                                ? remote.loggedExpenses
+                                : remote.adjustedExpenses;
+                        e.totalTasks = remote.totalTasks;
+                        e.completedTasks = remote.completedTasks;
+                    }
+                    merged.add(e);
+                }
+            }
+            if (callback != null) callback.onLoaded(sortedCopy(merged));
         });
     }
-}
 
+    private List<WorkProgramEntity> sortedCopy(List<WorkProgramEntity> source) {
+        List<WorkProgramEntity> copy = source != null ? new ArrayList<>(source) : new ArrayList<>();
+        Collections.sort(copy, (a, b) -> {
+            int dateCmp = compareNullableDates(b != null ? b.startingDate : null,
+                    a != null ? a.startingDate : null);
+            if (dateCmp != 0) return dateCmp;
+            long aUpdated = a != null ? a.lastUpdated : 0;
+            long bUpdated = b != null ? b.lastUpdated : 0;
+            return Long.compare(bUpdated, aUpdated);
+        });
+        return copy;
+    }
+
+    private static int compareNullableDates(String left, String right) {
+        if (left == null && right == null) return 0;
+        if (left == null) return -1;
+        if (right == null) return 1;
+        return left.compareTo(right);
+    }
+
+    private static double toDouble(Object value, double fallback) {
+        if (value instanceof Number) return ((Number) value).doubleValue();
+        if (value instanceof String) {
+            try {
+                return Double.parseDouble((String) value);
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        }
+        return fallback;
+    }
+
+    private static int toInt(Object value, int fallback) {
+        if (value instanceof Number) return ((Number) value).intValue();
+        if (value instanceof String) {
+            try {
+                return Integer.parseInt((String) value);
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        }
+        return fallback;
+    }
+
+    private static boolean toBoolean(Object value, boolean fallback) {
+        if (value instanceof Boolean) return (Boolean) value;
+        if (value instanceof Number) return ((Number) value).intValue() != 0;
+        if (value instanceof String) {
+            return "true".equalsIgnoreCase((String) value) || "1".equals(value);
+        }
+        return fallback;
+    }
+}
 

@@ -32,6 +32,7 @@ import java.util.Set;
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
+import com.android.tomatoapp.financial.data.DailyExpenseMath;
 import com.android.tomatoapp.settings.data.SettingsPreferences;
 
 public class DailyExpensesHistoryActivity extends BaseBottomNavActivity {
@@ -128,38 +129,32 @@ public class DailyExpensesHistoryActivity extends BaseBottomNavActivity {
                         // Process labor items
                         if (dateSnapshot.hasChild("labor")) {
                             for (DataSnapshot laborSnapshot : dateSnapshot.child("labor").getChildren()) {
-                                Double totalCost = laborSnapshot.child("totalCost").getValue(Double.class);
-                                Integer numWorkers = laborSnapshot.child("numWorkers").getValue(Integer.class);
-                                if (totalCost != null) laborCost += totalCost;
-                                if (numWorkers != null) totalWorkers += numWorkers;
+                                laborCost += DailyExpenseMath.asDouble(laborSnapshot.child("totalCost").getValue());
+                                totalWorkers += DailyExpenseMath.asInt(laborSnapshot.child("numWorkers").getValue());
                             }
                         }
                         
                         // Process material items
                         if (dateSnapshot.hasChild("material")) {
                             for (DataSnapshot materialSnapshot : dateSnapshot.child("material").getChildren()) {
-                                Double totalCost = materialSnapshot.child("totalCost").getValue(Double.class);
-                                if (totalCost != null) materialCost += totalCost;
+                                materialCost += DailyExpenseMath.asDouble(materialSnapshot.child("totalCost").getValue());
                             }
                         }
                         
                         // Process equipment items (only non-owned)
                         if (dateSnapshot.hasChild("equipment")) {
                             for (DataSnapshot equipmentSnapshot : dateSnapshot.child("equipment").getChildren()) {
-                                Boolean isOwned = equipmentSnapshot.child("isOwned").getValue(Boolean.class);
-                                // Skip owned equipment
-                                if (isOwned != null && isOwned) continue;
-                                
-                                Double totalCost = equipmentSnapshot.child("totalCost").getValue(Double.class);
-                                if (totalCost != null) equipmentCost += totalCost;
+                                if (DailyExpenseMath.asBoolean(equipmentSnapshot.child("isOwned").getValue(), false)) continue;
+                                double line = DailyExpenseMath.asDouble(equipmentSnapshot.child("totalCost").getValue());
+                                if (line <= 0) line = DailyExpenseMath.asDouble(equipmentSnapshot.child("cost").getValue());
+                                equipmentCost += line;
                             }
                         }
                         
                         // Process miscellaneous items
                         if (dateSnapshot.hasChild("miscellaneous")) {
                             for (DataSnapshot miscSnapshot : dateSnapshot.child("miscellaneous").getChildren()) {
-                                Double cost = miscSnapshot.child("cost").getValue(Double.class);
-                                if (cost != null) miscellaneousCost += cost;
+                                miscellaneousCost += DailyExpenseMath.asDouble(miscSnapshot.child("cost").getValue());
                             }
                         }
                         

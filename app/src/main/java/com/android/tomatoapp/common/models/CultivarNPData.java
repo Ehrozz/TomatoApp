@@ -15,8 +15,8 @@ public class CultivarNPData {
     // Cultivar name → growth habit
     private static final Map<String, String> cultivarHabit = new HashMap<String, String>() {{
         put("Improved KS Apollo", "Semi-determinate");
-        put("Diamante max", "Semi-determinate");
-        put("Jewel f1", "Determinate");
+        put("Diamante Max", "Semi-determinate");
+        put("Jewel F1", "Determinate");
         put("Marimar", "Determinate");
     }};
 

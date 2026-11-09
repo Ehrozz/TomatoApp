@@ -127,7 +127,7 @@ public class AnalyticsManager {
             s.totalIncome += e.projectedIncome;
             s.totalExpenses += e.projectedExpenses;
             s.totalAdjustedIncome += e.adjustedIncome;
-            s.totalAdjustedExpenses += e.adjustedExpenses;
+            s.totalAdjustedExpenses += e.loggedExpenses > 0 ? e.loggedExpenses : e.adjustedExpenses;
             s.totalCompletionRate += e.completionRate * e.areaSize;
             s.totalCompletionWeight += e.areaSize;
             s.totalYield += e.totalYield;
@@ -160,7 +160,7 @@ public class AnalyticsManager {
             s.totalIncome += e.projectedIncome;
             s.totalExpenses += e.projectedExpenses;
             s.totalAdjustedIncome += e.adjustedIncome;
-            s.totalAdjustedExpenses += e.adjustedExpenses;
+            s.totalAdjustedExpenses += e.loggedExpenses > 0 ? e.loggedExpenses : e.adjustedExpenses;
             s.totalCompletionRate += e.completionRate * e.areaSize;
             s.totalCompletionWeight += e.areaSize;
             s.totalYield += e.totalYield;

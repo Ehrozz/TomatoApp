@@ -40,6 +40,42 @@ public class TomatoWorkProgramSchedulerTest {
     }
 
     @Test
+    public void phaseOneLandPreparationStartsWithoutSeedConfirmation() {
+        TomatoWorkProgramScheduler.Input input = new TomatoWorkProgramScheduler.Input(
+                START, 1.0, "Determinate", null, null, null, null);
+        List<ScheduledTask> tasks = TomatoWorkProgramScheduler.generate(input, START);
+
+        assertTrue(tasks.stream().anyMatch(task -> task.id.startsWith("plow-")));
+        assertTrue(tasks.stream().anyMatch(task -> "milestone-seeds".equals(task.id)
+                && "Confirm seeds".equals(task.title)));
+    }
+
+    @Test
+    public void pendingSeedMilestoneRemainsUntilSeedsAreConfirmed() {
+        TomatoWorkProgramScheduler.Input pending = new TomatoWorkProgramScheduler.Input(
+                START, 1.0, "Determinate", null, null, null, null);
+        assertTrue(TomatoWorkProgramScheduler.generate(inputFor(pending, START.plusDays(2)),
+                        START.plusDays(2))
+                .stream().anyMatch(task -> "milestone-seeds".equals(task.id)));
+
+        TomatoWorkProgramScheduler.Input confirmed = new TomatoWorkProgramScheduler.Input(
+                START, 1.0, "Determinate", START.plusDays(3), null, null, null);
+        assertTrue(TomatoWorkProgramScheduler.generate(inputFor(confirmed, START.plusDays(2)),
+                        START.plusDays(2))
+                .stream().noneMatch(task -> "milestone-seeds".equals(task.id)));
+    }
+
+    @Test
+    public void sowingDoesNotStartBeforeSeedsAreConfirmed() {
+        TomatoWorkProgramScheduler.Input input = new TomatoWorkProgramScheduler.Input(
+                START, 1.0, "Determinate", null, START.plusDays(2), null, null);
+        List<ScheduledTask> tasks = TomatoWorkProgramScheduler.generate(input, START.plusDays(2));
+
+        assertTrue(tasks.stream().noneMatch(task -> task.id.startsWith("sow-")));
+        assertTrue(tasks.stream().anyMatch(task -> "milestone-seeds".equals(task.id)));
+    }
+
+    @Test
     public void delayedSowingKeepsPhaseOneUntilRecordedTransplant() {
         LocalDate sowing = START.plusDays(14);
         TomatoWorkProgramScheduler.Input input = new TomatoWorkProgramScheduler.Input(
@@ -111,6 +147,7 @@ public class TomatoWorkProgramSchedulerTest {
         for (ScheduledTask task : tasks) {
             if (task.id.startsWith("water-5-")) lastWater = task;
         }
+
         assertTrue(lastWater != null);
         assertTrue(!lastWater.startDate.isAfter(stop));
         assertEquals(2, lastWater.frequencyDays);
@@ -127,10 +164,44 @@ public class TomatoWorkProgramSchedulerTest {
                 START, START.plusDays(10), null, START.plusDays(10)));
     }
 
+    @Test
+    public void sowingTargetIsDayEightAndConfirmedSeedsDoNotRepeat() {
+        TomatoWorkProgramScheduler.Input input = new TomatoWorkProgramScheduler.Input(
+                START, 1.0, "Determinate", START, null, null, null,
+                START.plusDays(7), 0.10);
+        assertTrue(TomatoWorkProgramScheduler.getTasksForDate(input, START.plusDays(6))
+                .stream().noneMatch(task -> "milestone-sowing".equals(task.id)));
+        assertTrue(TomatoWorkProgramScheduler.getTasksForDate(input, START.plusDays(7))
+                .stream().anyMatch(task -> "milestone-sowing".equals(task.id)));
+    }
+
+    @Test
+    public void phaseFunctionUsesTransplantDateAndDatWindows() {
+        assertEquals(1, com.android.tomatoapp.task.data.TaskSchedule.getPhaseNumber(
+                START, null, null, START.plusDays(100)));
+        LocalDate transplant = START.plusDays(10);
+        assertEquals(2, com.android.tomatoapp.task.data.TaskSchedule.getPhaseNumber(
+                START, transplant, null, transplant.plusDays(27)));
+        assertEquals(3, com.android.tomatoapp.task.data.TaskSchedule.getPhaseNumber(
+                START, transplant, null, transplant.plusDays(28)));
+        assertEquals(4, com.android.tomatoapp.task.data.TaskSchedule.getPhaseNumber(
+                START, transplant, null, transplant.plusDays(56)));
+        assertEquals(5, com.android.tomatoapp.task.data.TaskSchedule.getPhaseNumber(
+                START, transplant, null, transplant.plusDays(84)));
+    }
+
     private static ScheduledTask find(List<ScheduledTask> tasks, String prefix) {
         for (ScheduledTask task : tasks) {
             if (task.id.startsWith(prefix + "-")) return task;
         }
         throw new AssertionError("Missing task: " + prefix);
+    }
+
+    private static TomatoWorkProgramScheduler.Input inputFor(
+            TomatoWorkProgramScheduler.Input input, LocalDate today) {
+        return new TomatoWorkProgramScheduler.Input(
+                input.plantingStartDate, input.farmAreaHectares, input.variety,
+                input.seedsConfirmedDate, input.sowingDate, input.transplantDate,
+                input.stopDate, today, input.hectaresPerPlowingDay);
     }
 }

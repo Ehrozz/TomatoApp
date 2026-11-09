@@ -141,7 +141,7 @@ public class LocalDataManager {
                             WorkProgramEntity entity = database.workProgramDao().getById(action.entityId);
                             if (entity != null) {
                                 java.util.Map<String, Object> data = serializeWorkProgram(entity);
-                                targetRef.setValue(data).addOnSuccessListener(
+                                targetRef.updateChildren(data).addOnSuccessListener(
                                         aVoid -> executorService.execute(() -> database.syncActionDao().delete(action))
                                 );
                             } else {
@@ -181,6 +181,12 @@ public class LocalDataManager {
         data.put("isOffSeason", entity.isOffSeason);
         data.put("actualYield", entity.actualYield);
         data.put("totalYield", entity.totalYield);
+        data.put("completionRate", entity.completionRate);
+        data.put("phase1Completion", entity.phase1Completion);
+        data.put("phase2Completion", entity.phase2Completion);
+        data.put("phase3Completion", entity.phase3Completion);
+        data.put("phase4Completion", entity.phase4Completion);
+        data.put("phase5Completion", entity.phase5Completion);
         if (entity.harvestDate != null) data.put("harvestDate", entity.harvestDate);
         return data;
     }
@@ -823,6 +829,7 @@ public class LocalDataManager {
         executorService.execute(() -> {
             try {
                 database.workProgramDao().deleteById(programId);
+                database.taskDao().deleteByProgram(userId, programId);
                 // Add to sync queue
                 SyncActionEntity syncAction = new SyncActionEntity(
                     userId, "work_program", programId, "DELETE", null);
@@ -973,6 +980,19 @@ public class LocalDataManager {
                     totalYield,
                     harvestDate
             );
+            Object completionRate = snapshot.child("completionRate").getValue();
+            entity.completionRate = completionRate instanceof Number
+                    ? ((Number) completionRate).doubleValue() : 0;
+            for (int i = 1; i <= 5; i++) {
+                Object phaseCompletion = snapshot.child("phase" + i + "Completion").getValue();
+                double value = phaseCompletion instanceof Number
+                        ? ((Number) phaseCompletion).doubleValue() : 0;
+                if (i == 1) entity.phase1Completion = value;
+                else if (i == 2) entity.phase2Completion = value;
+                else if (i == 3) entity.phase3Completion = value;
+                else if (i == 4) entity.phase4Completion = value;
+                else entity.phase5Completion = value;
+            }
             if (lastUpdated != null) entity.lastUpdated = lastUpdated;
             return entity;
         } catch (Exception e) {

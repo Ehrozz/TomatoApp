@@ -29,13 +29,19 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Map;
+import java.util.HashMap;
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.auth.data.User;
+import com.android.tomatoapp.common.models.UserLocation;
+import com.android.tomatoapp.common.models.UserLocationEntity;
 import com.android.tomatoapp.common.utils.PhilippineLocations;
 import com.android.tomatoapp.common.utils.QuezonBarangays;
 import com.android.tomatoapp.core.network.FirebaseErrorHandler;
+import com.android.tomatoapp.core.network.LocalDataManager;
 import com.android.tomatoapp.core.ui.MainActivity;
+import android.content.SharedPreferences;
 
 public class Register extends AppCompatActivity {
 
@@ -49,6 +55,10 @@ public class Register extends AppCompatActivity {
     private View buttonReg;
     private ProgressBar progressBar;
     private TextView textView;
+
+    private String selectedProvince = "";
+    private String selectedCity = "";
+    private String selectedBrgy = "";
 
     private FirebaseAuth mAuth;
     private DatabaseReference databaseRef;
@@ -170,32 +180,110 @@ public class Register extends AppCompatActivity {
                             return;
                         }
 
-                    // Create user with null values for username and phone fields
                     try {
-                        // Create user with null values for username and phone fields
-                        User newUser = new User(
-                                fullName,
-                            null,  // username
-                            null,  // usernameLower
-                                address,
-                                email,
-                            null,  // phone
-                            null,  // phoneInternational
-                            null   // phoneLocal
-                        );
+                        // Update Firebase Auth user display name as well
+                        com.google.firebase.auth.UserProfileChangeRequest profileUpdates =
+                                new com.google.firebase.auth.UserProfileChangeRequest.Builder()
+                                        .setDisplayName(fullName)
+                                        .build();
+                        user.updateProfile(profileUpdates);
+
+                        // Resolve location coordinates from the selected or typed address
+                        String province = selectedProvince;
+                        String city = selectedCity;
+                        String brgy = selectedBrgy;
+                        if (city.isEmpty() && !address.isEmpty()) {
+                            String[] parts = address.split(", ");
+                            if (parts.length >= 3) {
+                                brgy = parts[0].trim();
+                                city = parts[1].trim();
+                                province = parts[2].trim();
+                            } else if (parts.length == 2) {
+                                city = parts[0].trim();
+                                province = parts[1].trim();
+                            } else {
+                                city = address.trim();
+                            }
+                        }
+
+                        double[] coords = PhilippineLocations.getCoordinatesForCity(city, province);
+                        final double lat = coords[0];
+                        final double lon = coords[1];
+                        final String finalProvince = province;
+                        final String finalCity = city;
+                        final String finalBrgy = brgy;
+
+                        // Create clean user model object for Firebase Realtime Database
+                        User newUser = new User(fullName, "", "", address, email, "", "", "");
 
                         databaseRef.child(user.getUid()).setValue(newUser)
                                 .addOnSuccessListener(unused -> {
-                                    progressBar.setVisibility(View.GONE);
-                                    setButtonsEnabled(true);
-                                    Toast.makeText(Register.this, getString(R.string.success_account_created), Toast.LENGTH_SHORT).show();
-                                    startActivity(new Intent(getApplicationContext(), MainActivity.class));
-                                    finish();
+                                    // Save as default UserLocation under users/{userId}/locations/{locId}
+                                    DatabaseReference locationsRef = databaseRef.child(user.getUid()).child("locations");
+                                    String locId = locationsRef.push().getKey();
+
+                                    // Save into SharedPreferences WeatherPref so home screen immediately displays it
+                                    SharedPreferences wp = getSharedPreferences("WeatherPref", MODE_PRIVATE);
+                                    wp.edit()
+                                            .putLong("lat", Double.doubleToLongBits(lat))
+                                            .putLong("lon", Double.doubleToLongBits(lon))
+                                            .putString("name", address)
+                                            .apply();
+
+                                    Runnable proceedToMain = () -> {
+                                        progressBar.setVisibility(View.GONE);
+                                        setButtonsEnabled(true);
+                                        Toast.makeText(Register.this, getString(R.string.success_account_created), Toast.LENGTH_SHORT).show();
+                                        startActivity(new Intent(getApplicationContext(), MainActivity.class));
+                                        finish();
+                                    };
+
+                                    if (locId != null) {
+                                        UserLocation userLocation = new UserLocation(
+                                                locId,
+                                                finalProvince,
+                                                finalCity,
+                                                finalBrgy,
+                                                lat,
+                                                lon,
+                                                true
+                                        );
+
+                                        // Cache to local Room database
+                                        try {
+                                            UserLocationEntity entity = new UserLocationEntity(
+                                                    locId,
+                                                    user.getUid(),
+                                                    finalProvince,
+                                                    finalCity,
+                                                    finalBrgy,
+                                                    lat,
+                                                    lon,
+                                                    true
+                                            );
+                                            LocalDataManager.getInstance(Register.this).saveUserLocationToLocal(entity, "CREATE");
+                                        } catch (Exception ex) {
+                                            Log.w("Register", "Failed caching location to local DB", ex);
+                                        }
+
+                                        locationsRef.child(locId).setValue(userLocation)
+                                                .addOnCompleteListener(locTask -> proceedToMain.run());
+                                    } else {
+                                        proceedToMain.run();
+                                    }
                                 })
                                 .addOnFailureListener(e -> {
                                     progressBar.setVisibility(View.GONE);
                                     setButtonsEnabled(true);
-                                    Toast.makeText(Register.this, getString(R.string.error_save_user_data), Toast.LENGTH_LONG).show();
+                                    Log.e("Register", "Failed to save user data to Firebase Realtime Database: " + e.getMessage(), e);
+                                    String errorMsg = getString(R.string.error_save_user_data);
+                                    if (e.getMessage() != null) {
+                                        errorMsg += " (" + e.getMessage() + ")";
+                                    }
+                                    Toast.makeText(Register.this, errorMsg, Toast.LENGTH_LONG).show();
+                                    // Even if Realtime Database write had an issue, account is created in Auth; go to MainActivity
+                                    startActivity(new Intent(getApplicationContext(), MainActivity.class));
+                                    finish();
                                 });
                     } catch (Exception e) {
                         progressBar.setVisibility(View.GONE);
@@ -401,6 +489,9 @@ public class Register extends AppCompatActivity {
         });
 
         btnApply.setOnClickListener(v -> {
+            selectedProvince = provinceSelected[0];
+            selectedCity = citySelected[0];
+            selectedBrgy = brgySelected[0];
             editTextAddress.setText(brgySelected[0] + ", " + citySelected[0] + ", " + provinceSelected[0]);
             dialog.dismiss();
         });

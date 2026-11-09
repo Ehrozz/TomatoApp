@@ -49,6 +49,7 @@ import com.android.tomatoapp.settings.data.SettingsPreferences;
 import com.android.tomatoapp.task.data.TaskModel;
 import com.android.tomatoapp.task.data.TaskSchedule;
 import com.android.tomatoapp.task.data.TomatoWorkProgramScheduler;
+import com.android.tomatoapp.common.utils.AppClock;
 
 public class DailyTask extends BaseBottomNavActivity {
 
@@ -72,6 +73,8 @@ public class DailyTask extends BaseBottomNavActivity {
     private String sowingDate;
     private String transplantDate;
     private String stopDate;
+    private String placementDate;
+    private int intakeStartPhase = 1;
     private DatabaseReference taskRef;
     private boolean dayCompleted;
 
@@ -106,11 +109,15 @@ public class DailyTask extends BaseBottomNavActivity {
         sowingDate = getIntent().getStringExtra("sowingDate");
         transplantDate = getIntent().getStringExtra("transplantDate");
         stopDate = getIntent().getStringExtra("stopDate");
+        placementDate = getIntent().getStringExtra("placementDate");
+        intakeStartPhase = getIntent().getIntExtra("intakeStartPhase", 1);
         int adjustedDayNumber = getIntent().getIntExtra("adjustedDayNumber", 0);
 
-        // Fallback if startDate is missing
-        if (startDate == null || startDate.isEmpty()) {
-            startDate = sdf.format(new Date());
+        // A new program has no persisted state yet. Existing programs must wait
+        // for Firebase state instead of using today's date as their schedule anchor.
+        if ((programId == null || programId.isEmpty())
+                && (startDate == null || startDate.isEmpty())) {
+            startDate = AppClock.today(this).toString();
         }
 
         // Detect whether existing or new workprogram
@@ -146,12 +153,13 @@ public class DailyTask extends BaseBottomNavActivity {
 
         }
 
-        // Calculate day number and get tasks
-        dayNumber = adjustedDayNumber > 0
-                ? adjustedDayNumber
-                : calculateDayNumber(startDate, date);
-        if (dayNumber > 0 && maturityDays > 0) {
-            taskList = getScheduledTasksForDate();
+        if (isNewProgram) {
+            dayNumber = adjustedDayNumber > 0
+                    ? adjustedDayNumber
+                    : calculateDayNumber(startDate, date);
+            if (dayNumber > 0 && maturityDays > 0) {
+                taskList = getScheduledTasksForDate();
+            }
         }
 
         // Initialize checked tasks array
@@ -165,6 +173,7 @@ public class DailyTask extends BaseBottomNavActivity {
         // Update task count
         updateTaskCount();
         updateEmptyTaskState();
+        applyIntakeSkipNotice();
 
         // Check if user is logged in
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -203,7 +212,117 @@ public class DailyTask extends BaseBottomNavActivity {
         }
 
         setupBottomNavigation();
-        loadPersistedDailyState(currentUser);
+        loadProgramState(currentUser);
+    }
+
+    private void loadProgramState(FirebaseUser currentUser) {
+        if (isNewProgram || programId == null) {
+            loadPersistedDailyState(currentUser);
+            return;
+        }
+        FirebaseDatabase.getInstance().getReference("users")
+                .child(currentUser.getUid()).child("workPrograms").child(programId)
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    cultivar = firstNonEmpty(
+                            readNonEmptyString(snapshot, "cultivarName"), cultivar);
+                    startDate = firstNonEmpty(
+                            readNonEmptyString(snapshot, "startingDate"),
+                            readNonEmptyString(snapshot, "plantingStartDate"),
+                            startDate);
+                    DataSnapshot intake = snapshot.child("intake");
+                    DataSnapshot placement = snapshot.child("placement");
+                    DataSnapshot placementAnswers = placement.child("answers");
+                    seedsConfirmedDate = firstNonEmpty(
+                            readNonEmptyString(snapshot, "seedsConfirmedDate"),
+                            readNonEmptyString(intake, "seedsConfirmedDate"),
+                            readNonEmptyString(placementAnswers, "seedsConfirmedDate"),
+                            seedsConfirmedDate);
+                    sowingDate = firstNonEmpty(
+                            readNonEmptyString(snapshot, "sowingDate"),
+                            readNonEmptyString(intake, "sowingDate"),
+                            readNonEmptyString(placementAnswers, "sowingDate"),
+                            sowingDate);
+                    transplantDate = firstNonEmpty(
+                            readNonEmptyString(snapshot, "transplantDate"),
+                            readNonEmptyString(intake, "transplantDate"),
+                            readNonEmptyString(placementAnswers, "transplantDate"),
+                            transplantDate);
+                    stopDate = firstNonEmpty(
+                            readNonEmptyString(snapshot, "stopDate"),
+                            readNonEmptyString(intake, "stopDate"),
+                            readNonEmptyString(placementAnswers, "stopDate"),
+                            stopDate);
+                    placementDate = readNonEmptyString(placement, "placementDate");
+                    placementDate = firstNonEmpty(
+                            placementDate, readNonEmptyString(snapshot, "placementDate"));
+                    if (placementDate == null) {
+                        Object createdAt = snapshot.child("placement").child("createdAt").getValue();
+                        if (createdAt instanceof Number) {
+                            placementDate = new java.text.SimpleDateFormat("yyyy-MM-dd",
+                                    java.util.Locale.US)
+                                    .format(new java.util.Date(((Number) createdAt).longValue()));
+                        }
+                    }
+                    Object phase = snapshot.child("intakeStartPhase").getValue();
+                    if (!(phase instanceof Number)) {
+                        phase = placement.child("startPhase").getValue();
+                    }
+                    if (!(phase instanceof Number)) {
+                        phase = snapshot.child("placementStartPhase").getValue();
+                    }
+                    if (!(phase instanceof Number)) {
+                        phase = intake.child("startPhase").getValue();
+                    }
+                    if (phase instanceof Number) intakeStartPhase = ((Number) phase).intValue();
+                    growthHabit = findGrowthHabit(cultivar);
+                    maturityDays = findMaturityDays(cultivar);
+                    loadPersistedDailyState(currentUser);
+                })
+                .addOnFailureListener(error -> {
+                    Toast.makeText(this, "Could not load saved program state: "
+                            + error.getMessage(), Toast.LENGTH_LONG).show();
+                    loadPersistedDailyState(currentUser);
+                });
+    }
+
+    private String readOptionalString(DataSnapshot snapshot, String key) {
+        Object value = snapshot.child(key).getValue();
+        return value == null ? null : String.valueOf(value);
+    }
+
+    private String readNonEmptyString(DataSnapshot snapshot, String key) {
+        String value = readOptionalString(snapshot, key);
+        return value == null || value.trim().isEmpty() ? null : value;
+    }
+
+    private String firstNonEmpty(String... values) {
+        for (String value : values) {
+            if (value != null && !value.trim().isEmpty()) return value;
+        }
+        return null;
+    }
+
+    private String findGrowthHabit(String name) {
+        if (name == null) return "";
+        for (String[] cultivarData : com.android.tomatoapp.workprogram.data.WorkProgramDataHelper.cultivarsData) {
+            if (name.equals(cultivarData[0])) return cultivarData[1];
+        }
+        return "";
+    }
+
+    private int findMaturityDays(String name) {
+        if (name == null) return 0;
+        for (String[] cultivarData : com.android.tomatoapp.workprogram.data.WorkProgramDataHelper.cultivarsData) {
+            if (name.equals(cultivarData[0])) {
+                try {
+                    return Integer.parseInt(cultivarData[3]);
+                } catch (NumberFormatException ignored) {
+                    return 0;
+                }
+            }
+        }
+        return 0;
     }
 
     private void updateTaskCount() {
@@ -379,10 +498,15 @@ public class DailyTask extends BaseBottomNavActivity {
             java.time.LocalDate seeds = seedsConfirmedDate == null ? null : java.time.LocalDate.parse(seedsConfirmedDate);
             java.time.LocalDate transplant = transplantDate == null ? null : java.time.LocalDate.parse(transplantDate);
             java.time.LocalDate stop = stopDate == null ? null : java.time.LocalDate.parse(stopDate);
+            java.time.LocalDate placement = placementDate == null ? null : java.time.LocalDate.parse(placementDate);
+            transplant = com.android.tomatoapp.workprogram.data.ProgramHistory.effectiveTransplantDate(
+                    transplant, placement, intakeStartPhase);
             double area = getIntent().getDoubleExtra("farmAreaHectares", 1.0);
             TomatoWorkProgramScheduler.Input input = new TomatoWorkProgramScheduler.Input(
                     planting, area, growthHabit, seeds, sowing, transplant, stop, current,
                     TomatoWorkProgramScheduler.DEFAULT_HECTARES_PER_PLOWING_DAY);
+            // Ongoing planting uses the same scheduler as a normal program. Earlier
+            // work is represented by onboarding completion state, not a second mode.
             return TomatoWorkProgramScheduler.getTasksForDate(input, current);
         } catch (java.time.format.DateTimeParseException | IllegalArgumentException e) {
             Toast.makeText(this, "Unable to load scheduled tasks for this date.", Toast.LENGTH_SHORT).show();
@@ -395,7 +519,7 @@ public class DailyTask extends BaseBottomNavActivity {
         try {
             java.time.LocalDate viewed = java.time.LocalDate.parse(date);
             java.time.LocalDate start = java.time.LocalDate.parse(startDate);
-            if (viewed.isBefore(start) || viewed.isAfter(java.time.LocalDate.now())) return false;
+            if (viewed.isBefore(start) || viewed.isAfter(AppClock.today(this))) return false;
             long day = java.time.temporal.ChronoUnit.DAYS.between(start, viewed);
             return day >= 0 && day % 3 == 0;
         } catch (RuntimeException error) {
@@ -418,40 +542,55 @@ public class DailyTask extends BaseBottomNavActivity {
             maybeAskAboutSeeds();
             return;
         }
-        DatabaseReference programRef = FirebaseDatabase.getInstance().getReference("users")
-                .child(currentUser.getUid()).child("workPrograms").child(programId);
-        programRef.get().addOnSuccessListener(snapshot -> {
-            String savedSeeds = readOptionalString(snapshot, "seedsConfirmedDate");
-            if (savedSeeds != null) seedsConfirmedDate = savedSeeds;
-            String savedSowing = readOptionalString(snapshot, "sowingDate");
-            if (savedSowing != null) sowingDate = savedSowing;
-            String savedTransplant = readOptionalString(snapshot, "transplantDate");
-            if (savedTransplant != null) transplantDate = savedTransplant;
-            String savedStop = readOptionalString(snapshot, "stopDate");
-            if (savedStop != null) stopDate = savedStop;
+        if (taskRef == null || date == null || date.isEmpty()) {
+            Toast.makeText(this, "Could not restore saved task state.", Toast.LENGTH_LONG).show();
+            return;
+        }
 
-            taskRef.child(date).get().addOnSuccessListener(taskSnapshot -> {
-                dayCompleted = "completed".equals(taskSnapshot.getValue(String.class));
-                if (dayCompleted) {
-                    for (int i = 0; i < taskList.size(); i++) {
-                        if (isCountedTask(taskList.get(i))) checkedTasks[i] = true;
-                    }
-                }
+        taskRef.child(date).get().addOnSuccessListener(taskSnapshot -> {
+            dayCompleted = isOnboardingCompletedDate()
+                    || "completed".equals(taskSnapshot.getValue(String.class));
+            dayNumber = calculateDayNumber(startDate, date);
+            if (dayNumber > 0 && maturityDays > 0) {
                 refreshTaskList();
+            } else {
                 updateTaskCount();
                 updateEmptyTaskState();
-                maybeAskAboutSeeds();
-            }).addOnFailureListener(error -> maybeAskAboutSeeds());
-        }).addOnFailureListener(error -> maybeAskAboutSeeds());
+            }
+            maybeAskAboutSeeds();
+        }).addOnFailureListener(error -> {
+            Toast.makeText(this, "Could not restore saved task state: "
+                    + error.getMessage(), Toast.LENGTH_LONG).show();
+        });
     }
 
-    private String readOptionalString(DataSnapshot snapshot, String key) {
-        Object value = snapshot.child(key).getValue();
-        return value == null ? null : String.valueOf(value);
+    private boolean isOnboardingCompletedDate() {
+        if (startDate == null || date == null) return false;
+        try {
+            java.time.LocalDate viewedDate = java.time.LocalDate.parse(date);
+            java.time.LocalDate placement = placementDate == null
+                    ? null : java.time.LocalDate.parse(placementDate);
+            if (com.android.tomatoapp.workprogram.data.ProgramHistory
+                    .shouldTreatAsCompleted(viewedDate, placement)) {
+                return true;
+            }
+            if (intakeStartPhase <= 1) return false;
+            int phase = TaskSchedule.getPhaseNumber(
+                    java.time.LocalDate.parse(startDate),
+                    com.android.tomatoapp.workprogram.data.ProgramHistory.effectiveTransplantDate(
+                            transplantDate == null ? null : java.time.LocalDate.parse(transplantDate),
+                            placementDate == null ? null : java.time.LocalDate.parse(placementDate),
+                            intakeStartPhase),
+                    stopDate == null ? null : java.time.LocalDate.parse(stopDate),
+                    viewedDate);
+            return phase > 0 && phase <= intakeStartPhase
+                    && (placement == null || viewedDate.isBefore(placement));
+        } catch (RuntimeException error) {
+            return false;
+        }
     }
 
     private void refreshTaskList() {
-        boolean wasEmpty = taskList.isEmpty();
         taskList = getScheduledTasksForDate();
         boolean wasCompleted = dayCompleted;
         checkedTasks = new boolean[taskList.size()];
@@ -464,6 +603,7 @@ public class DailyTask extends BaseBottomNavActivity {
         taskRecyclerView.setAdapter(taskAdapter);
         updateTaskCount();
         updateEmptyTaskState();
+        applyIntakeSkipNotice();
     }
 
     private void updateEmptyTaskState() {
@@ -475,6 +615,27 @@ public class DailyTask extends BaseBottomNavActivity {
         }
         if (btnComplete != null) btnComplete.setEnabled(!empty && getActionTaskCount() > 0);
         if (btnSkip != null) btnSkip.setEnabled(!empty && getActionTaskCount() > 0);
+    }
+
+    private void applyIntakeSkipNotice() {
+        if (intakeStartPhase <= 1 || startDate == null || date == null) return;
+        int phase;
+        try {
+            phase = TaskSchedule.getPhaseNumber(
+                    java.time.LocalDate.parse(startDate),
+                    transplantDate == null ? null : java.time.LocalDate.parse(transplantDate),
+                    stopDate == null ? null : java.time.LocalDate.parse(stopDate),
+                    java.time.LocalDate.parse(date));
+        } catch (RuntimeException error) {
+            return;
+        }
+        if (phase >= intakeStartPhase) return;
+        if (taskSectionTitle != null) {
+            taskSectionTitle.setText("Tasks for earlier phases are already marked completed. You can still log expenses for work already done.");
+        }
+        if (btnComplete != null) btnComplete.setEnabled(false);
+        if (btnSkip != null) btnSkip.setEnabled(false);
+        if (btnDailyExpenses != null) btnDailyExpenses.setEnabled(!isNewProgram);
     }
 
     private void openMonitoring() {
@@ -535,6 +696,15 @@ public class DailyTask extends BaseBottomNavActivity {
             Toast.makeText(this, "No date selected.", Toast.LENGTH_SHORT).show();
             return;
         }
+        if ("stop-indicator".equals(task.id)) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Work Program Milestone")
+                    .setMessage("Have you harvested or tomato plants dies?")
+                    .setPositiveButton("Yes, all fruits are harvested", (dialog, which) -> saveMilestone("stopDate", date))
+                    .setNegativeButton("No, not yet", null)
+                    .show();
+            return;
+        }
         String field;
         if ("milestone-seeds".equals(task.id)) {
             field = "seedsConfirmedDate";
@@ -542,8 +712,6 @@ public class DailyTask extends BaseBottomNavActivity {
             field = "sowingDate";
         } else if ("milestone-transplant".equals(task.id)) {
             field = "transplantDate";
-        } else if ("stop-indicator".equals(task.id)) {
-            field = "stopDate";
         } else {
             Toast.makeText(this, "Unknown milestone.", Toast.LENGTH_SHORT).show();
             return;

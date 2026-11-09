@@ -38,7 +38,9 @@ import java.util.Map;
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.auth.ui.Login;
 import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
+import com.android.tomatoapp.financial.data.DailyExpenseMath;
 import com.android.tomatoapp.settings.data.SettingsPreferences;
+import com.android.tomatoapp.workprogram.ui.Workprogram;
 
 // Data Model Classes
 class LaborItem {
@@ -166,6 +168,7 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         cultivar = getIntent().getStringExtra("cultivar");
         date = getIntent().getStringExtra("date");
         startDate = getIntent().getStringExtra("programStartDate");
+        int catchUpPhase = getIntent().getIntExtra("catchUpPhase", 0);
 
         // Check if user is logged in
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -221,30 +224,27 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
             }
         }
         if (cultivar != null) {
-            cultivarHeader.setText("Cultivar: " + cultivar);
+            String header = "Cultivar: " + cultivar;
+            if (catchUpPhase > 0) {
+                header += "  ·  Catch-up log for skipped Phase " + catchUpPhase;
+            }
+            cultivarHeader.setText(header);
         }
 
         // Initialize Firebase reference
-        if (programId != null) {
-            expensesRef = FirebaseDatabase.getInstance()
-                    .getReference("users")
-                    .child(currentUser.getUid())
-                    .child("workPrograms")
-                    .child(programId)
-                    .child("dailyExpenses")
-                    .child(date);
+        if (programId == null || date == null || date.trim().isEmpty()) {
+            Toast.makeText(this, "Missing work program or date for daily expenses", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
         }
 
-        // Initialize Firebase reference
-        if (programId != null) {
-            expensesRef = FirebaseDatabase.getInstance()
-                    .getReference("users")
-                    .child(currentUser.getUid())
-                    .child("workPrograms")
-                    .child(programId)
-                    .child("dailyExpenses")
-                    .child(date);
-        }
+        expensesRef = FirebaseDatabase.getInstance()
+                .getReference("users")
+                .child(currentUser.getUid())
+                .child("workPrograms")
+                .child(programId)
+                .child("dailyExpenses")
+                .child(date);
 
         // Set up button listeners
         btnEdit.setOnClickListener(v -> enterEditMode());
@@ -1379,6 +1379,16 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         Map<String, Object> expenses = new HashMap<>();
             expenses.put("date", date);
             expenses.put("timestamp", System.currentTimeMillis());
+            int catchUpPhase = getIntent().getIntExtra("catchUpPhase", 0);
+            if (catchUpPhase > 0) {
+                expenses.put("source", "onboarding");
+                expenses.put("entryType", "CATCH_UP");
+                expenses.put("phase", catchUpPhase);
+                expenses.put("category", "Phase " + catchUpPhase + " catch-up");
+            } else {
+                expenses.put("source", "daily_task");
+                expenses.put("entryType", "DAILY");
+            }
 
         // Save labor items
         List<Map<String, Object>> laborList = new ArrayList<>();
@@ -1431,6 +1441,7 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
 
             expensesRef.setValue(expenses)
                     .addOnSuccessListener(aVoid -> {
+                        updateWorkProgramExpenseRollup();
                         Toast.makeText(this, "Daily expenses saved successfully!", Toast.LENGTH_SHORT).show();
                     // Mark all equipment items as having locked cost once saved
                     for (int i = 0; i < equipmentItems.size() && i < equipmentItemViews.size(); i++) {
@@ -1449,10 +1460,75 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
                         }
                     }
                     setEditMode(false);
+                    checkAndPromptNextCatchUpPhase();
                     })
                     .addOnFailureListener(e -> {
                         Toast.makeText(this, "Error saving expenses: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     });
+    }
+
+    /** Overwrite a single program-level total so analytics/finance never append duplicate rows. */
+    private void updateWorkProgramExpenseRollup() {
+        if (currentUser == null || programId == null) return;
+        DatabaseReference dailyRoot = FirebaseDatabase.getInstance()
+                .getReference("users")
+                .child(currentUser.getUid())
+                .child("workPrograms")
+                .child(programId)
+                .child("dailyExpenses");
+        dailyRoot.addListenerForSingleValueEvent(new com.google.firebase.database.ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull com.google.firebase.database.DataSnapshot snapshot) {
+                double total = DailyExpenseMath.sumAllDates(snapshot);
+                dailyRoot.getParent().child("loggedExpensesTotal").setValue(total);
+            }
+
+            @Override
+            public void onCancelled(@NonNull com.google.firebase.database.DatabaseError error) { }
+        });
+    }
+
+    private void checkAndPromptNextCatchUpPhase() {
+        ArrayList<Integer> queue = getIntent().getIntegerArrayListExtra("catchUpQueue");
+        int currentPhase = getIntent().getIntExtra("catchUpPhase", 0);
+        if (queue == null || queue.isEmpty() || currentPhase <= 0) return;
+
+        int currentIndex = queue.indexOf(currentPhase);
+        if (currentIndex >= 0 && currentIndex + 1 < queue.size()) {
+            int nextPhase = queue.get(currentIndex + 1);
+            new androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle("Next Catch-Up Phase")
+                    .setMessage("You have saved expenses for Phase " + currentPhase + ". Would you like to log expenses for "
+                            + com.android.tomatoapp.common.utils.PhaseHelper.getPhaseNameWithDescription(nextPhase) + " now?")
+                    .setPositiveButton("Yes, log Phase " + nextPhase, (d, which) -> {
+                        Intent nextIntent = new Intent(this, DailyExpensesActivity.class);
+                        nextIntent.putExtra("programId", programId);
+                        nextIntent.putExtra("cultivar", cultivar);
+                        nextIntent.putExtra("date", date);
+                        nextIntent.putExtra("programStartDate", startDate);
+                        nextIntent.putExtra("catchUpPhase", nextPhase);
+                        nextIntent.putIntegerArrayListExtra("catchUpQueue", queue);
+                        startActivity(nextIntent);
+                        finish();
+                    })
+                    .setNegativeButton("Done for now", (d, which) -> redirectToWorkprogramAfterCatchUp())
+                    .setCancelable(false)
+                    .show();
+        } else {
+            // No more catch-up phases - redirect to workprogram
+            redirectToWorkprogramAfterCatchUp();
+        }
+    }
+
+    private void redirectToWorkprogramAfterCatchUp() {
+        Intent intent = new Intent(this, com.android.tomatoapp.workprogram.ui.Workprogram.class);
+        intent.putExtra("programId", programId);
+        intent.putExtra("programStartDate", startDate);
+        intent.putExtra("cultivar", cultivar);
+        // Clear the activity stack to avoid returning to DailyExpensesActivity
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        startActivity(intent);
+        finish();
     }
 
     private void loadExistingExpenses() {
@@ -1466,14 +1542,10 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
                     if (snapshot.hasChild("labor")) {
                         for (com.google.firebase.database.DataSnapshot laborSnapshot : snapshot.child("labor").getChildren()) {
                             LaborItem item = new LaborItem();
-                            item.numWorkers = laborSnapshot.child("numWorkers").getValue(Integer.class) != null ?
-                                    laborSnapshot.child("numWorkers").getValue(Integer.class) : 0;
-                            item.dailyWage = laborSnapshot.child("dailyWage").getValue(Double.class) != null ?
-                                    laborSnapshot.child("dailyWage").getValue(Double.class) : 0.0;
-                            item.totalCost = laborSnapshot.child("totalCost").getValue(Double.class) != null ?
-                                    laborSnapshot.child("totalCost").getValue(Double.class) : 0.0;
-                            item.notes = laborSnapshot.child("notes").getValue(String.class) != null ?
-                                    laborSnapshot.child("notes").getValue(String.class) : "";
+                            item.numWorkers = DailyExpenseMath.asInt(laborSnapshot.child("numWorkers").getValue());
+                            item.dailyWage = DailyExpenseMath.asDouble(laborSnapshot.child("dailyWage").getValue());
+                            item.totalCost = DailyExpenseMath.asDouble(laborSnapshot.child("totalCost").getValue());
+                            item.notes = DailyExpenseMath.asString(laborSnapshot.child("notes").getValue());
                             laborItems.add(item);
                             View itemView = createLaborItemView(item, laborItems.size() - 1);
                             laborItemViews.add(itemView);
@@ -1485,16 +1557,11 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
                     if (snapshot.hasChild("material")) {
                         for (com.google.firebase.database.DataSnapshot materialSnapshot : snapshot.child("material").getChildren()) {
                             MaterialItem item = new MaterialItem();
-                            item.materialName = materialSnapshot.child("materialName").getValue(String.class) != null ?
-                                    materialSnapshot.child("materialName").getValue(String.class) : "";
-                            item.quantity = materialSnapshot.child("quantity").getValue(Double.class) != null ?
-                                    materialSnapshot.child("quantity").getValue(Double.class) : 0.0;
-                            item.quantityUnit = materialSnapshot.child("quantityUnit").getValue(String.class) != null ?
-                                    materialSnapshot.child("quantityUnit").getValue(String.class) : "";
-                            item.unitCost = materialSnapshot.child("unitCost").getValue(Double.class) != null ?
-                                    materialSnapshot.child("unitCost").getValue(Double.class) : 0.0;
-                            item.totalCost = materialSnapshot.child("totalCost").getValue(Double.class) != null ?
-                                    materialSnapshot.child("totalCost").getValue(Double.class) : 0.0;
+                            item.materialName = DailyExpenseMath.asString(materialSnapshot.child("materialName").getValue());
+                            item.quantity = DailyExpenseMath.asDouble(materialSnapshot.child("quantity").getValue());
+                            item.quantityUnit = DailyExpenseMath.asString(materialSnapshot.child("quantityUnit").getValue());
+                            item.unitCost = DailyExpenseMath.asDouble(materialSnapshot.child("unitCost").getValue());
+                            item.totalCost = DailyExpenseMath.asDouble(materialSnapshot.child("totalCost").getValue());
                             materialItems.add(item);
                             View itemView = createMaterialItemView(item, materialItems.size() - 1);
                             materialItemViews.add(itemView);
@@ -1506,42 +1573,24 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
                     if (snapshot.hasChild("equipment")) {
                         for (com.google.firebase.database.DataSnapshot equipmentSnapshot : snapshot.child("equipment").getChildren()) {
                             EquipmentItem item = new EquipmentItem();
-                            item.equipmentName = equipmentSnapshot.child("equipmentName").getValue(String.class) != null ?
-                                    equipmentSnapshot.child("equipmentName").getValue(String.class) : "";
-                            // Handle both old format (usage as string) and new format (usageValue + usageUnit)
+                            item.equipmentName = DailyExpenseMath.asString(equipmentSnapshot.child("equipmentName").getValue());
                             if (equipmentSnapshot.hasChild("usageValue")) {
-                                item.usageValue = equipmentSnapshot.child("usageValue").getValue(Double.class) != null ?
-                                        equipmentSnapshot.child("usageValue").getValue(Double.class) : 0.0;
-                                item.usageUnit = equipmentSnapshot.child("usageUnit").getValue(String.class) != null ?
-                                        equipmentSnapshot.child("usageUnit").getValue(String.class) : "hours";
+                                item.usageValue = DailyExpenseMath.asDouble(equipmentSnapshot.child("usageValue").getValue());
+                                String unit = DailyExpenseMath.asString(equipmentSnapshot.child("usageUnit").getValue());
+                                item.usageUnit = unit.isEmpty() ? "hours" : unit;
                             } else if (equipmentSnapshot.hasChild("usage")) {
-                                // Legacy format - try to parse as number or default to 0
-                                String usageStr = equipmentSnapshot.child("usage").getValue(String.class);
-                                try {
-                                    item.usageValue = usageStr != null && !usageStr.isEmpty() ? Double.parseDouble(usageStr) : 0.0;
-        } catch (NumberFormatException e) {
-                                    item.usageValue = 0.0;
-                                }
-                                item.usageUnit = "hours"; // Default to hours for legacy data
+                                item.usageValue = DailyExpenseMath.asDouble(equipmentSnapshot.child("usage").getValue());
+                                item.usageUnit = "hours";
                             }
-                            item.isOwned = equipmentSnapshot.child("isOwned").getValue(Boolean.class) != null ?
-                                    equipmentSnapshot.child("isOwned").getValue(Boolean.class) : false;
-                            item.cost = equipmentSnapshot.child("cost").getValue(Double.class) != null ?
-                                    equipmentSnapshot.child("cost").getValue(Double.class) : 0.0;
-                            // Mark cost as locked if it was loaded from Firebase and has a value
+                            item.isOwned = DailyExpenseMath.asBoolean(equipmentSnapshot.child("isOwned").getValue(), false);
+                            item.cost = DailyExpenseMath.asDouble(equipmentSnapshot.child("cost").getValue());
                             if (item.cost > 0 && !item.isOwned) {
                                 item.isCostLocked = true;
                             }
-                            // Calculate totalCost if not already saved
                             if (equipmentSnapshot.hasChild("totalCost")) {
-                                item.totalCost = equipmentSnapshot.child("totalCost").getValue(Double.class) != null ?
-                                        equipmentSnapshot.child("totalCost").getValue(Double.class) : 0.0;
-                            } else {
-                                // Calculate from usage and cost
-                                if (!item.isOwned && item.cost > 0 && item.usageValue > 0) {
-                                    double usageInHours = convertToHours(item.usageValue, item.usageUnit);
-                                    item.totalCost = usageInHours * item.cost;
-                                }
+                                item.totalCost = DailyExpenseMath.asDouble(equipmentSnapshot.child("totalCost").getValue());
+                            } else if (!item.isOwned && item.cost > 0 && item.usageValue > 0) {
+                                item.totalCost = convertToHours(item.usageValue, item.usageUnit) * item.cost;
                             }
                             equipmentItems.add(item);
                             View itemView = createEquipmentItemView(item, equipmentItems.size() - 1);
@@ -1554,10 +1603,8 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
                     if (snapshot.hasChild("miscellaneous")) {
                         for (com.google.firebase.database.DataSnapshot miscSnapshot : snapshot.child("miscellaneous").getChildren()) {
                             MiscellaneousItem item = new MiscellaneousItem();
-                            item.expenseName = miscSnapshot.child("expenseName").getValue(String.class) != null ?
-                                    miscSnapshot.child("expenseName").getValue(String.class) : "";
-                            item.cost = miscSnapshot.child("cost").getValue(Double.class) != null ?
-                                    miscSnapshot.child("cost").getValue(Double.class) : 0.0;
+                            item.expenseName = DailyExpenseMath.asString(miscSnapshot.child("expenseName").getValue());
+                            item.cost = DailyExpenseMath.asDouble(miscSnapshot.child("cost").getValue());
                             miscItems.add(item);
                             View itemView = createMiscItemView(item, miscItems.size() - 1);
                             miscItemViews.add(itemView);
@@ -1889,4 +1936,3 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         }
     }
 }
-

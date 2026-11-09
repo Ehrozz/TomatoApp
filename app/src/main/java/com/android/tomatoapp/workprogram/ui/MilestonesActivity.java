@@ -8,6 +8,8 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.android.tomatoapp.R;
+import com.android.tomatoapp.common.utils.AppClock;
+import com.google.firebase.database.DataSnapshot;
 import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseReference;
@@ -29,10 +31,10 @@ public class MilestonesActivity extends AppCompatActivity {
         super.onCreate(state);
         setContentView(R.layout.activity_milestones);
         programId = getIntent().getStringExtra("programId");
-        seeds = getIntent().getStringExtra("seedsConfirmedDate");
-        sowing = getIntent().getStringExtra("sowingDate");
-        transplant = getIntent().getStringExtra("transplantDate");
-        stop = getIntent().getStringExtra("stopDate");
+        seeds = null;
+        sowing = null;
+        transplant = null;
+        stop = null;
         String uid = FirebaseAuth.getInstance().getCurrentUser() == null ? null
                 : FirebaseAuth.getInstance().getCurrentUser().getUid();
         if (uid == null || programId == null) {
@@ -45,7 +47,14 @@ public class MilestonesActivity extends AppCompatActivity {
         sowingButton = findViewById(R.id.btnSowingDate);
         transplantButton = findViewById(R.id.btnTransplantDate);
         stopButton = findViewById(R.id.btnStopDate);
-        refreshLabels();
+        reference.get().addOnSuccessListener(snapshot -> {
+            seeds = read(snapshot, "seedsConfirmedDate");
+            sowing = read(snapshot, "sowingDate");
+            transplant = read(snapshot, "transplantDate");
+            stop = read(snapshot, "stopDate");
+            refreshLabels();
+        }).addOnFailureListener(error -> Toast.makeText(this,
+                "Could not load milestones: " + error.getMessage(), Toast.LENGTH_LONG).show());
         seedsButton.setOnClickListener(v -> pick("seedsConfirmedDate", seeds));
         sowingButton.setOnClickListener(v -> pick("sowingDate", sowing));
         transplantButton.setOnClickListener(v -> pick("transplantDate", transplant));
@@ -89,20 +98,35 @@ public class MilestonesActivity extends AppCompatActivity {
             }).addOnFailureListener(error -> Toast.makeText(this,
                     "Could not save correction: " + error.getMessage(), Toast.LENGTH_LONG).show());
         }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH));
-        picker.getDatePicker().setMaxDate(System.currentTimeMillis());
+        try {
+            Calendar appToday = Calendar.getInstance();
+            LocalDate today = AppClock.today(this);
+            appToday.set(today.getYear(), today.getMonthValue() - 1, today.getDayOfMonth());
+            picker.getDatePicker().setMaxDate(appToday.getTimeInMillis());
+        } catch (RuntimeException error) {
+            Toast.makeText(this, "Could not read the app calendar date.", Toast.LENGTH_SHORT).show();
+        }
         picker.show();
     }
 
     private boolean valid(String field, String value) {
         LocalDate selected = LocalDate.parse(value);
         if ("sowingDate".equals(field) && seeds == null) return reject("Confirm seeds first.");
+        if ("sowingDate".equals(field) && selected.isBefore(LocalDate.parse(seeds))) {
+            return reject("Sowing cannot be before seed confirmation.");
+        }
         if ("transplantDate".equals(field) && sowing == null) return reject("Record sowing first.");
-        if ("transplantDate".equals(field)
-                && selected.isBefore(LocalDate.parse(sowing).plusDays(25))) {
-            return reject("Transplanting must be at least 25 days after sowing.");
+        if ("transplantDate".equals(field) && seeds != null
+                && selected.isBefore(LocalDate.parse(seeds))) {
+            return reject("Transplanting cannot be before seed confirmation.");
         }
         if ("stopDate".equals(field) && transplant == null) return reject("Record transplanting first.");
         return true;
+    }
+
+    private String read(DataSnapshot snapshot, String key) {
+        Object value = snapshot.child(key).getValue();
+        return value == null ? null : String.valueOf(value);
     }
 
     private boolean reject(String message) {

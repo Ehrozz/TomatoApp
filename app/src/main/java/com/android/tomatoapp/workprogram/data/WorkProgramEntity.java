@@ -31,6 +31,10 @@ public class WorkProgramEntity {
     public double projectedExpenses;
     public double adjustedIncome;
     public double adjustedExpenses;
+
+    /** Actual daily-log total for this program. Not stored in Room; filled from Firebase. */
+    @Ignore
+    public double loggedExpenses;
     public double phase1Completion;
     public double phase2Completion;
     public double phase3Completion;

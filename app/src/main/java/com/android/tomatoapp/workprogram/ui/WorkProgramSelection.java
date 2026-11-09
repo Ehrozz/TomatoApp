@@ -41,10 +41,19 @@ import android.util.Log;
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.auth.ui.Login;
 import com.android.tomatoapp.common.utils.CultivarImageHelper;
+import com.android.tomatoapp.common.utils.PhaseHelper;
+import com.android.tomatoapp.common.utils.AppClock;
+import com.android.tomatoapp.common.utils.PlacementDebugDump;
+import com.android.tomatoapp.task.data.TaskModel;
+import com.android.tomatoapp.task.data.TomatoWorkProgramScheduler;
+import com.android.tomatoapp.task.data.ScheduledTask;
+import com.android.tomatoapp.task.data.TaskTemplate;
 import com.android.tomatoapp.core.network.LocalDataManager;
 import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
+import com.android.tomatoapp.financial.ui.DailyExpensesActivity;
 import com.android.tomatoapp.settings.data.SettingsPreferences;
 import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
+import com.android.tomatoapp.workprogram.data.IntakeAnswers;
 
 public class WorkProgramSelection extends BaseBottomNavActivity {
 
@@ -150,7 +159,7 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
             }
         });
 
-        btnAdd.setOnClickListener(v -> showAddProgramDialog());
+        btnAdd.setOnClickListener(v -> showAddProgramChoice());
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Work Program");
@@ -160,22 +169,37 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
         headerMenuButton.setOnClickListener(v -> showSortMenu());
     }
 
+    private void showAddProgramChoice() {
+        new AlertDialog.Builder(this)
+                .setTitle("Add work program")
+                .setItems(new String[]{"Start new program", "Add ongoing planting"}, (dialog, which) -> {
+                    showAddProgramDialog(which == 1);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
     private void showAddProgramDialog() {
+        showAddProgramDialog(false);
+    }
+
+    private void showAddProgramDialog(boolean ongoing) {
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_work_program, null);
         
         
         android.widget.AutoCompleteTextView cultivarSpinner = dialogView.findViewById(R.id.cultivarSpinner);
-        com.google.android.material.textfield.TextInputEditText landAreaInput = dialogView.findViewById(R.id.landAreaInput);
+        android.widget.AutoCompleteTextView landAreaInput = dialogView.findViewById(R.id.landAreaInput);
         com.google.android.material.textfield.TextInputEditText startDateInput = dialogView.findViewById(R.id.startDateInput);
         com.google.android.material.button.MaterialButton btnSubmit = dialogView.findViewById(R.id.btnSubmit);
+        TextView addProgramTitle = dialogView.findViewById(R.id.addProgramTitle);
+        View ongoingBanner = dialogView.findViewById(R.id.ongoingBanner);
+        if (ongoing) {
+            addProgramTitle.setText("Add ongoing planting");
+            ongoingBanner.setVisibility(View.VISIBLE);
+        }
 
-        // Cultivar data
-        final String[][] cultivarsData = {
-                {"Improved KS Apollo", "Semi-determinate", "85", "105"},
-            {"Diamante max", "Semi-determinate", "85", "105"},
-            {"Jewel f1", "Determinate", "85", "105"},
-            {"Marimar", "Determinate", "85", "105"}
-        };
+        // Cultivar data from centralized WorkProgramDataHelper
+        final String[][] cultivarsData = com.android.tomatoapp.workprogram.data.WorkProgramDataHelper.cultivarsData;
 
         String[] cultivarNames = new String[cultivarsData.length];
         for (int i = 0; i < cultivarsData.length; i++) {
@@ -204,16 +228,58 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
         };
         cultivarSpinner.setAdapter(adapter);
 
+        // Land Area Dropdown options
+        final String[] landAreaOptions = {
+                "0.25 hectare",
+                "0.5 hectare",
+                "0.75 hectare",
+                "1 hectare"
+        };
+        android.widget.ArrayAdapter<String> landAreaAdapter = new android.widget.ArrayAdapter<String>(this,
+                android.R.layout.simple_dropdown_item_1line, landAreaOptions) {
+            @Override
+            public View getView(int position, View convertView, android.view.ViewGroup parent) {
+                View view = super.getView(position, convertView, parent);
+                android.widget.TextView textView = view.findViewById(android.R.id.text1);
+                if (textView != null) textView.setTextColor(android.graphics.Color.BLACK);
+                view.setBackgroundColor(android.graphics.Color.WHITE);
+                return view;
+            }
+
+            @Override
+            public View getDropDownView(int position, View convertView, android.view.ViewGroup parent) {
+                View view = super.getDropDownView(position, convertView, parent);
+                android.widget.TextView textView = view.findViewById(android.R.id.text1);
+                if (textView != null) textView.setTextColor(android.graphics.Color.BLACK);
+                view.setBackgroundColor(android.graphics.Color.WHITE);
+                return view;
+            }
+        };
+        landAreaInput.setAdapter(landAreaAdapter);
+        landAreaInput.setKeyListener(null);
+        landAreaInput.setThreshold(0);
+        landAreaInput.setOnClickListener(v -> landAreaInput.showDropDown());
+        landAreaInput.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) landAreaInput.showDropDown();
+        });
+
         // Date Picker logic
         final java.util.Calendar calendar = java.util.Calendar.getInstance();
         final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+        try {
+            calendar.setTime(sdf.parse(java.time.LocalDate.now().toString()));
+        } catch (Exception ignored) {
+            Log.w("WorkProgramSelection", "Using device date because app date is invalid");
+        }
         startDateInput.setText(sdf.format(calendar.getTime()));
 
         startDateInput.setOnClickListener(v -> {
-            new android.app.DatePickerDialog(this, (view, year, month, dayOfMonth) -> {
+            android.app.DatePickerDialog picker = new android.app.DatePickerDialog(this, (view, year, month, dayOfMonth) -> {
                 calendar.set(year, month, dayOfMonth);
                 startDateInput.setText(sdf.format(calendar.getTime()));
-            }, calendar.get(java.util.Calendar.YEAR), calendar.get(java.util.Calendar.MONTH), calendar.get(java.util.Calendar.DAY_OF_MONTH)).show();
+            }, calendar.get(java.util.Calendar.YEAR), calendar.get(java.util.Calendar.MONTH), calendar.get(java.util.Calendar.DAY_OF_MONTH));
+            picker.getDatePicker().setMaxDate(calendar.getTimeInMillis());
+            picker.show();
         });
 
         AlertDialog dialog = new AlertDialog.Builder(this, R.style.CustomAlertDialog)
@@ -234,22 +300,95 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
                 return;
             }
 
-            double area;
-            try {
-                area = Double.parseDouble(areaStr);
-                if (area <= 0) throw new NumberFormatException();
-            } catch (NumberFormatException e) {
-                Toast.makeText(this, "Invalid land area", Toast.LENGTH_SHORT).show();
+            double area = parseSelectedLandAreaHectares(areaStr);
+            if (area <= 0) {
+                Toast.makeText(this, "Please select a land area", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            saveNewWorkProgram(cultivar, area, date, cultivarsData, dialog);
+            if (!ongoing) {
+                saveNewWorkProgram(cultivar, area, date, cultivarsData, dialog, null, null);
+                return;
+            }
+            new WorkProgramIntakeDialog(this, cultivar, new WorkProgramIntakeDialog.Callback() {
+                @Override
+                public void onCompleted(com.android.tomatoapp.workprogram.data.IntakeAnswers answers,
+                                        com.android.tomatoapp.workprogram.data.IntakeAnswers.Evaluation evaluation) {
+                    String dateError = answers.validateDates(evaluation.startPhase, AppClock.today(WorkProgramSelection.this));
+                    if (dateError != null) {
+                        Toast.makeText(WorkProgramSelection.this,
+                                dateError,
+                                Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    new AlertDialog.Builder(WorkProgramSelection.this)
+                            .setTitle("Ongoing planting summary")
+                            .setMessage("We will place you in Phase " + evaluation.startPhase
+                                    + ". Earlier tasks, milestones and progress will be marked done.")
+                            .setNegativeButton("Cancel", null)
+                            .setPositiveButton("Continue", (summary, which) ->
+                                    saveNewWorkProgram(cultivar, area, date, cultivarsData, dialog, answers, evaluation))
+                            .show();
+                }
+
+                @Override
+                public void onCancelled() { }
+            }).show();
         });
 
         dialog.show();
     }
 
-    private void saveNewWorkProgram(String cultivar, double area, String startDate, String[][] cultivarsData, AlertDialog dialog) {
+    private boolean datesMatchPlacement(IntakeAnswers answers,
+                                        IntakeAnswers.Evaluation evaluation,
+                                        String cultivar) {
+        if (answers == null || evaluation == null) return true;
+        try {
+            java.time.LocalDate appToday = AppClock.today(this);
+            java.time.LocalDate planting = java.time.LocalDate.parse(
+                    earliestDate(appToday.toString(), answers.seedsConfirmedDate, answers.sowingDate));
+            java.time.LocalDate seeds = parseDateOrNull(answers.seedsConfirmedDate);
+            java.time.LocalDate sowing = parseDateOrNull(answers.sowingDate);
+            java.time.LocalDate transplant = parseDateOrNull(answers.transplantDate);
+            java.time.LocalDate stop = parseDateOrNull(answers.stopDate);
+            if (seeds != null && sowing != null && seeds.isAfter(sowing)) return false;
+            if (sowing != null && transplant != null && sowing.isAfter(transplant)) return false;
+            if (transplant != null && transplant.isAfter(appToday)) return false;
+            int phase = com.android.tomatoapp.task.data.TaskSchedule.getPhaseNumber(
+                    planting, transplant, stop, appToday);
+            return phase == evaluation.startPhase;
+        } catch (RuntimeException error) {
+            Log.w("WorkProgramSelection", "Could not validate placement dates", error);
+            return false;
+        }
+    }
+
+    private static java.time.LocalDate parseDateOrNull(String value) {
+        return value == null || value.trim().isEmpty()
+                ? null : java.time.LocalDate.parse(value);
+    }
+
+    /** Maps the land-area dropdown labels to the hectare values used by scheduling and cost formulas. */
+    private static double parseSelectedLandAreaHectares(String selected) {
+        if (selected == null) return -1;
+        switch (selected.trim()) {
+            case "0.25 hectare":
+                return 0.25;
+            case "0.5 hectare":
+                return 0.5;
+            case "0.75 hectare":
+                return 0.75;
+            case "1 hectare":
+                return 1.0;
+            default:
+                return -1;
+        }
+    }
+
+    private void saveNewWorkProgram(String cultivar, double area, String startDate, String[][] cultivarsData,
+                                    AlertDialog dialog,
+                                    com.android.tomatoapp.workprogram.data.IntakeAnswers answers,
+                                    com.android.tomatoapp.workprogram.data.IntakeAnswers.Evaluation evaluation) {
         if (dbRef == null || userId == null) return;
 
         String id = dbRef.push().getKey();
@@ -263,23 +402,48 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
             }
         }
         final int finalMaturity = tempMaturity;
+        String plantingStartDate = answers == null
+                ? (startDate == null || startDate.isEmpty() ? AppClock.today(this).toString() : startDate)
+                : earliestDate(AppClock.today(this).toString(), answers.seedsConfirmedDate, answers.sowingDate);
 
         // Prepare Firebase data
         java.util.Map<String, Object> data = new java.util.HashMap<>();
         data.put("cultivarName", cultivar);
-        data.put("startingDate", startDate);
+        data.put("startingDate", plantingStartDate);
         data.put("areaSize", area);
         data.put("projectedIncome", 0.0);
         data.put("projectedExpenses", 0.0);
         data.put("adjustedIncome", 0.0);
         data.put("adjustedExpenses", 0.0);
+        int startPhase = evaluation != null ? evaluation.startPhase : 1;
+        data.put("intakeStartPhase", startPhase);
+        if (answers != null) {
+            data.put("intake", answers.toMap(startPhase));
+        }
+
+        if (answers != null) {
+            if (!answers.seedsConfirmedDate.isEmpty()) data.put("seedsConfirmedDate", answers.seedsConfirmedDate);
+            if (!answers.sowingDate.isEmpty()) data.put("sowingDate", answers.sowingDate);
+            if (!answers.transplantDate.isEmpty()) data.put("transplantDate", answers.transplantDate);
+            if (!answers.stopDate.isEmpty()) data.put("stopDate", answers.stopDate);
+            data.put("plantingStartDate", plantingStartDate);
+            data.put("placementDate", AppClock.today(WorkProgramSelection.this).toString());
+            data.put("placementStartPhase", startPhase);
+            data.put("placement", new java.util.HashMap<String, Object>() {{
+                put("answers", answers.toMap(startPhase));
+                put("startPhase", startPhase);
+                put("createdAt", System.currentTimeMillis());
+                put("placementDate", AppClock.today(WorkProgramSelection.this).toString());
+            }});
+            data.put("placementSource", "onboarding");
+        }
 
         // Calculate phases JSON
-        String phasesJson = com.android.tomatoapp.workprogram.data.WorkProgramDataHelper.calculatePhasesJson(cultivar, startDate);
+        String phasesJson = com.android.tomatoapp.workprogram.data.WorkProgramDataHelper.calculatePhasesJson(cultivar, plantingStartDate);
 
         // Local Entity
         WorkProgramEntity entity = new WorkProgramEntity(
-                id, userId, cultivar, area, startDate, phasesJson, null,
+                id, userId, cultivar, area, plantingStartDate, phasesJson, null,
                 0.0, 0.0, 0.0, 0.0,
                 0.0, 0.0, 0.0, 0.0, 0.0,
                 0, 0, 0, 0, 0.0
@@ -289,40 +453,100 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
         LocalDataManager.getInstance(this).processSyncQueue(this, userId);
 
         dbRef.child(id).setValue(data).addOnSuccessListener(aVoid -> {
-            // Initialize task logs
-            DatabaseReference logs = FirebaseDatabase.getInstance()
-                    .getReference("users")
-                    .child(userId)
-                    .child("routineLogs")
-                    .child(id)
-                    .child("tasks");
-
-            try {
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-                java.util.Calendar cal = java.util.Calendar.getInstance();
-                java.util.Date parsedDate = sdf.parse(startDate);
-                if (parsedDate != null) {
-                    cal.setTime(parsedDate);
-                    
-                    final java.util.Calendar workerCal = (java.util.Calendar) cal.clone();
-                    new Thread(() -> {
-                        for (int i = 0; i < finalMaturity; i++) {
-                            String dayKey = sdf.format(workerCal.getTime());
-                            logs.child(dayKey).setValue("pending");
-                            workerCal.add(java.util.Calendar.DAY_OF_YEAR, 1);
-                        }
-                    }).start();
-                }
-            } catch (Exception e) {
-                Log.e("WorkProgramSelection", "Error initializing logs", e);
-            }
-
-            Toast.makeText(this, "Program Initialized!", Toast.LENGTH_SHORT).show();
+            PlacementDebugDump.log(id, plantingStartDate,
+                    answers == null ? null : answers.seedsConfirmedDate,
+                    answers == null ? null : answers.sowingDate,
+                    answers == null ? null : answers.transplantDate,
+                    answers == null ? null : answers.stopDate,
+                    startPhase, answers == null ? null : answers.toMap(startPhase),
+                    cultivar, area, AppClock.today(this));
+            Toast.makeText(this, "Program starts at Phase " + startPhase, Toast.LENGTH_SHORT).show();
             dialog.dismiss();
+            Intent openProgram = new Intent(this, Workprogram.class);
+            openProgram.putExtra("programId", id);
+            if (evaluation != null && evaluation.catchUpPhases != null
+                    && !evaluation.catchUpPhases.isEmpty()) {
+                openProgram.putIntegerArrayListExtra("catchUpQueue",
+                        new ArrayList<>(evaluation.catchUpPhases));
+                openProgram.putExtra("catchUpExpenseDate",
+                        catchUpExpenseDate(plantingStartDate, answers, evaluation));
+            }
+            startActivity(openProgram);
         }).addOnFailureListener(e -> {
             Toast.makeText(this, "Saved locally. Will sync when online.", Toast.LENGTH_SHORT).show();
             dialog.dismiss();
         });
+    }
+
+    private String catchUpExpenseDate(String startDate,
+                                      com.android.tomatoapp.workprogram.data.IntakeAnswers answers,
+                                      com.android.tomatoapp.workprogram.data.IntakeAnswers.Evaluation evaluation) {
+        if (answers == null || evaluation == null || evaluation.catchUpPhases == null
+                || evaluation.catchUpPhases.isEmpty()) return startDate;
+        int first = evaluation.catchUpPhases.get(0);
+        if (first == 1 && answers.sowingDate != null && !answers.sowingDate.isEmpty()) {
+            return answers.sowingDate;
+        }
+        if (first >= 2 && answers.transplantDate != null && !answers.transplantDate.isEmpty()) {
+            return answers.transplantDate;
+        }
+        return startDate;
+    }
+
+    private static String earliestDate(String fallback, String... dates) {
+        String earliest = fallback;
+        for (String value : dates) {
+            if (value == null || value.trim().isEmpty()) continue;
+            if (earliest == null || earliest.isEmpty() || value.compareTo(earliest) < 0) earliest = value;
+        }
+        return earliest;
+    }
+
+    private void showCatchUpExpensesDialog(String programId, String cultivar, String startDate,
+                                           com.android.tomatoapp.workprogram.data.IntakeAnswers answers,
+                                           com.android.tomatoapp.workprogram.data.IntakeAnswers.Evaluation evaluation) {
+        if (evaluation == null || evaluation.catchUpPhases == null || evaluation.catchUpPhases.isEmpty()) {
+            return;
+        }
+
+        List<String> labels = new ArrayList<>();
+        for (Integer phase : evaluation.catchUpPhases) {
+            labels.add(PhaseHelper.getPhaseNameWithDescription(phase));
+        }
+        boolean[] checked = new boolean[labels.size()];
+        for (int i = 0; i < checked.length; i++) checked[i] = true;
+
+        new AlertDialog.Builder(this)
+                .setTitle("Log expenses already spent")
+                .setMessage("Earlier phases were marked completed via setup intake. Log money already spent on the program start date. This uses the same daily expense table.")
+                .setMultiChoiceItems(labels.toArray(new String[0]), checked, (d, which, isChecked) -> checked[which] = isChecked)
+                .setPositiveButton("Log selected", (d, which) -> {
+                    ArrayList<Integer> selectedPhases = new ArrayList<>();
+                    for (int i = 0; i < checked.length; i++) {
+                        if (checked[i]) {
+                            selectedPhases.add(evaluation.catchUpPhases.get(i));
+                        }
+                    }
+                    if (selectedPhases.isEmpty()) return;
+                    String expenseDate = startDate;
+                    if (answers != null) {
+                        Integer first = selectedPhases.get(0);
+                        if (first == 1 && !answers.sowingDate.isEmpty()) expenseDate = answers.sowingDate;
+                        if (first == 2 && !answers.transplantDate.isEmpty()) expenseDate = answers.transplantDate;
+                        if (first >= 3 && !answers.transplantDate.isEmpty()) expenseDate = answers.transplantDate;
+                    }
+                    Intent intent = new Intent(this, DailyExpensesActivity.class);
+                    intent.putExtra("programId", programId);
+                    intent.putExtra("cultivar", cultivar);
+                    intent.putExtra("date", expenseDate);
+                    intent.putExtra("programStartDate", startDate);
+                    intent.putExtra("catchUpPhase", selectedPhases.get(0));
+                    intent.putIntegerArrayListExtra("catchUpQueue", selectedPhases);
+                    startActivity(intent);
+                    Toast.makeText(this, "Log costs for past work. You can add more dates from Daily Task later.", Toast.LENGTH_LONG).show();
+                })
+                .setNegativeButton("Later", null)
+                .show();
     }
 
     @Override
@@ -681,6 +905,10 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
                                 .child("routineLogs")
                                 .child(programId);
                         routineLogsRef.removeValue();
+                        FirebaseDatabase.getInstance().getReference("users")
+                                .child(activity.userId).child("plantMonitoring").child(programId).removeValue();
+                        FirebaseDatabase.getInstance().getReference("users")
+                                .child(activity.userId).child("detectionLogs").child(programId).removeValue();
                         
                         Toast.makeText(activity, "Work program deleted", Toast.LENGTH_SHORT).show();
                     })

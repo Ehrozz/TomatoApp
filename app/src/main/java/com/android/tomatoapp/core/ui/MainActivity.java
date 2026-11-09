@@ -52,9 +52,11 @@ import com.android.tomatoapp.settings.data.SettingsPreferences;
 import com.android.tomatoapp.settings.ui.SettingsActivity;
 import com.android.tomatoapp.weather.data.WeatherDataCollector;
 import com.android.tomatoapp.weather.ui.ForecastActivity;
+import com.android.tomatoapp.workprogram.data.WorkProgramDataHelper;
 import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
 import com.android.tomatoapp.workprogram.ui.WorkProgramSelection;
 import com.android.tomatoapp.workprogram.ui.Workprogram;
+import com.android.tomatoapp.common.utils.AppClock;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.Priority;
@@ -72,6 +74,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+import java.time.temporal.ChronoUnit;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.io.BufferedReader;
@@ -125,6 +130,7 @@ public class MainActivity extends BaseBottomNavActivity {
     private android.widget.ProgressBar stageProgress;
     private List<com.android.tomatoapp.workprogram.data.WorkProgramEntity> workProgramList = new ArrayList<>();
     private String activeProgramId;
+    private Map<String, Integer> currentPhases = new HashMap<>();
 
     @SuppressLint("SetTextI18n")
     protected void onCreate(Bundle savedInstanceState) {
@@ -313,6 +319,7 @@ public class MainActivity extends BaseBottomNavActivity {
         if (fusedLocationClient != null) {
             requestWeather();
         }
+        updateMonitoringUI();
     }
 
     private void requestWeather() {
@@ -328,6 +335,12 @@ public class MainActivity extends BaseBottomNavActivity {
                             for (DataSnapshot child : snapshot.getChildren()) {
                                 UserLocation location = child.getValue(UserLocation.class);
                                 if (location != null && location.isDefault) {
+                                    // If this is an auto-detected emulator location (Mountain View, CA or emulator coordinates), clean it up
+                                    if ((location.city != null && location.city.contains("Mountain View"))
+                                            || (Math.abs(location.lat - 37.422) < 0.1 && Math.abs(location.lon - (-122.084)) < 0.1)) {
+                                        child.getRef().removeValue();
+                                        continue;
+                                    }
                                     location.id = child.getKey();
                                     defaultLocation = location;
                                     break;
@@ -341,7 +354,7 @@ public class MainActivity extends BaseBottomNavActivity {
                                         defaultLocation.getFullLabel()
                                 );
                             } else {
-                                requestDeviceLocation(true);
+                                checkAndApplyUserAddress(currentUser.getUid());
                             }
                         }
 
@@ -356,6 +369,41 @@ public class MainActivity extends BaseBottomNavActivity {
         requestDeviceLocation(false);
     }
 
+    private void checkAndApplyUserAddress(String uid) {
+        DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("users").child(uid);
+        userRef.child("address").addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                String address = snapshot.getValue(String.class);
+                if (address != null && !address.trim().isEmpty()) {
+                    String[] parts = address.split(", ");
+                    String brgy = parts.length >= 3 ? parts[0].trim() : "";
+                    String city = parts.length >= 2 ? parts[1].trim() : (parts.length == 1 ? parts[0].trim() : "");
+                    String province = parts.length >= 3 ? parts[2].trim() : (parts.length == 2 ? parts[1].trim() : "");
+
+                    double[] coords = PhilippineLocations.getCoordinatesForCity(city, province);
+                    double lat = coords[0];
+                    double lon = coords[1];
+
+                    String locId = userRef.child("locations").push().getKey();
+                    if (locId != null) {
+                        UserLocation newLoc = new UserLocation(locId, province, city, brgy, lat, lon, true);
+                        userRef.child("locations").child(locId).setValue(newLoc);
+                    }
+
+                    applyWeatherLocation(lat, lon, address);
+                } else {
+                    requestDeviceLocation(false);
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                requestDeviceLocation(false);
+            }
+        });
+    }
+
     private void requestDeviceLocation(boolean saveAsDefault) {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
                 ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -365,12 +413,12 @@ public class MainActivity extends BaseBottomNavActivity {
 
         fusedLocationClient.getLastLocation().addOnSuccessListener(location -> {
             if (location != null) {
-                resolveAndApplyDeviceLocation(location, saveAsDefault);
+                resolveAndApplyDeviceLocation(location, false);
             } else {
-                requestCurrentDeviceLocation(saveAsDefault);
+                requestCurrentDeviceLocation(false);
             }
         }).addOnFailureListener(e -> {
-            requestCurrentDeviceLocation(saveAsDefault);
+            requestCurrentDeviceLocation(false);
         });
     }
 
@@ -381,7 +429,7 @@ public class MainActivity extends BaseBottomNavActivity {
                     new CancellationTokenSource().getToken()
             ).addOnSuccessListener(location -> {
                 if (location != null) {
-                    resolveAndApplyDeviceLocation(location, saveAsDefault);
+                    resolveAndApplyDeviceLocation(location, false);
                 } else {
                     showFallbackWeather();
                 }
@@ -424,47 +472,9 @@ public class MainActivity extends BaseBottomNavActivity {
                     location.getLatitude(), location.getLongitude())
                     : locality;
 
-            if (saveAsDefault) {
-                saveDetectedLocationAsDefault(location, finalLocality);
-            }
+            // Never automatically save device GPS as the default farm location in database
             applyWeatherLocation(location.getLatitude(), location.getLongitude(), finalLocality);
         }).start();
-    }
-
-    private void saveDetectedLocationAsDefault(Location location, String label) {
-        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (currentUser == null) return;
-
-        DatabaseReference locationsRef = FirebaseDatabase.getInstance().getReference("users")
-                .child(currentUser.getUid())
-                .child("locations");
-        String locationId = locationsRef.push().getKey();
-        if (locationId == null) return;
-
-        UserLocation detectedLocation = new UserLocation(
-                locationId,
-                "",
-                label,
-                "",
-                location.getLatitude(),
-                location.getLongitude(),
-                true
-        );
-
-        locationsRef.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                for (DataSnapshot child : snapshot.getChildren()) {
-                    child.getRef().child("isDefault").setValue(false);
-                }
-                locationsRef.child(locationId).setValue(detectedLocation);
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                Log.e(TAG, "Unable to save detected default location: " + error.getMessage());
-            }
-        });
     }
 
     private void applyWeatherLocation(double lat, double lon, String name) {
@@ -743,20 +753,24 @@ public class MainActivity extends BaseBottomNavActivity {
         btnApply.setOnClickListener(v -> {
             String fullLocation = brgySelected[0] + ", " + citySelected[0] + ", " + provinceSelected[0];
             
-            // Calculate coordinates (simplified lookup)
-            double lat = 14.5995;
-            double lon = 120.9842;
-            String[] labels = getLabelsForRegion(finalRegionIndex[0]);
-            for (int i = 0; i < labels.length; i++) {
-                if (labels[i].startsWith(citySelected[0])) {
-                    lat = getLatsForRegion(finalRegionIndex[0])[i];
-                    lon = getLonsForRegion(finalRegionIndex[0])[i];
-                    break;
+            // Calculate coordinates
+            double[] coords = PhilippineLocations.getCoordinatesForCity(citySelected[0], provinceSelected[0]);
+            double lat = coords[0];
+            double lon = coords[1];
+            if (lat == 14.5995 && lon == 120.9842 && finalRegionIndex[0] >= 0) {
+                String[] labels = getLabelsForRegion(finalRegionIndex[0]);
+                for (int i = 0; i < labels.length; i++) {
+                    if (labels[i].startsWith(citySelected[0])) {
+                        lat = getLatsForRegion(finalRegionIndex[0])[i];
+                        lon = getLonsForRegion(finalRegionIndex[0])[i];
+                        break;
+                    }
                 }
             }
 
             // Save to Firebase for persistence
             if (user != null) {
+                FirebaseDatabase.getInstance().getReference("users").child(user.getUid()).child("address").setValue(fullLocation);
                 String locId = FirebaseDatabase.getInstance().getReference().push().getKey();
                 if (locId != null) {
                     UserLocation newLoc = new UserLocation(locId, provinceSelected[0], citySelected[0], brgySelected[0], lat, lon, true);
@@ -1212,6 +1226,24 @@ public class MainActivity extends BaseBottomNavActivity {
                     com.android.tomatoapp.workprogram.data.WorkProgramEntity wp = ds.getValue(com.android.tomatoapp.workprogram.data.WorkProgramEntity.class);
                     if (wp != null) {
                         wp.id = ds.getKey();
+                        Object completionRate = ds.child("completionRate").getValue();
+                        if (completionRate instanceof Number) {
+                            wp.completionRate = ((Number) completionRate).doubleValue();
+                        }
+                        for (int i = 1; i <= 5; i++) {
+                            Object phaseCompletion = ds.child("phase" + i + "Completion").getValue();
+                            if (!(phaseCompletion instanceof Number)) continue;
+                            double value = ((Number) phaseCompletion).doubleValue();
+                            if (i == 1) wp.phase1Completion = value;
+                            else if (i == 2) wp.phase2Completion = value;
+                            else if (i == 3) wp.phase3Completion = value;
+                            else if (i == 4) wp.phase4Completion = value;
+                            else wp.phase5Completion = value;
+                        }
+                        Object currentPhase = ds.child("currentPhase").getValue();
+                        if (currentPhase instanceof Number) {
+                            currentPhases.put(wp.id, ((Number) currentPhase).intValue());
+                        }
                         workProgramList.add(wp);
                     }
                 }
@@ -1244,29 +1276,48 @@ public class MainActivity extends BaseBottomNavActivity {
 
         if (activeWP != null) {
             if (activeCultivarName != null) activeCultivarName.setText(activeWP.cultivarName);
-            
-            // Calculate progress and stage
+
+            final com.android.tomatoapp.workprogram.data.WorkProgramEntity finalWP = activeWP;
             try {
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-                java.util.Date start = sdf.parse(activeWP.startingDate);
+                java.time.LocalDate start = java.time.LocalDate.parse(finalWP.startingDate);
                 if (start != null) {
-                    long diff = new java.util.Date().getTime() - start.getTime();
-                    int days = (int) (diff / (1000 * 60 * 60 * 24)) + 1;
-                    int totalDays = 90; // Default or fetch from cultivar data
-                    
-                    days = Math.max(1, days);
-                    if (activeDayCount != null) activeDayCount.setText(String.format(Locale.getDefault(), "Day %d of %d", days, totalDays));
-                    
-                    int progress = (int) ((days / (float) totalDays) * 100);
-                    if (stageProgress != null) stageProgress.setProgress(Math.min(100, progress));
-                    
-                    // Determine stage name based on crop duration
+                    java.time.LocalDate today = AppClock.today(this);
+                    int days = (int) ChronoUnit.DAYS.between(start, today) + 1;
+                    int totalDays = WorkProgramDataHelper.getMaturityDays(finalWP.cultivarName);
+                    if (totalDays <= 0) totalDays = 105;
+
+                    days = Math.max(1, Math.min(days, totalDays));
+                    final int displayDays = days;
+                    final int displayTotalDays = totalDays;
+
+                    if (activeDayCount != null) {
+                        activeDayCount.setText(String.format(Locale.getDefault(), "Day %d of %d", displayDays, displayTotalDays));
+                    }
+                    if (stageProgress != null) {
+                        stageProgress.setProgress((int) Math.round(activeWP.completionRate));
+                    }
                     if (activeStageName != null) {
-                        if (days <= 7) activeStageName.setText("Land and Soil Preparation");
-                        else if (days <= 40) activeStageName.setText("Vegetative Stage");
-                        else if (days <= 60) activeStageName.setText("Flowering Stage");
-                        else if (days <= 90) activeStageName.setText("Maturity Stage");
-                        else activeStageName.setText("Post-Harvest");
+                        int phase = Math.max(1, Math.min(5,
+                                currentPhases.containsKey(finalWP.id)
+                                        ? currentPhases.get(finalWP.id) : 1));
+                        switch (phase) {
+                            case 1:
+                                activeStageName.setText("Land & Seed Preparation");
+                                break;
+                            case 2:
+                                activeStageName.setText("Vegetative Stage");
+                                break;
+                            case 3:
+                                activeStageName.setText("Flowering Stage");
+                                break;
+                            case 4:
+                                activeStageName.setText("Fruiting Stage");
+                                break;
+                            case 5:
+                            default:
+                                activeStageName.setText("Maturity & Harvesting");
+                                break;
+                        }
                     }
                 }
             } catch (Exception e) {

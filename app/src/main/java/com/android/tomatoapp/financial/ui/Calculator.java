@@ -19,6 +19,7 @@ import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.financial.data.CalculationModel;
+import com.android.tomatoapp.financial.data.DailyExpenseMath;
 import com.android.tomatoapp.task.data.TaskSchedule;
 import com.android.tomatoapp.workprogram.data.WorkProgramDataHelper;
 import com.google.firebase.auth.FirebaseAuth;
@@ -379,7 +380,7 @@ public class Calculator extends BaseBottomNavActivity {
             }
             
             try {
-                Intent intent = new Intent(Calculator.this, DailyExpensesHistoryActivity.class);
+                Intent intent = new Intent(Calculator.this, CurrentExpensesActivity.class);
                 intent.putExtra("programId", programId);
                 intent.putExtra("cultivar", cultivarName);
                 intent.putExtra("startDate", dateSaved);
@@ -422,26 +423,24 @@ public class Calculator extends BaseBottomNavActivity {
                     // Process labor expenses
                     if (dateSnapshot.hasChild("labor")) {
                         for (DataSnapshot laborSnapshot : dateSnapshot.child("labor").getChildren()) {
-                            Double totalCost = laborSnapshot.child("totalCost").getValue(Double.class);
-                            Integer numWorkers = laborSnapshot.child("numWorkers").getValue(Integer.class);
-                            Double dailyWage = laborSnapshot.child("dailyWage").getValue(Double.class);
-                            String notes = laborSnapshot.child("notes").getValue(String.class);
+                            double totalCost = DailyExpenseMath.asDouble(laborSnapshot.child("totalCost").getValue());
+                            int numWorkers = DailyExpenseMath.asInt(laborSnapshot.child("numWorkers").getValue());
+                            double dailyWage = DailyExpenseMath.asDouble(laborSnapshot.child("dailyWage").getValue());
+                            String notes = DailyExpenseMath.asString(laborSnapshot.child("notes").getValue());
                             
-                            if (totalCost != null) {
+                            if (totalCost > 0) {
                                 aggregatedLaborCost += totalCost;
                                 dailyTotal += totalCost;
                                 
-                                // Store individual item
                                 LaborItem item = new LaborItem();
-                                item.activityName = (notes != null && !notes.isEmpty()) ? notes : "Labor";
-                                item.dailyWage = dailyWage != null ? dailyWage : 0.0;
-                                item.numWorkers = numWorkers != null ? numWorkers : 0;
+                                item.activityName = !notes.isEmpty() ? notes : "Labor";
+                                item.dailyWage = dailyWage;
+                                item.numWorkers = numWorkers;
                                 item.totalCost = totalCost;
                                 laborItems.add(item);
                             }
                             
-                            // Track worker count
-                            if (numWorkers != null && numWorkers > 0) {
+                            if (numWorkers > 0) {
                                 aggregatedLaborWorkerCount += numWorkers;
                             }
                         }
@@ -450,20 +449,19 @@ public class Calculator extends BaseBottomNavActivity {
                     // Process material expenses
                     if (dateSnapshot.hasChild("material")) {
                         for (DataSnapshot materialSnapshot : dateSnapshot.child("material").getChildren()) {
-                            Double totalCost = materialSnapshot.child("totalCost").getValue(Double.class);
-                            String materialName = materialSnapshot.child("materialName").getValue(String.class);
-                            Double quantity = materialSnapshot.child("quantity").getValue(Double.class);
-                            String quantityUnit = materialSnapshot.child("quantityUnit").getValue(String.class);
+                            double totalCost = DailyExpenseMath.asDouble(materialSnapshot.child("totalCost").getValue());
+                            String materialName = DailyExpenseMath.asString(materialSnapshot.child("materialName").getValue());
+                            double quantity = DailyExpenseMath.asDouble(materialSnapshot.child("quantity").getValue());
+                            String quantityUnit = DailyExpenseMath.asString(materialSnapshot.child("quantityUnit").getValue());
                             
-                            if (totalCost != null) {
+                            if (totalCost > 0) {
                                 aggregatedMaterialCost += totalCost;
                                 dailyTotal += totalCost;
                                 
-                                // Store individual item
                                 MaterialItem item = new MaterialItem();
-                                item.materialName = materialName != null ? materialName : "Material";
-                                item.quantity = quantity != null ? quantity : 0.0;
-                                item.quantityUnit = quantityUnit != null ? quantityUnit : "";
+                                item.materialName = !materialName.isEmpty() ? materialName : "Material";
+                                item.quantity = quantity;
+                                item.quantityUnit = quantityUnit;
                                 item.totalCost = totalCost;
                                 materialItems.add(item);
                             }
@@ -473,31 +471,32 @@ public class Calculator extends BaseBottomNavActivity {
                     // Process equipment expenses (only non-owned equipment)
                     if (dateSnapshot.hasChild("equipment")) {
                         for (DataSnapshot equipmentSnapshot : dateSnapshot.child("equipment").getChildren()) {
-                            Boolean isOwned = equipmentSnapshot.child("isOwned").getValue(Boolean.class);
-                            Double totalCost = equipmentSnapshot.child("totalCost").getValue(Double.class);
-                            String equipmentName = equipmentSnapshot.child("equipmentName").getValue(String.class);
-                            Double usageValue = equipmentSnapshot.child("usageValue").getValue(Double.class);
-                            String usageUnit = equipmentSnapshot.child("usageUnit").getValue(String.class);
-                            Double cost = equipmentSnapshot.child("cost").getValue(Double.class);
+                            boolean isOwned = DailyExpenseMath.asBoolean(equipmentSnapshot.child("isOwned").getValue(), false);
+                            double totalCost = DailyExpenseMath.asDouble(equipmentSnapshot.child("totalCost").getValue());
+                            if (totalCost <= 0) {
+                                totalCost = DailyExpenseMath.asDouble(equipmentSnapshot.child("cost").getValue());
+                            }
+                            String equipmentName = DailyExpenseMath.asString(equipmentSnapshot.child("equipmentName").getValue());
+                            double usageValue = DailyExpenseMath.asDouble(equipmentSnapshot.child("usageValue").getValue());
+                            String usageUnit = DailyExpenseMath.asString(equipmentSnapshot.child("usageUnit").getValue());
+                            double cost = DailyExpenseMath.asDouble(equipmentSnapshot.child("cost").getValue());
                             
-                            // Track total usage hours for all equipment (owned and non-owned)
-                            if (usageValue != null && usageUnit != null) {
-                                double hours = usageUnit.equals("hours") ? usageValue : (usageValue / 60.0);
+                            if (usageValue > 0) {
+                                double hours = "hours".equals(usageUnit) || usageUnit.isEmpty() ? usageValue : (usageValue / 60.0);
                                 aggregatedEquipmentUsageHours += hours;
                             }
                             
-                            // Only count non-owned equipment expenses
-                            if (isOwned == null || !isOwned) {
-                                if (totalCost != null) {
+                            if (!isOwned) {
+                                if (totalCost > 0) {
                                     aggregatedEquipmentCost += totalCost;
                                     dailyTotal += totalCost;
                                     
                                     // Store individual item
                                     EquipmentItem item = new EquipmentItem();
-                                    item.equipmentName = equipmentName != null ? equipmentName : "Equipment";
-                                    item.usageValue = usageValue != null ? usageValue : 0.0;
-                                    item.usageUnit = usageUnit != null ? usageUnit : "hours";
-                                    item.cost = cost != null ? cost : 0.0;
+                                    item.equipmentName = !equipmentName.isEmpty() ? equipmentName : "Equipment";
+                                    item.usageValue = usageValue;
+                                    item.usageUnit = usageUnit.isEmpty() ? "hours" : usageUnit;
+                                    item.cost = cost;
                                     item.totalCost = totalCost;
                                     equipmentItems.add(item);
                                 }
@@ -508,16 +507,15 @@ public class Calculator extends BaseBottomNavActivity {
                     // Process miscellaneous expenses
                     if (dateSnapshot.hasChild("miscellaneous")) {
                         for (DataSnapshot miscSnapshot : dateSnapshot.child("miscellaneous").getChildren()) {
-                            Double cost = miscSnapshot.child("cost").getValue(Double.class);
-                            String expenseName = miscSnapshot.child("expenseName").getValue(String.class);
+                            double cost = DailyExpenseMath.asDouble(miscSnapshot.child("cost").getValue());
+                            String expenseName = DailyExpenseMath.asString(miscSnapshot.child("expenseName").getValue());
                             
-                            if (cost != null) {
+                            if (cost > 0) {
                                 aggregatedMiscCost += cost;
                                 dailyTotal += cost;
                                 
-                                // Store individual item
                                 MiscItem item = new MiscItem();
-                                item.expenseName = expenseName != null ? expenseName : "Miscellaneous";
+                                item.expenseName = !expenseName.isEmpty() ? expenseName : "Miscellaneous";
                                 item.cost = cost;
                                 miscItems.add(item);
                             }

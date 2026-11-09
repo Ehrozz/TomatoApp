@@ -28,7 +28,7 @@ android {
 
     defaultConfig {
         applicationId = "com.android.tomatoapp"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 36
 
         val baseSemVerCode = (versionMajor * 10_000) + (versionMinor * 100) + versionPatch
@@ -91,6 +91,7 @@ android {
     
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     
     composeOptions {

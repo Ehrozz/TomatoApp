@@ -23,6 +23,7 @@ import com.google.android.material.button.MaterialButton;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBarDrawerToggle;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 import androidx.core.content.ContextCompat;
@@ -43,6 +44,7 @@ import com.prolificinteractive.materialcalendarview.MaterialCalendarView;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
@@ -56,17 +58,24 @@ import com.android.tomatoapp.common.managers.CompletedDecorator;
 import com.android.tomatoapp.common.managers.MissedDecorator;
 import com.android.tomatoapp.common.managers.SkippedDecorator;
 import com.android.tomatoapp.common.utils.CultivarImageHelper;
+import com.android.tomatoapp.common.utils.PhaseHelper;
+import com.android.tomatoapp.common.utils.AppClock;
+import com.android.tomatoapp.common.utils.PlacementDebugDump;
 import com.android.tomatoapp.core.network.LocalDataManager;
 import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import com.android.tomatoapp.financial.ui.CurrentExpensesActivity;
+import com.android.tomatoapp.financial.ui.DailyExpensesActivity;
 import com.android.tomatoapp.settings.data.SettingsPreferences;
 import com.android.tomatoapp.task.data.TaskEntity;
 import com.android.tomatoapp.task.data.TaskModel;
 import com.android.tomatoapp.task.data.TomatoWorkProgramScheduler;
 import com.android.tomatoapp.task.ui.DailyTask;
 import com.android.tomatoapp.weather.data.WeatherDataCollector;
+import com.android.tomatoapp.workprogram.data.IntakeAnswers;
 import com.android.tomatoapp.workprogram.data.WorkProgramDataHelper;
 import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
+import com.android.tomatoapp.workprogram.data.ProgressCalculator;
+import com.android.tomatoapp.workprogram.data.ProgramHistory;
 
 public class Workprogram extends BaseBottomNavActivity {
 
@@ -114,14 +123,17 @@ public class Workprogram extends BaseBottomNavActivity {
     private String landArea = "";
     private String programStartDate = "";
     private String programId = "";
+    private int intakeStartPhase = 1;
     private String seedsConfirmedDate;
     private String sowingDate;
     private String transplantDate;
     private String stopDate;
+    private String placementDate;
     private double farmAreaHectares = 1.0;
 
     private DatabaseReference dbRef;
     private DatabaseReference logsRef;
+    private ValueEventListener logsListener;
     private String userId;
 
     private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
@@ -137,13 +149,7 @@ public class Workprogram extends BaseBottomNavActivity {
     private HashSet<CalendarDay> accessibleDates = new HashSet<>(); // Dates that can be clicked
 
 
-    private final String[][] cultivarsData = {
-            {"Improved KS Apollo", "Semi-determinate", "85", "105"},
-            {"Diamante max", "Semi-determinate", "85", "105"},
-            {"Jewel f1", "Determinate", "85", "105"},
-            {"Marimar", "Determinate", "85", "105"},
-            {"Apollo", "Semi-determinate", "85", "105"}
-    };
+    private final String[][] cultivarsData = WorkProgramDataHelper.cultivarsData;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -221,14 +227,12 @@ public class Workprogram extends BaseBottomNavActivity {
         String startDate = intent.getStringExtra("startDate");
         String passedProgramId = intent.getStringExtra("programId");
 
-        if (cultivar != null && startDate != null && passedProgramId != null) {
+        if (passedProgramId != null) {
             // Existing program - show header card with cultivar info
             if (cultivarCard != null) cultivarCard.setVisibility(View.GONE);
             if (headerCard != null) headerCard.setVisibility(View.VISIBLE);
             if (calendarHeader != null) calendarHeader.setVisibility(View.GONE);
             
-            selectedCultivar = cultivar;
-            programStartDate = startDate;
             programId = passedProgramId;
             loadProgramMilestones();
             
@@ -258,20 +262,14 @@ public class Workprogram extends BaseBottomNavActivity {
             }
             
             // Update header card with cultivar info
-            updateCultivarInfo(cultivar, startDate);
+            if (cultivar != null && startDate != null) {
+                selectedCultivar = cultivar;
+                programStartDate = startDate;
+                updateCultivarInfo(cultivar, startDate);
+            }
 
-            logsRef = FirebaseDatabase.getInstance()
-                    .getReference("users")
-                    .child(userId)
-                    .child("routineLogs")
-                    .child(programId)
-                    .child("tasks");
-
-            attachLogsListener();
             calendarView.removeDecorators();
-            addPhaseDecorators();
             setCalendarClickListener();
-            loadSummaryStats();
 
         } else {
             // New program form
@@ -345,127 +343,206 @@ public class Workprogram extends BaseBottomNavActivity {
                     return;
                 }
 
-                String id = dbRef.push().getKey();
-                if (id == null) {
-                    Toast.makeText(this, "Error generating ID", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                programId = id;
-
-                // Prepare data map with correct field names that match WorkProgramEntity structure
-                // Firebase rules require: cultivarName, startingDate, areaSize
-                // Optional but recommended: projectedIncome, projectedExpenses
-                java.util.Map<String, Object> programData = new java.util.HashMap<>();
-                programData.put("cultivarName", selectedCultivar);
-                programData.put("startingDate", selectedDate);
-                programData.put("areaSize", areaSizeValue);
-                programData.put("projectedIncome", 0.0);
-                programData.put("projectedExpenses", 0.0);
-                programData.put("adjustedIncome", 0.0);
-                programData.put("adjustedExpenses", 0.0);
-                programData.put("detectionHistories", new java.util.HashMap<String, Object>());
-                farmAreaHectares = areaSizeValue;
-                
-                // Calculate phases JSON for local storage
-                String phasesJson = WorkProgramDataHelper.calculatePhasesJson(selectedCultivar, selectedDate);
-                
-                // Create WorkProgramEntity for local database
-                WorkProgramEntity localEntity = new WorkProgramEntity(
-                        id,
-                        userId,
-                        selectedCultivar,
-                        areaSizeValue,
-                        selectedDate,
-                        phasesJson,
-                        null, // detectionHistoriesJson
-                        0.0, // projectedIncome
-                        0.0, // projectedExpenses
-                        0.0, // adjustedIncome
-                        0.0, // adjustedExpenses
-                        0.0, 0.0, 0.0, 0.0, 0.0, // phase completions
-                        0, 0, 0, 0, 0.0 // task metrics
-                );
-                
-                // Save to local database immediately (works offline)
-                LocalDataManager.getInstance(Workprogram.this).saveWorkProgramToLocal(localEntity, "CREATE");
-                
-                // Save all data at once to Firebase (will queue if offline)
-                DatabaseReference programRef = dbRef.child(id);
-                programRef.setValue(programData).addOnSuccessListener(unused -> {
-                    Toast.makeText(this, "Work Program saved successfully!", Toast.LENGTH_LONG).show();
-
-                    // Sync from Firebase to local (to ensure consistency, handles online case)
-                    if (LocalDataManager.isOnline(Workprogram.this)) {
-                        LocalDataManager.getInstance(Workprogram.this).syncWorkProgramsFromFirebase(userId);
-                    }
-
-                    // Initialize weather data collection for this program
-                    initializeWeatherDataCollection(programId, selectedDate, selectedCultivar);
-
-                    logsRef = FirebaseDatabase.getInstance()
-                            .getReference("users")
-                            .child(userId)
-                            .child("routineLogs")
-                            .child(programId)
-                            .child("tasks");
-
-                    int maturityDays = getMaturityDays(selectedCultivar);
-                    if (maturityDays > 0) {
-                        try {
-                            Date start = sdf.parse(selectedDate);
-                            if (start != null) {
-                                Calendar cal = Calendar.getInstance();
-                                cal.setTime(start);
-                                for (int i = 0; i < maturityDays; i++) {
-                                    String dayKey = sdf.format(cal.getTime());
-                                    logsRef.child(dayKey).setValue("pending");
-                                    cal.add(Calendar.DAY_OF_YEAR, 1);
-                                }
-                            }
-                        } catch (ParseException e) {
-                            Log.e(TAG, "Error initializing work program dates", e);
-                        }
-                    }
-
-                    attachLogsListener();
-                    programStartDate = selectedDate;
-                    addPhaseDecorators();
-                    setCalendarClickListener();
-
-                    // Show header card with cultivar info
-                    headerCard.setVisibility(View.VISIBLE);
-                    calendarHeader.setVisibility(View.GONE);
-                    updateCultivarInfo(selectedCultivar, selectedDate);
-                    
-                    // Show Current Expenses button
-                    if (btnCurrentExpenses != null) {
-                        btnCurrentExpenses.setVisibility(View.VISIBLE);
-                        btnCurrentExpenses.setOnClickListener(view -> openCurrentExpenses());
-                    }
-
-                }).addOnFailureListener(e -> {
-                    // Even if Firebase save fails, local save succeeded
-                    // Show appropriate message based on online status
-                    if (LocalDataManager.isOnline(this)) {
-                        Toast.makeText(this, "Failed to save to Firebase: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                    } else {
-                        Toast.makeText(this, "Work Program saved locally. Will sync when online.", Toast.LENGTH_LONG).show();
-                    }
-                });
-
-                cultivarCard.setVisibility(View.GONE);
+                saveNewWorkProgramWithIntake(selectedCultivar, areaSizeValue, selectedDate, null, null);
             });
         }
+    }
+
+    private void saveNewWorkProgramWithIntake(String cultivar, double areaSizeValue, String startDate,
+                                              IntakeAnswers answers,
+                                              IntakeAnswers.Evaluation evaluation) {
+        String id = dbRef.push().getKey();
+        if (id == null) {
+            Toast.makeText(this, "Error generating ID", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        programId = id;
+
+        int startPhase = evaluation != null ? evaluation.startPhase : 1;
+        intakeStartPhase = startPhase;
+
+        // Prepare data map with correct field names that match WorkProgramEntity structure
+        java.util.Map<String, Object> programData = new java.util.HashMap<>();
+        programData.put("cultivarName", cultivar);
+        String plantingStartDate = answers == null
+                ? (startDate == null || startDate.isEmpty() ? AppClock.today(this).toString() : startDate)
+                : earliestDate(AppClock.today(this).toString(), answers.seedsConfirmedDate, answers.sowingDate);
+        programData.put("startingDate", plantingStartDate);
+        programData.put("areaSize", areaSizeValue);
+        programData.put("projectedIncome", 0.0);
+        programData.put("projectedExpenses", 0.0);
+        programData.put("adjustedIncome", 0.0);
+        programData.put("adjustedExpenses", 0.0);
+        programData.put("detectionHistories", new java.util.HashMap<String, Object>());
+        programData.put("intakeStartPhase", startPhase);
+        if (answers != null) {
+            programData.put("intake", answers.toMap(startPhase));
+        }
+
+        if (answers != null) {
+            if (!answers.seedsConfirmedDate.isEmpty()) programData.put("seedsConfirmedDate", answers.seedsConfirmedDate);
+            if (!answers.sowingDate.isEmpty()) programData.put("sowingDate", answers.sowingDate);
+            if (!answers.transplantDate.isEmpty()) programData.put("transplantDate", answers.transplantDate);
+            if (!answers.stopDate.isEmpty()) programData.put("stopDate", answers.stopDate);
+            java.util.Map<String, Object> placement = new java.util.HashMap<>();
+            placement.put("placementDate", AppClock.today(this).toString());
+            placement.put("startPhase", startPhase);
+            placement.put("createdAt", System.currentTimeMillis());
+            programData.put("placement", placement);
+        }
+        farmAreaHectares = areaSizeValue;
+        
+        // Calculate phases JSON for local storage
+        String phasesJson = WorkProgramDataHelper.calculatePhasesJson(cultivar, plantingStartDate);
+        
+        // Create WorkProgramEntity for local database
+        WorkProgramEntity localEntity = new WorkProgramEntity(
+                id,
+                userId,
+                cultivar,
+                areaSizeValue,
+                plantingStartDate,
+                phasesJson,
+                null, // detectionHistoriesJson
+                0.0, // projectedIncome
+                0.0, // projectedExpenses
+                0.0, // adjustedIncome
+                0.0, // adjustedExpenses
+                0.0, 0.0, 0.0, 0.0, 0.0, // phase completions
+                0, 0, 0, 0, 0.0 // task metrics
+        );
+        
+        // Save to local database immediately (works offline)
+        LocalDataManager.getInstance(Workprogram.this).saveWorkProgramToLocal(localEntity, "CREATE");
+        
+        // Save all data at once to Firebase (will queue if offline)
+        DatabaseReference programRef = dbRef.child(id);
+        programRef.setValue(programData).addOnSuccessListener(unused -> {
+            PlacementDebugDump.log(id, startDate, null, null, null, null,
+                    startPhase, cultivar, areaSizeValue, AppClock.today(this));
+            Toast.makeText(this, "Work Program saved! Starts at Phase " + startPhase, Toast.LENGTH_LONG).show();
+
+            // Sync from Firebase to local (to ensure consistency, handles online case)
+            if (LocalDataManager.isOnline(Workprogram.this)) {
+                LocalDataManager.getInstance(Workprogram.this).syncWorkProgramsFromFirebase(userId);
+            }
+
+            // Initialize weather data collection for this program
+            initializeWeatherDataCollection(programId, startDate, cultivar);
+
+            Intent openProgram = new Intent(Workprogram.this, Workprogram.class);
+            openProgram.putExtra("programId", id);
+            startActivity(openProgram);
+            finish();
+
+        }).addOnFailureListener(e -> {
+            if (LocalDataManager.isOnline(this)) {
+                Toast.makeText(this, "Failed to save to Firebase: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            } else {
+                Toast.makeText(this, "Work Program saved locally. Will sync when online.", Toast.LENGTH_LONG).show();
+            }
+            showCatchUpExpensesDialog(id, cultivar, startDate, evaluation);
+        });
+
+        cultivarCard.setVisibility(View.GONE);
+    }
+
+    private void showCatchUpExpensesDialog(String programId, String cultivar, String startDate,
+                                           IntakeAnswers.Evaluation evaluation) {
+        if (evaluation == null || evaluation.catchUpPhases == null || evaluation.catchUpPhases.isEmpty()) {
+            return;
+        }
+
+        List<String> labels = new ArrayList<>();
+        for (Integer phase : evaluation.catchUpPhases) {
+            labels.add(PhaseHelper.getPhaseNameWithDescription(phase));
+        }
+        boolean[] checked = new boolean[labels.size()];
+        for (int i = 0; i < checked.length; i++) checked[i] = true;
+
+        new AlertDialog.Builder(this)
+                .setTitle("Log expenses already spent")
+                .setMessage("Earlier phases were marked completed via setup intake. Log money already spent on the program start date. This uses the same daily expense table.")
+                .setMultiChoiceItems(labels.toArray(new String[0]), checked, (d, which, isChecked) -> checked[which] = isChecked)
+                .setPositiveButton("Log selected", (d, which) -> {
+                    ArrayList<Integer> selectedPhases = new ArrayList<>();
+                    for (int i = 0; i < checked.length; i++) {
+                        if (checked[i]) {
+                            selectedPhases.add(evaluation.catchUpPhases.get(i));
+                        }
+                    }
+                    if (selectedPhases.isEmpty()) return;
+                    Intent intent = new Intent(this, DailyExpensesActivity.class);
+                    intent.putExtra("programId", programId);
+                    intent.putExtra("cultivar", cultivar);
+                    intent.putExtra("date", startDate);
+                    intent.putExtra("programStartDate", startDate);
+                    intent.putExtra("catchUpPhase", selectedPhases.get(0));
+                    intent.putIntegerArrayListExtra("catchUpQueue", selectedPhases);
+                    startActivity(intent);
+                    Toast.makeText(this, "Log costs for past work. You can add more dates from Daily Task later.", Toast.LENGTH_LONG).show();
+                })
+                .setNegativeButton("Later", null)
+                .show();
+    }
+
+    private void showCatchUpPromptFromIntent() {
+        Intent intent = getIntent();
+        ArrayList<Integer> phases = intent.getIntegerArrayListExtra("catchUpQueue");
+        if (phases == null || phases.isEmpty()) return;
+        intent.removeExtra("catchUpQueue");
+        String expenseDate = intent.getStringExtra("catchUpExpenseDate");
+        showCatchUpExpensesDialog(programId, selectedCultivar, programStartDate, phases, expenseDate);
+    }
+
+    private void showCatchUpExpensesDialog(String id, String cultivar, String startDate,
+                                           ArrayList<Integer> phases, String expenseDate) {
+        List<String> labels = new ArrayList<>();
+        for (Integer phase : phases) {
+            labels.add(PhaseHelper.getPhaseNameWithDescription(phase));
+        }
+        boolean[] checked = new boolean[labels.size()];
+        java.util.Arrays.fill(checked, true);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Log expenses already spent")
+                .setMessage("Earlier phases were marked completed. Log any costs already incurred; you can also do this later from Current Expenses.")
+                .setMultiChoiceItems(labels.toArray(new String[0]), checked,
+                        (dialog, which, selected) -> checked[which] = selected)
+                .setPositiveButton("Log selected", (dialog, which) -> {
+                    ArrayList<Integer> selectedPhases = new ArrayList<>();
+                    for (int i = 0; i < checked.length; i++) {
+                        if (checked[i]) selectedPhases.add(phases.get(i));
+                    }
+                    if (selectedPhases.isEmpty()) return;
+                    Intent expenseIntent = new Intent(this, DailyExpensesActivity.class);
+                    expenseIntent.putExtra("programId", id);
+                    expenseIntent.putExtra("cultivar", cultivar);
+                    expenseIntent.putExtra("date", expenseDate == null ? startDate : expenseDate);
+                    expenseIntent.putExtra("programStartDate", startDate);
+                    expenseIntent.putExtra("catchUpPhase", selectedPhases.get(0));
+                    expenseIntent.putIntegerArrayListExtra("catchUpQueue", selectedPhases);
+                    startActivity(expenseIntent);
+                })
+                .setNegativeButton("Later", null)
+                .show();
     }
 
     private void addPhaseDecorators() {
         if (programStartDate == null || programStartDate.isEmpty()) return;
         try {
             java.time.LocalDate start = java.time.LocalDate.parse(programStartDate);
-            java.time.LocalDate transplant = transplantDate == null ? null : java.time.LocalDate.parse(transplantDate);
+            java.time.LocalDate transplant = ProgramHistory.effectiveTransplantDate(
+                    transplantDate == null ? null : java.time.LocalDate.parse(transplantDate),
+                    parseLocalDate(placementDate), intakeStartPhase);
             java.time.LocalDate stop = stopDate == null ? null : java.time.LocalDate.parse(stopDate);
-            java.time.LocalDate phaseProjectionTransplant = transplant != null
-                    ? transplant : getProjectedTransplantDate(start);
+            if (transplant == null) {
+                java.time.LocalDate sowing = sowingDate == null
+                        ? null : java.time.LocalDate.parse(sowingDate);
+                java.time.LocalDate projectedStart = sowing == null
+                        ? start : sowing;
+                transplant = projectedStart.plusDays(25);
+            }
             HashSet<CalendarDay> phase1 = new HashSet<>();
             HashSet<CalendarDay> phase2 = new HashSet<>();
             HashSet<CalendarDay> phase3 = new HashSet<>();
@@ -474,7 +551,7 @@ public class Workprogram extends BaseBottomNavActivity {
             java.time.LocalDate end = stop != null ? stop : start.plusDays(365);
             for (java.time.LocalDate current = start; !current.isAfter(end); current = current.plusDays(1)) {
                 int phase = com.android.tomatoapp.task.data.TaskSchedule.getPhaseNumber(
-                        start, phaseProjectionTransplant, stop, current);
+                        start, transplant, stop, current);
                 CalendarDay currentDate = CalendarDay.from(current.getYear(),
                         current.getMonthValue() - 1, current.getDayOfMonth());
                 switch (phase) {
@@ -509,29 +586,6 @@ public class Workprogram extends BaseBottomNavActivity {
         }
     }
 
-    /**
-     * Supplies calendar-only phase colors before transplanting is recorded.
-     * Projected dates never enter the scheduler, so future tasks remain locked.
-     */
-    private java.time.LocalDate getProjectedTransplantDate(java.time.LocalDate start) {
-        if (sowingDate != null && !sowingDate.isEmpty()) {
-            try {
-                return java.time.LocalDate.parse(sowingDate).plusDays(25);
-            } catch (java.time.format.DateTimeParseException error) {
-                Log.w(TAG, "Ignoring invalid sowing date for phase projection", error);
-            }
-        }
-        if (seedsConfirmedDate != null && !seedsConfirmedDate.isEmpty()) {
-            try {
-                java.time.LocalDate seeds = java.time.LocalDate.parse(seedsConfirmedDate);
-                return seeds.plusDays(26);
-            } catch (java.time.format.DateTimeParseException error) {
-                Log.w(TAG, "Ignoring invalid seed confirmation date for phase projection", error);
-            }
-        }
-        return start.plusDays(27);
-    }
-
     public static class PhaseRangeDecorator implements DayViewDecorator {
         private final HashSet<CalendarDay> dates;
         private final Drawable drawable;
@@ -549,7 +603,8 @@ public class Workprogram extends BaseBottomNavActivity {
         private final CalendarDay today;
 
         public TodayDecorator(android.content.Context context) {
-            this.today = CalendarDay.today();
+            java.time.LocalDate date = AppClock.today(context);
+            this.today = CalendarDay.from(date.getYear(), date.getMonthValue() - 1, date.getDayOfMonth());
         }
 
         @Override
@@ -620,9 +675,10 @@ public class Workprogram extends BaseBottomNavActivity {
         if (programId == null || programStartDate == null) return;
 
         // 1. Days Active
-        int daysActive = calculateDayNumber(programStartDate, new Date());
+        int daysActive = calculateDayNumber(programStartDate, appTodayDate());
+        int displayDaysActive = Math.max(Math.max(1, daysActive), completedDates.size());
         if (summaryDaysActive != null) {
-            summaryDaysActive.setText(String.valueOf(Math.max(1, daysActive)));
+            summaryDaysActive.setText(String.valueOf(displayDaysActive));
         }
 
         // 2. Expenses and Tasks Due
@@ -824,16 +880,11 @@ public class Workprogram extends BaseBottomNavActivity {
         }
 
         Date targetDate = target.getDate();
-        int dayNumber = calculateAdjustedDayNumber(targetDate);
-        if (dayNumber <= 0) {
-            return "";
-        }
-
-        int maturityDays = getMaturityDays(selectedCultivar);
-        if (maturityDays <= 0) {
-            maturityDays = 90;
-        }
-        int phase = getPhaseFromDay(maturityDays, dayNumber);
+        java.time.LocalDate viewed = java.time.LocalDate.of(
+                target.getYear(), target.getMonth() + 1, target.getDay());
+        int phase = com.android.tomatoapp.task.data.TaskSchedule.getPhaseNumber(
+                parseLocalDate(programStartDate), parseLocalDate(transplantDate),
+                parseLocalDate(stopDate), viewed);
         String phaseLabel = getPhaseLabel(phase);
         if (phaseLabel.isEmpty()) {
             return "";
@@ -861,15 +912,6 @@ public class Workprogram extends BaseBottomNavActivity {
         } catch (ParseException e) {
             return -1;
         }
-    }
-
-    private int getPhaseFromDay(int maturityDays, int dayNumber) {
-        if (dayNumber <= 0) return 1;
-        int phaseDuration = maturityDays / 5;
-        if (phaseDuration <= 0) {
-            phaseDuration = 1;
-        }
-        return Math.min(((dayNumber - 1) / phaseDuration) + 1, 5);
     }
 
     private String getPhaseLabel(int phase) {
@@ -939,15 +981,16 @@ public class Workprogram extends BaseBottomNavActivity {
         taskIntent.putExtra("cultivar", selectedCultivar);
         taskIntent.putExtra("date", clickedDate);
         taskIntent.putExtra("programId", programId);
+        taskIntent.putExtra("programStartDate", programStartDate);
         taskIntent.putExtra("growthHabit", growthHabit);
         taskIntent.putExtra("maturityDays", maturityDays);
-        taskIntent.putExtra("programStartDate", programStartDate);
-        taskIntent.putExtra("adjustedDayNumber", calculateAdjustedDayNumber(clickedDate));
         taskIntent.putExtra("farmAreaHectares", getSelectedAreaHectares());
         taskIntent.putExtra("seedsConfirmedDate", seedsConfirmedDate);
         taskIntent.putExtra("sowingDate", sowingDate);
         taskIntent.putExtra("transplantDate", transplantDate);
         taskIntent.putExtra("stopDate", stopDate);
+        taskIntent.putExtra("placementDate", placementDate);
+        taskIntent.putExtra("intakeStartPhase", intakeStartPhase);
         startActivityForResult(taskIntent, DAILY_TASK_REQUEST);
     }
 
@@ -1041,12 +1084,72 @@ public class Workprogram extends BaseBottomNavActivity {
                             Log.w(TAG, "Ignoring invalid saved farm area for program " + programId);
                         }
                     }
-                    seedsConfirmedDate = readOptionalString(snapshot, "seedsConfirmedDate");
-                    sowingDate = readOptionalString(snapshot, "sowingDate");
-                    transplantDate = readOptionalString(snapshot, "transplantDate");
-                    stopDate = readOptionalString(snapshot, "stopDate");
+                    selectedCultivar = readOptionalString(snapshot, "cultivarName");
+                    programStartDate = readNonEmptyString(snapshot, "startingDate");
+                    if (programStartDate == null) {
+                        programStartDate = readNonEmptyString(snapshot, "plantingStartDate");
+                    }
+                    DataSnapshot intake = snapshot.child("intake");
+                    DataSnapshot placement = snapshot.child("placement");
+                    DataSnapshot placementAnswers = placement.child("answers");
+                    seedsConfirmedDate = firstNonEmpty(
+                            readNonEmptyString(snapshot, "seedsConfirmedDate"),
+                            readNonEmptyString(intake, "seedsConfirmedDate"),
+                            readNonEmptyString(placementAnswers, "seedsConfirmedDate"));
+                    sowingDate = firstNonEmpty(
+                            readNonEmptyString(snapshot, "sowingDate"),
+                            readNonEmptyString(intake, "sowingDate"),
+                            readNonEmptyString(placementAnswers, "sowingDate"));
+                    transplantDate = firstNonEmpty(
+                            readNonEmptyString(snapshot, "transplantDate"),
+                            readNonEmptyString(intake, "transplantDate"),
+                            readNonEmptyString(placementAnswers, "transplantDate"));
+                    stopDate = firstNonEmpty(
+                            readNonEmptyString(snapshot, "stopDate"),
+                            readNonEmptyString(intake, "stopDate"),
+                            readNonEmptyString(placementAnswers, "stopDate"));
+                    placementDate = readNonEmptyString(placement, "placementDate");
+                    if (placementDate == null) {
+                        placementDate = readNonEmptyString(snapshot, "placementDate");
+                    }
+                    if (placementDate == null) {
+                        Object createdAt = snapshot.child("placement").child("createdAt").getValue();
+                        if (createdAt instanceof Number) {
+                            placementDate = new java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                                    .format(new Date(((Number) createdAt).longValue()));
+                        }
+                    }
+                    Object intakePhaseValue = snapshot.child("intakeStartPhase").getValue();
+                    if (!(intakePhaseValue instanceof Number)) {
+                        intakePhaseValue = placement.child("startPhase").getValue();
+                    }
+                    if (!(intakePhaseValue instanceof Number)) {
+                        intakePhaseValue = snapshot.child("placementStartPhase").getValue();
+                    }
+                    if (!(intakePhaseValue instanceof Number)) {
+                        intakePhaseValue = intake.child("startPhase").getValue();
+                    }
+                    if (intakePhaseValue instanceof Number) {
+                        intakeStartPhase = Math.max(1, Math.min(5, ((Number) intakePhaseValue).intValue()));
+                    }
+                    PlacementDebugDump.log(programId, programStartDate, seedsConfirmedDate,
+                            sowingDate, transplantDate, stopDate, intakeStartPhase,
+                            snapshot.child("placement").getValue(), selectedCultivar,
+                            farmAreaHectares, appTodayLocal());
+                    if (headerCard != null && selectedCultivar != null && programStartDate != null) {
+                        updateCultivarInfo(selectedCultivar, programStartDate);
+                        loadSummaryStats();
+                        reloadTaskStatuses();
+                    }
+                    logsRef = FirebaseDatabase.getInstance()
+                            .getReference("users").child(userId)
+                            .child("routineLogs").child(programId).child("tasks");
+                    attachLogsListener();
                     calendarView.removeDecorators();
                     addPhaseDecorators();
+                    setCalendarClickListener();
+                    loadSummaryStats();
+                    showCatchUpPromptFromIntent();
                 } catch (RuntimeException error) {
                     Log.e(TAG, "Could not read saved milestone data", error);
                     Toast.makeText(Workprogram.this,
@@ -1070,6 +1173,26 @@ public class Workprogram extends BaseBottomNavActivity {
         return value == null ? null : String.valueOf(value);
     }
 
+    private String readNonEmptyString(DataSnapshot snapshot, String key) {
+        String value = readOptionalString(snapshot, key);
+        return value == null || value.trim().isEmpty() ? null : value;
+    }
+
+    private String firstNonEmpty(String... values) {
+        for (String value : values) {
+            if (value != null && !value.trim().isEmpty()) return value;
+        }
+        return null;
+    }
+
+    private Date appTodayDate() {
+        try {
+            return sdf.parse(appTodayLocal().toString());
+        } catch (ParseException error) {
+            return new Date(0);
+        }
+    }
+
     private void openCurrentExpenses() {
         if (programId == null || selectedCultivar == null || programStartDate == null) {
             Toast.makeText(this, "Missing required information", Toast.LENGTH_SHORT).show();
@@ -1086,20 +1209,19 @@ public class Workprogram extends BaseBottomNavActivity {
     private void openMilestones() {
         Intent intent = new Intent(this, MilestonesActivity.class);
         intent.putExtra("programId", programId);
-        intent.putExtra("seedsConfirmedDate", seedsConfirmedDate);
-        intent.putExtra("sowingDate", sowingDate);
-        intent.putExtra("transplantDate", transplantDate);
-        intent.putExtra("stopDate", stopDate);
         startActivityForResult(intent, DAILY_TASK_REQUEST);
     }
 
     private void attachLogsListener() {
         if (logsRef == null) return;
+        if (logsListener != null) {
+            logsRef.removeEventListener(logsListener);
+        }
         
         // Load task statuses with offline fallback
         if (LocalDataManager.isOnline(this) && programId != null && userId != null) {
             // Try Firebase first if online
-            logsRef.addValueEventListener(new ValueEventListener() {
+            logsListener = new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot snapshot) {
                     processTaskStatuses(snapshot);
@@ -1110,7 +1232,8 @@ public class Workprogram extends BaseBottomNavActivity {
                     // Fallback to local database
                     loadTaskStatusesFromLocal();
                 }
-            });
+            };
+            logsRef.addValueEventListener(logsListener);
         } else {
             // Offline - load from local database
             loadTaskStatusesFromLocal();
@@ -1122,7 +1245,7 @@ public class Workprogram extends BaseBottomNavActivity {
         missedDates.clear();
         skippedDates.clear();
         accessibleDates.clear();
-        Date today = new Date();
+        Date today = appTodayDate();
 
         // Store all task statuses
         java.util.HashMap<String, String> taskStatuses = new java.util.HashMap<>();
@@ -1152,7 +1275,7 @@ public class Workprogram extends BaseBottomNavActivity {
                 missedDates.clear();
                 skippedDates.clear();
                 accessibleDates.clear();
-                Date today = new Date();
+                Date today = appTodayDate();
                 processTaskStatusesMap(taskStatuses, today);
                 
                 if (!LocalDataManager.isOnline(Workprogram.this)) {
@@ -1183,16 +1306,76 @@ public class Workprogram extends BaseBottomNavActivity {
                     continue;
                 }
 
-                if (previousDateKey == null || "completed".equals(taskStatuses.get(previousDateKey))) {
+                String status = taskStatuses.get(dateKey);
+                java.time.LocalDate phaseDate = java.time.LocalDate.parse(dateKey);
+                java.time.LocalDate placement = parseLocalDate(placementDate);
+                boolean ongoing = placement != null;
+                boolean future = phaseDate.isAfter(appTodayLocal());
+                java.time.LocalDate effectiveTransplant = ProgramHistory.effectiveTransplantDate(
+                        transplantDate == null ? null : java.time.LocalDate.parse(transplantDate),
+                        placement, intakeStartPhase);
+                int phase = 0;
+                try {
+                    phase = com.android.tomatoapp.task.data.TaskSchedule.getPhaseNumber(
+                            java.time.LocalDate.parse(programStartDate),
+                            effectiveTransplant,
+                            stopDate == null ? null : java.time.LocalDate.parse(stopDate),
+                            phaseDate);
+                } catch (RuntimeException error) {
+                    Log.w(TAG, "Could not determine phase for " + dateKey, error);
+                }
+                boolean beforePlacement = ProgramHistory.shouldTreatAsCompleted(
+                        phaseDate, placement);
+                boolean earlierThanSelectedPhase = ongoing
+                        && phase > 0 && phase < intakeStartPhase;
+                if (future && !"completed".equals(status)) {
+                    status = null;
+                    taskStatuses.remove(dateKey);
+                    completedDates.remove(cd);
+                    missedDates.remove(cd);
+                    skippedDates.remove(cd);
+                }
+                if (!future && (beforePlacement || earlierThanSelectedPhase)) {
+                    status = "completed";
+                    taskStatuses.put(dateKey, status);
+                    completedDates.add(cd);
+                    missedDates.remove(cd);
+                    skippedDates.remove(cd);
+                }
+                boolean historicalOrFuture = future || beforePlacement || earlierThanSelectedPhase;
+                if (historicalOrFuture && !"completed".equals(status)) {
+                    status = null;
+                    taskStatuses.remove(dateKey);
+                }
+                String previousStatus = previousDateKey == null ? null : taskStatuses.get(previousDateKey);
+                boolean nextDayAfterCompleted = future
+                        && ("completed".equals(previousStatus) || "skipped".equals(previousStatus));
+                boolean activePhaseThroughToday = ongoing && phase >= intakeStartPhase
+                        && !checkCal.getTime().after(today);
+                if ((nextDayAfterCompleted || !future) && ((ongoing && ProgramHistory.isAccessible(
+                        phaseDate, placement,
+                        appTodayLocal(), true))
+                        || previousDateKey == null
+                        || "completed".equals(previousStatus)
+                        || "skipped".equals(previousStatus)
+                        || "completed".equals(status)
+                        || activePhaseThroughToday)) {
                     accessibleDates.add(cd);
                 }
-                String status = taskStatuses.get(dateKey);
                 if ("completed".equals(status)) {
                     completedDates.add(cd);
-                } else if ("missed".equals(status)) {
+                } else if (!future && "missed".equals(status)) {
                     missedDates.add(cd);
-                } else if ("skipped".equals(status)) {
+                } else if (!future && "skipped".equals(status)) {
                     skippedDates.add(cd);
+                } else if (!historicalOrFuture && !"completed".equals(status)
+                        && !"skipped".equals(status)
+                        && !"missed".equals(status)
+                        && ProgramHistory.isEligibleForMissed(
+                        phaseDate, placement, appTodayLocal(), phase, intakeStartPhase,
+                        getScheduledActionTaskCount(checkCal.getTime()) > 0
+                        )) {
+                    missedDates.add(cd);
                 }
                 previousDateKey = dateKey;
                 checkCal.add(Calendar.DAY_OF_YEAR, 1);
@@ -1233,104 +1416,107 @@ public class Workprogram extends BaseBottomNavActivity {
         updateProgressCard();
     }
 
-    /**
-     * Computes and renders the Program Progress card from already-loaded date sets.
-     * Safe to call any time after processTaskStatusesMap() has run.
-     *
-     * FORMULA:
-     *   overallPct  = completedDays / totalProgramDays × 100
-     *   phasePct[i] = completedDaysInPhase / phaseDuration × 100
-     *
-     * Both denominators use the FIXED program length, not daysElapsed,
-     * so phases don't jump to 100% just because few days have passed.
-     */
     private void updateProgressCard() {
         if (progressCard == null || programStartDate == null || programStartDate.isEmpty()) return;
-
-        int totalDays     = getMaturityDays(selectedCultivar);
-        if (totalDays <= 0) totalDays = 105; // fallback
-
-        int daysElapsed   = Math.max(1, calculateDayNumber(programStartDate, new Date()));
-        int completed     = completedDates.size();
-        int missed        = missedDates.size();
-        int skipped       = skippedDates.size();
-
-        // ── FIXED: divide by totalDays, NOT daysElapsed ──
-        int overallPct = Math.min(100, totalDays > 0 ? (completed * 100 / totalDays) : 0);
-
-        // Phase size = totalDays / 5 (fixed duration)
-        int phaseDuration = Math.max(1, totalDays / 5);
-        int[] phaseCompleted = new int[5];
-
-        // Map each completed CalendarDay → its phase bucket
         try {
-            SimpleDateFormat localSdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-            Date startD = localSdf.parse(programStartDate);
-            if (startD != null) {
-                // Normalize start to midnight to avoid hour-offset errors
-                Calendar startCal = Calendar.getInstance();
-                startCal.setTime(startD);
-                startCal.set(Calendar.HOUR_OF_DAY, 0);
-                startCal.set(Calendar.MINUTE, 0);
-                startCal.set(Calendar.SECOND, 0);
-                startCal.set(Calendar.MILLISECOND, 0);
-                long startMs = startCal.getTimeInMillis();
-
-                for (CalendarDay cd : completedDates) {
-                    Calendar cdCal = Calendar.getInstance();
-                    cdCal.set(cd.getYear(), cd.getMonth(), cd.getDay());
-                    cdCal.set(Calendar.HOUR_OF_DAY, 0);
-                    cdCal.set(Calendar.MINUTE, 0);
-                    cdCal.set(Calendar.SECOND, 0);
-                    cdCal.set(Calendar.MILLISECOND, 0);
-                    long diffMs = cdCal.getTimeInMillis() - startMs;
-                    int dayNum  = (int) (diffMs / (1000L * 60 * 60 * 24)) + 1;
-                    if (dayNum >= 1 && dayNum <= totalDays) {
-                        int phaseIdx = Math.min(4, (dayNum - 1) / phaseDuration);
-                        phaseCompleted[phaseIdx]++;
-                    }
-                }
+            java.time.LocalDate start = java.time.LocalDate.parse(programStartDate);
+            java.time.LocalDate today = appTodayLocal();
+            java.time.LocalDate transplant = parseLocalDate(transplantDate);
+            java.time.LocalDate effectiveTransplant = ProgramHistory.effectiveTransplantDate(
+                    transplant, parseLocalDate(placementDate), intakeStartPhase);
+            java.time.LocalDate stop = parseLocalDate(stopDate);
+            java.time.LocalDate seeds = parseLocalDate(seedsConfirmedDate);
+            java.time.LocalDate sowing = parseLocalDate(sowingDate);
+            java.util.Set<java.time.LocalDate> completed = new java.util.HashSet<>();
+            for (CalendarDay day : completedDates) {
+                completed.add(java.time.LocalDate.of(day.getYear(), day.getMonth() + 1, day.getDay()));
             }
-        } catch (ParseException e) {
-            Log.w(TAG, "Error computing phase progress", e);
-        }
+            ProgressCalculator.Result result = ProgressCalculator.calculate(
+                    start, seeds, sowing, effectiveTransplant, stop, parseLocalDate(placementDate),
+                    intakeStartPhase, getGrowthHabit(selectedCultivar), getSelectedAreaHectares(),
+                    today, completed);
+            int overallPct = result.overall;
+            int[] phasePct = result.stages;
+            int missed = missedDates.size();
+            int skipped = skippedDates.size();
+            int totalDays = Math.max(1, calculateDayNumber(programStartDate,
+                    java.util.Date.from(today.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant())));
+            int daysElapsed = Math.max(totalDays, completedDates.size());
 
-        // Phase % = completedInPhase / phaseDuration (not elapsed in phase)
-        int[] phasePct = new int[5];
-        for (int i = 0; i < 5; i++) {
-            // Last phase may have extra days if totalDays not evenly divisible by 5
-            int thisPhaseDuration = (i == 4) ? (totalDays - phaseDuration * 4) : phaseDuration;
-            thisPhaseDuration = Math.max(1, thisPhaseDuration);
-            phasePct[i] = Math.min(100, phaseCompleted[i] * 100 / thisPhaseDuration);
-        }
+            if (progressBarOverall != null) progressBarOverall.setProgress(overallPct);
+            if (progressPercent != null) progressPercent.setText(overallPct + "%");
+            if (progressDayLabel != null) {
+                progressDayLabel.setText(String.format(Locale.getDefault(),
+                        "Day %d  ·  %d%% complete", daysElapsed, overallPct));
+            }
 
-        // ── Update UI ──
-        if (progressBarOverall != null) progressBarOverall.setProgress(overallPct);
-        if (progressPercent    != null) progressPercent.setText(overallPct + "%");
-        if (progressDayLabel   != null)
-            progressDayLabel.setText(String.format(Locale.getDefault(),
-                    "Day %d of %d  ·  %d%% complete", daysElapsed, totalDays, overallPct));
+            setPhaseBar(progressPhase1, progressPhase1Pct, phasePct[0]);
+            setPhaseBar(progressPhase2, progressPhase2Pct, phasePct[1]);
+            setPhaseBar(progressPhase3, progressPhase3Pct, phasePct[2]);
+            setPhaseBar(progressPhase4, progressPhase4Pct, phasePct[3]);
+            setPhaseBar(progressPhase5, progressPhase5Pct, phasePct[4]);
 
-        setPhaseBar(progressPhase1, progressPhase1Pct, phasePct[0]);
-        setPhaseBar(progressPhase2, progressPhase2Pct, phasePct[1]);
-        setPhaseBar(progressPhase3, progressPhase3Pct, phasePct[2]);
-        setPhaseBar(progressPhase4, progressPhase4Pct, phasePct[3]);
-        setPhaseBar(progressPhase5, progressPhase5Pct, phasePct[4]);
+            if (progressStatCompleted != null) progressStatCompleted.setText(String.valueOf(result.completed));
+            if (progressStatMissed != null) progressStatMissed.setText(String.valueOf(missed));
+            if (progressStatSkipped != null) progressStatSkipped.setText(String.valueOf(skipped));
 
-        if (progressStatCompleted != null) progressStatCompleted.setText(String.valueOf(completed));
-        if (progressStatMissed    != null) progressStatMissed.setText(String.valueOf(missed));
-        if (progressStatSkipped   != null) progressStatSkipped.setText(String.valueOf(skipped));
-
-        // Persist completionRate to local entity so WorkProgramSelection can display it
-        if (programId != null && !programId.isEmpty() && userId != null) {
-            final int finalRate = overallPct;
-            new Thread(() -> {
-                try {
+            if (programId != null && !programId.isEmpty() && userId != null && dbRef != null) {
+                int currentPhase = com.android.tomatoapp.task.data.TaskSchedule.getPhaseNumber(
+                        start, effectiveTransplant, stop, today);
+                currentPhase = Math.max(1, Math.min(5, currentPhase));
+                final int finalCurrentPhase = currentPhase;
+                dbRef.child(programId).get().addOnSuccessListener(snapshot -> {
+                    if (!snapshot.hasChild("cultivarName")) return;
+                    boolean changed = false;
+                    java.util.Map<String, Object> updates = new java.util.HashMap<>();
+                    Object oldOverall = snapshot.child("completionRate").getValue();
+                    if (!(oldOverall instanceof Number)
+                            || ((Number) oldOverall).doubleValue() != overallPct) {
+                        updates.put("completionRate", overallPct);
+                        changed = true;
+                    }
+                    for (int i = 0; i < phasePct.length; i++) {
+                        String key = "phase" + (i + 1) + "Completion";
+                        Object oldPhase = snapshot.child(key).getValue();
+                        if (!(oldPhase instanceof Number)
+                                || ((Number) oldPhase).doubleValue() != phasePct[i]) {
+                            updates.put(key, phasePct[i]);
+                            changed = true;
+                        }
+                    }
+                    Object oldCurrentPhase = snapshot.child("currentPhase").getValue();
+                    if (!(oldCurrentPhase instanceof Number)
+                            || ((Number) oldCurrentPhase).intValue() != finalCurrentPhase) {
+                        updates.put("currentPhase", finalCurrentPhase);
+                        changed = true;
+                    }
+                    if (changed) dbRef.child(programId).updateChildren(updates);
                     LocalDataManager.getInstance(Workprogram.this)
-                            .updateCompletionRate(programId, finalRate);
-                } catch (Exception ignored) {}
-            }).start();
+                            .updateCompletionRate(programId, overallPct);
+                });
+            }
+        } catch (RuntimeException error) {
+            Log.w(TAG, "Could not compute progress", error);
         }
+    }
+
+    private java.time.LocalDate parseLocalDate(String value) {
+        return value == null || value.isEmpty() ? null : java.time.LocalDate.parse(value);
+    }
+
+    private static String earliestDate(String fallback, String... dates) {
+        String earliest = fallback;
+        for (String value : dates) {
+            if (value != null && !value.isEmpty()
+                    && (earliest == null || value.compareTo(earliest) < 0)) {
+                earliest = value;
+            }
+        }
+        return earliest;
+    }
+
+    private java.time.LocalDate appTodayLocal() {
+        return AppClock.today(this);
     }
 
     private void setPhaseBar(android.widget.ProgressBar bar, TextView label, int pct) {
@@ -1340,7 +1526,15 @@ public class Workprogram extends BaseBottomNavActivity {
 
     private int getScheduledActionTaskCount(Date day) {
         try {
-            java.time.LocalDate current = java.time.LocalDate.parse(sdf.format(day));
+            return getScheduledActionTaskCount(java.time.LocalDate.parse(sdf.format(day)));
+        } catch (RuntimeException error) {
+            Log.w(TAG, "Could not calculate scheduled task count", error);
+            return 0;
+        }
+    }
+
+    private int getScheduledActionTaskCount(java.time.LocalDate current) {
+        try {
             java.time.LocalDate planting = java.time.LocalDate.parse(programStartDate);
             java.time.LocalDate seeds = seedsConfirmedDate == null ? null : java.time.LocalDate.parse(seedsConfirmedDate);
             java.time.LocalDate sowing = sowingDate == null ? null : java.time.LocalDate.parse(sowingDate);

@@ -12,7 +12,7 @@ public class PhaseHelper {
     public static String getPhaseNameWithDescription(int phase) {
         switch (phase) {
             case 1:
-                return "Phase 1 - Land and Soil Preparation";
+                return "Phase 1 - Land and Seedling Preparation";
             case 2:
                 return "Phase 2 - Transplant and Establishment";
             case 3:
@@ -20,7 +20,7 @@ public class PhaseHelper {
             case 4:
                 return "Phase 4 - Flowering and Fruit Set";
             case 5:
-                return "Phase 5 - Harvest";
+                return "Phase 5 - Peak Fruit / Harvest";
             default:
                 return "Phase " + phase;
         }
@@ -32,7 +32,7 @@ public class PhaseHelper {
     public static String getPhaseDescription(int phase) {
         switch (phase) {
             case 1:
-                return "Land and Soil Preparation";
+                return "Land and Seedling Preparation";
             case 2:
                 return "Transplant and Establishment";
             case 3:
@@ -40,7 +40,7 @@ public class PhaseHelper {
             case 4:
                 return "Flowering and Fruit Set";
             case 5:
-                return "Harvest";
+                return "Peak Fruit / Harvest";
             default:
                 return "Unknown Phase";
         }

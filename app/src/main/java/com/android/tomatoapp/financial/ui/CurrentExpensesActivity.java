@@ -42,6 +42,7 @@ import java.util.Map;
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.common.utils.PhaseHelper;
 import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
+import com.android.tomatoapp.financial.data.DailyExpenseMath;
 import com.android.tomatoapp.settings.data.SettingsPreferences;
 import com.android.tomatoapp.task.data.TaskSchedule;
 
@@ -136,6 +137,12 @@ public class CurrentExpensesActivity extends BaseBottomNavActivity {
         }
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        loadExpensesData();
+    }
+
     private String getActivityNameFromPhase(int phase) {
         switch (phase) {
             case 1:
@@ -156,37 +163,10 @@ public class CurrentExpensesActivity extends BaseBottomNavActivity {
     private int getMaturityDays(String cultivar) {
         // Get maturity days from cultivars data (same as Workprogram)
         String[][] cultivarsData = {
-            {"Victory F1", "Semi-determinate", "90", "110"},
-            {"HOPE F1", "Semi-determinate", "90", "110"},
-            {"Maganda F1", "Semi-determinate", "80", "100"},
-            {"Malakas F1", "Semi-determinate", "95", "115"},
-            {"Rocky 1 F1", "Semi-determinate", "90", "110"},
             {"Improved KS Apollo", "Semi-determinate", "85", "105"},
-            {"Improved Pope", "Semi-determinate", "85", "105"},
-            {"Super Pope", "Semi-determinate", "85", "105"},
-            {"Maguilas", "Determinate", "85", "105"},
-            {"Maunlad", "Determinate", "80", "100"},
-            {"Mapalad", "Determinate", "80", "100"},
-            {"Amari F1", "Semi-determinate", "110", "130"},
-            {"Anita F1", "Semi-determinate", "110", "130"},
-            {"Colette F1", "Determinate", "105", "125"},
-            {"Danica F1", "Semi-determinate", "105", "125"},
-            {"Granger F1", "Semi-determinate", "105", "125"},
-            {"Janet F1", "Semi-determinate", "120", "140"},
-            {"Platinum F1", "Semi-determinate", "100", "120"},
-            {"Reina F1", "Semi-determinate", "105", "125"},
-            {"Renata F1", "Semi-determinate", "105", "125"},
-            {"Rubellite F1", "Semi-determinate", "90", "110"},
-            {"TOM-055 F1", "Semi-determinate", "60", "75"},
-            {"TOM-262 OP", "Determinate", "60", "75"},
-            {"Dalwangan Tm1", "Determinate", "90", "110"},
-            {"Dalwangan Tm2", "Determinate", "90", "110"},
-            {"NSIC 1999 Tm09", "Determinate", "100", "120"},
-            {"Mara", "Determinate", "78", "95"},
-            {"AniMax 1", "Determinate", "87", "105"},
-            {"AniMax 2", "Semi-determinate", "87", "105"},
-            {"Golden Globe", "Semi-determinate", "92", "112"},
-            {"Maxxime", "Indeterminate", "105", "125"}
+            {"Diamante Max", "Semi-determinate", "55", "65"},
+            {"Jewel F1", "Determinate", "60", "65"},
+            {"Marimar", "Determinate", "60", "65"}
         };
 
         for (String[] c : cultivarsData) {
@@ -219,9 +199,12 @@ public class CurrentExpensesActivity extends BaseBottomNavActivity {
                     try {
                         Date expenseDate = sdf.parse(dateKey);
                         Date programStart = sdf.parse(startDate);
-                        int phase = 1; // Default phase
+                        int phase = DailyExpenseMath.asInt(dateSnapshot.child("phase").getValue());
+                        if (phase <= 0) phase = 1;
                         
-                        if (expenseDate != null && programStart != null) {
+                        boolean catchUp = "CATCH_UP".equalsIgnoreCase(
+                                DailyExpenseMath.asString(dateSnapshot.child("entryType").getValue()));
+                        if (!catchUp && expenseDate != null && programStart != null) {
                             long diff = expenseDate.getTime() - programStart.getTime();
                             int dayNumber = (int) (diff / (1000 * 60 * 60 * 24)) + 1;
                             
@@ -232,18 +215,20 @@ public class CurrentExpensesActivity extends BaseBottomNavActivity {
                         
                         // Process labor items
                         if (dateSnapshot.hasChild("labor")) {
-                            String activityName = getActivityNameFromPhase(phase);
+                            String activityName = catchUp ? "Before joining - Phase " + phase
+                                    : getActivityNameFromPhase(phase);
                             for (DataSnapshot laborSnapshot : dateSnapshot.child("labor").getChildren()) {
-                                Integer numWorkers = laborSnapshot.child("numWorkers").getValue(Integer.class);
-                                Double totalCost = laborSnapshot.child("totalCost").getValue(Double.class);
-                                String notes = laborSnapshot.child("notes").getValue(String.class);
+                                int numWorkers = DailyExpenseMath.asInt(laborSnapshot.child("numWorkers").getValue());
+                                double totalCost = DailyExpenseMath.asDouble(laborSnapshot.child("totalCost").getValue());
+                                String notes = DailyExpenseMath.asString(laborSnapshot.child("notes").getValue());
+                                if (totalCost <= 0 && numWorkers <= 0) continue;
                                 
                                 ExpenseEntry entry = new ExpenseEntry(
                                     dateKey,
                                     activityName, // Activity from phase
                                     "Hired Work",
-                                    totalCost != null ? totalCost : 0.0,
-                                    numWorkers != null ? numWorkers : 0,
+                                    totalCost,
+                                    numWorkers,
                                     0.0, // materialCost
                                     0.0, // equipmentCost
                                     0.0, // miscCost
@@ -259,15 +244,17 @@ public class CurrentExpensesActivity extends BaseBottomNavActivity {
                         
                         // Process material items
                         if (dateSnapshot.hasChild("material")) {
-                            String activityName = getActivityNameFromPhase(phase);
+                            String activityName = catchUp ? "Before joining - Phase " + phase
+                                    : getActivityNameFromPhase(phase);
                             for (DataSnapshot materialSnapshot : dateSnapshot.child("material").getChildren()) {
-                                Double totalCost = materialSnapshot.child("totalCost").getValue(Double.class);
-                                String materialName = materialSnapshot.child("materialName").getValue(String.class);
-                                String quantityUnit = materialSnapshot.child("quantityUnit").getValue(String.class);
-                                Double quantity = materialSnapshot.child("quantity").getValue(Double.class);
+                                double totalCost = DailyExpenseMath.asDouble(materialSnapshot.child("totalCost").getValue());
+                                String materialName = DailyExpenseMath.asString(materialSnapshot.child("materialName").getValue());
+                                String quantityUnit = DailyExpenseMath.asString(materialSnapshot.child("quantityUnit").getValue());
+                                double quantity = DailyExpenseMath.asDouble(materialSnapshot.child("quantity").getValue());
+                                if (totalCost <= 0) continue;
                                 
-                                String notes = materialName != null ? materialName : "";
-                                if (quantity != null && quantityUnit != null && !quantityUnit.isEmpty()) {
+                                String notes = materialName;
+                                if (quantity > 0 && quantityUnit != null && !quantityUnit.isEmpty()) {
                                     notes += " (" + quantity + " " + quantityUnit + ")";
                                 }
                                 
@@ -277,7 +264,7 @@ public class CurrentExpensesActivity extends BaseBottomNavActivity {
                                     "Material",
                                     0.0, // laborCost
                                     0, // numWorkers
-                                    totalCost != null ? totalCost : 0.0,
+                                    totalCost,
                                     0.0, // equipmentCost
                                     0.0, // miscCost
                                     notes
@@ -292,11 +279,19 @@ public class CurrentExpensesActivity extends BaseBottomNavActivity {
                         
                         // Process equipment items
                         if (dateSnapshot.hasChild("equipment")) {
-                            String activityName = getActivityNameFromPhase(phase);
+                            String activityName = catchUp ? "Before joining - Phase " + phase
+                                    : getActivityNameFromPhase(phase);
                             for (DataSnapshot equipmentSnapshot : dateSnapshot.child("equipment").getChildren()) {
                                 // Get totalCost if available (new format), otherwise calculate from cost
-                                Double totalCost = equipmentSnapshot.child("totalCost").getValue(Double.class);
-                                String equipmentName = equipmentSnapshot.child("equipmentName").getValue(String.class);
+                                if (DailyExpenseMath.asBoolean(equipmentSnapshot.child("isOwned").getValue(), false)) {
+                                    continue;
+                                }
+                                double totalCost = DailyExpenseMath.asDouble(equipmentSnapshot.child("totalCost").getValue());
+                                if (totalCost <= 0) {
+                                    totalCost = DailyExpenseMath.asDouble(equipmentSnapshot.child("cost").getValue());
+                                }
+                                if (totalCost <= 0) continue;
+                                String equipmentName = DailyExpenseMath.asString(equipmentSnapshot.child("equipmentName").getValue());
                                 
                                 // Build notes with usage information
                                 String notes = equipmentName != null ? equipmentName : "";
@@ -304,10 +299,10 @@ public class CurrentExpensesActivity extends BaseBottomNavActivity {
                                 
                                 // Handle new format (usageValue + usageUnit)
                                 if (equipmentSnapshot.hasChild("usageValue")) {
-                                    Double usageValue = equipmentSnapshot.child("usageValue").getValue(Double.class);
-                                    String usageUnit = equipmentSnapshot.child("usageUnit").getValue(String.class);
-                                    if (usageValue != null && usageValue > 0) {
-                                        usageStr = usageValue + " " + (usageUnit != null ? usageUnit : "hours");
+                                    double usageValue = DailyExpenseMath.asDouble(equipmentSnapshot.child("usageValue").getValue());
+                                    String usageUnit = DailyExpenseMath.asString(equipmentSnapshot.child("usageUnit").getValue());
+                                    if (usageValue > 0) {
+                                        usageStr = usageValue + " " + (usageUnit.isEmpty() ? "hours" : usageUnit);
                                     }
                                 } else if (equipmentSnapshot.hasChild("usage")) {
                                     // Legacy format
@@ -328,7 +323,7 @@ public class CurrentExpensesActivity extends BaseBottomNavActivity {
                                     0.0, // laborCost
                                     0, // numWorkers
                                     0.0, // materialCost
-                                    totalCost != null ? totalCost : 0.0, // Use totalCost instead of cost
+                                    totalCost,
                                     0.0, // miscCost
                                     notes
                                 );
@@ -342,10 +337,12 @@ public class CurrentExpensesActivity extends BaseBottomNavActivity {
                         
                         // Process miscellaneous items
                         if (dateSnapshot.hasChild("miscellaneous")) {
-                            String activityName = getActivityNameFromPhase(phase);
+                            String activityName = catchUp ? "Before joining - Phase " + phase
+                                    : getActivityNameFromPhase(phase);
                             for (DataSnapshot miscSnapshot : dateSnapshot.child("miscellaneous").getChildren()) {
-                                Double cost = miscSnapshot.child("cost").getValue(Double.class);
-                                String expenseName = miscSnapshot.child("expenseName").getValue(String.class);
+                                double cost = DailyExpenseMath.asDouble(miscSnapshot.child("cost").getValue());
+                                if (cost <= 0) continue;
+                                String expenseName = DailyExpenseMath.asString(miscSnapshot.child("expenseName").getValue());
                                 
                                 ExpenseEntry entry = new ExpenseEntry(
                                     dateKey,
@@ -355,8 +352,8 @@ public class CurrentExpensesActivity extends BaseBottomNavActivity {
                                     0, // numWorkers
                                     0.0, // materialCost
                                     0.0, // equipmentCost
-                                    cost != null ? cost : 0.0,
-                                    expenseName != null ? expenseName : ""
+                                    cost,
+                                    expenseName
                                 );
                                 
                                 if (!expensesByPhase.containsKey(phase)) {
@@ -798,4 +795,3 @@ public class CurrentExpensesActivity extends BaseBottomNavActivity {
         }
     }
 }
-

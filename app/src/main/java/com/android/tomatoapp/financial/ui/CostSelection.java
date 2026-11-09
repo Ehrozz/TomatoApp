@@ -58,6 +58,7 @@ import com.android.tomatoapp.common.utils.CultivarImageHelper;
 import com.android.tomatoapp.core.network.LocalDataManager;
 import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import com.android.tomatoapp.financial.data.CalculationModel;
+import com.android.tomatoapp.financial.data.DailyExpenseMath;
 import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
 
 public class CostSelection extends BaseBottomNavActivity {
@@ -121,7 +122,8 @@ public class CostSelection extends BaseBottomNavActivity {
                         String startDate = child.child("startingDate").getValue(String.class);
 
                         if (programId != null && cultivar != null && startDate != null) {
-                            cultivarList.add(new Cultivar(programId, cultivar, startDate, CultivarImageHelper.getCultivarImageResource(cultivar)));
+                            cultivarList.add(new Cultivar(programId, cultivar, startDate, CultivarImageHelper.getCultivarImageResource(cultivar),
+                                    DailyExpenseMath.asInt(child.child("completionRate").getValue())));
                         }
                     }
                     
@@ -268,7 +270,8 @@ public class CostSelection extends BaseBottomNavActivity {
                         String startDate = child.child("startingDate").getValue(String.class);
 
                         if (programId != null && cultivar != null && startDate != null) {
-                            cultivarList.add(new Cultivar(programId, cultivar, startDate, CultivarImageHelper.getCultivarImageResource(cultivar)));
+                            cultivarList.add(new Cultivar(programId, cultivar, startDate, CultivarImageHelper.getCultivarImageResource(cultivar),
+                                    DailyExpenseMath.asInt(child.child("completionRate").getValue())));
                         }
                     }
                     updateUI();
@@ -293,7 +296,8 @@ public class CostSelection extends BaseBottomNavActivity {
                 cultivarList.clear();
                 for (WorkProgramEntity entity : entities) {
                     if (entity.cultivarName != null && entity.startingDate != null) {
-                        cultivarList.add(new Cultivar(entity.id, entity.cultivarName, entity.startingDate, CultivarImageHelper.getCultivarImageResource(entity.cultivarName)));
+                        cultivarList.add(new Cultivar(entity.id, entity.cultivarName, entity.startingDate, CultivarImageHelper.getCultivarImageResource(entity.cultivarName),
+                                (int) Math.round(entity.completionRate)));
                     }
                 }
                 updateUI();
@@ -370,39 +374,10 @@ public class CostSelection extends BaseBottomNavActivity {
         
         // Cultivar data (same as Workprogram.java)
         final String[][] cultivarsData = {
-                {"Victory F1", "Semi-determinate", "90", "110"},
-                {"HOPE F1", "Semi-determinate", "90", "110"},
-                {"Maganda F1", "Semi-determinate", "80", "100"},
-                {"Malakas F1", "Semi-determinate", "95", "115"},
-                {"Rocky 1 F1", "Semi-determinate", "90", "110"},
                 {"Improved KS Apollo", "Semi-determinate", "85", "105"},
-                {"Improved Pope", "Semi-determinate", "85", "105"},
-                {"Super Pope", "Semi-determinate", "85", "105"},
-                {"Maguilas", "Determinate", "85", "105"},
-                {"Maunlad", "Determinate", "80", "100"},
-                {"Mapalad", "Determinate", "80", "100"},
-                {"Abiona F1", "Semi-determinate", "95", "115"},
-                {"Akna F1", "Semi-determinate", "105", "125"},
-                {"Amari F1", "Semi-determinate", "110", "130"},
-                {"Anita F1", "Semi-determinate", "110", "130"},
-                {"Colette F1", "Determinate", "105", "125"},
-                {"Danica F1", "Semi-determinate", "105", "125"},
-                {"Granger F1", "Semi-determinate", "105", "125"},
-                {"Janet F1", "Semi-determinate", "120", "140"},
-                {"Platinum F1", "Semi-determinate", "100", "120"},
-                {"Reina F1", "Semi-determinate", "105", "125"},
-                {"Renata F1", "Semi-determinate", "105", "125"},
-                {"Rubellite F1", "Semi-determinate", "90", "110"},
-                {"TOM-055 F1", "Semi-determinate", "60", "75"},
-                {"TOM-262 OP", "Determinate", "60", "75"},
-                {"Dalwangan Tm1", "Determinate", "90", "110"},
-                {"Dalwangan Tm2", "Determinate", "90", "110"},
-                {"NSIC 1999 Tm09", "Determinate", "100", "120"},
-                {"Mara", "Determinate", "78", "95"},
-                {"AniMax 1", "Determinate", "87", "105"},
-                {"AniMax 2", "Semi-determinate", "87", "105"},
-                {"Golden Globe", "Semi-determinate", "92", "112"},
-                {"Maxxime", "Indeterminate", "105", "125"}
+                {"Diamante Max", "Semi-determinate", "55", "65"},
+                {"Jewel F1", "Determinate", "60", "65"},
+                {"Marimar", "Determinate", "60", "65"}
         };
         
         // Create array of cultivar names for spinner
@@ -479,6 +454,24 @@ public class CostSelection extends BaseBottomNavActivity {
         });
         
         dialog.show();
+    }
+
+    private void openLinkedProgramFinance(String programId, String cultivarName, String dateSaved,
+                                         String growthHabit, int NP) {
+        dbRef.child(programId).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot child) {
+                Object hectareObj = child.child("areaSize").getValue();
+                if (hectareObj == null) hectareObj = child.child("landArea").getValue();
+                double savedHectare = DailyExpenseMath.asDouble(hectareObj);
+                navigateToCalculator(cultivarName, growthHabit, NP, dateSaved, savedHectare, programId);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                navigateToCalculator(cultivarName, growthHabit, NP, dateSaved, 0, programId);
+            }
+        });
     }
 
     private void fetchSavedHectare(String cultivarName, String growthHabit, int NP, String dateSaved) {
@@ -621,12 +614,14 @@ public class CostSelection extends BaseBottomNavActivity {
     static class Cultivar {
         String programId, name, date;
         int imageRes;
+        int completionRate;
 
-        Cultivar(String programId, String name, String date, int imageRes) {
+        Cultivar(String programId, String name, String date, int imageRes, int completionRate) {
             this.programId = programId;
             this.name = name;
             this.date = date;
             this.imageRes = imageRes;
+            this.completionRate = completionRate;
         }
     }
 
@@ -703,20 +698,21 @@ public class CostSelection extends BaseBottomNavActivity {
             }
 
             // 🎯 Click → open Calculator with cultivar info
+            if (holder.cardProgressBar != null) {
+                holder.cardProgressBar.setProgress(item.completionRate);
+            }
+            if (holder.cardProgressText != null) {
+                holder.cardProgressText.setText(item.completionRate + "% complete");
+            }
+
             holder.card.setOnClickListener(v -> {
-                String cultivarName = item.name;
-                String dateSaved = item.date;
-
-                if (cultivarName != null) {
-                    // 🌱 Fetch growth habit and NP
-                    String growthHabit = CultivarNPData.getGrowthHabit(cultivarName);
-                    int NP = CultivarNPData.getNP(cultivarName);
-
-                    // 🔍 Fetch saved hectare from Firebase calculations
-                    fetchSavedHectare(cultivarName, growthHabit, NP, dateSaved);
-                } else {
+                if (item.programId == null || item.name == null) {
                     Toast.makeText(CostSelection.this, "Error loading cultivar details", Toast.LENGTH_SHORT).show();
+                    return;
                 }
+                String growthHabit = CultivarNPData.getGrowthHabit(item.name);
+                int NP = CultivarNPData.getNP(item.name);
+                openLinkedProgramFinance(item.programId, item.name, item.date, growthHabit, NP);
             });
         }
 
@@ -726,10 +722,11 @@ public class CostSelection extends BaseBottomNavActivity {
         }
 
         class CultivarViewHolder extends RecyclerView.ViewHolder {
-            TextView name, date, statusText;
+            TextView name, date, statusText, cardProgressText;
             ImageView image, deleteButton;
             CardView card;
             View statusIndicator;
+            android.widget.ProgressBar cardProgressBar;
 
             CultivarViewHolder(@NonNull View itemView) {
                 super(itemView);
@@ -740,6 +737,8 @@ public class CostSelection extends BaseBottomNavActivity {
                 statusText = itemView.findViewById(R.id.statusText);
                 statusIndicator = itemView.findViewById(R.id.statusIndicator);
                 deleteButton = itemView.findViewById(R.id.deleteButton);
+                cardProgressBar = itemView.findViewById(R.id.cardProgressBar);
+                cardProgressText = itemView.findViewById(R.id.cardProgressText);
             }
         }
     }

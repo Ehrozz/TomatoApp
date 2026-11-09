@@ -3184,5 +3184,134 @@ public class PhilippineLocations {
         allLocations.addAll(Arrays.asList(REGION_13_LABELS));
         return allLocations.toArray(new String[0]);
     }
+
+    public static String[] getLabelsForRegion(int index) {
+        switch (index) {
+            case 0: return getRegion1Labels();
+            case 1: return getRegion2Labels();
+            case 2: return getRegion3Labels();
+            case 3: return getRegion4Labels();
+            case 4: return getRegion4BLabels();
+            case 5: return getRegion5Labels();
+            case 6: return getRegion6Labels();
+            case 7: return getRegion7Labels();
+            case 8: return getRegion8Labels();
+            case 9: return getRegion9Labels();
+            case 10: return getRegion10Labels();
+            case 11: return getRegion11Labels();
+            case 12: return getRegion12Labels();
+            case 13: return getRegion13Labels();
+            case 14: return getRegion14Labels();
+            case 15: return getRegion15Labels();
+            case 16: return getRegion16Labels();
+            default: return getRegion17Labels();
+        }
+    }
+
+    public static double[] getLatsForRegion(int index) {
+        switch (index) {
+            case 0: return getRegion1Lats();
+            case 1: return getRegion2Lats();
+            case 2: return getRegion3Lats();
+            case 3: return getRegion4Lats();
+            case 4: return getRegion4BLats();
+            case 5: return getRegion5Lats();
+            case 6: return getRegion6Lats();
+            case 7: return getRegion7Lats();
+            case 8: return getRegion8Lats();
+            case 9: return getRegion9Lats();
+            case 10: return getRegion10Lats();
+            case 11: return getRegion11Lats();
+            case 12: return getRegion12Lats();
+            case 13: return getRegion13Lats();
+            case 14: return getRegion14Lats();
+            case 15: return getRegion15Lats();
+            case 16: return getRegion16Lats();
+            default: return getRegion17Lats();
+        }
+    }
+
+    public static double[] getLonsForRegion(int index) {
+        switch (index) {
+            case 0: return getRegion1Lons();
+            case 1: return getRegion2Lons();
+            case 2: return getRegion3Lons();
+            case 3: return getRegion4Lons();
+            case 4: return getRegion4BLons();
+            case 5: return getRegion5Lons();
+            case 6: return getRegion6Lons();
+            case 7: return getRegion7Lons();
+            case 8: return getRegion8Lons();
+            case 9: return getRegion9Lons();
+            case 10: return getRegion10Lons();
+            case 11: return getRegion11Lons();
+            case 12: return getRegion12Lons();
+            case 13: return getRegion13Lons();
+            case 14: return getRegion14Lons();
+            case 15: return getRegion15Lons();
+            case 16: return getRegion16Lons();
+            default: return getRegion17Lons();
+        }
+    }
+
+    /**
+     * Resolves approximate latitude and longitude coordinates for a given city and province.
+     */
+    public static double[] getCoordinatesForCity(String city, String province) {
+        if (city == null || city.trim().isEmpty()) {
+            return new double[]{14.5995, 120.9842}; // Default to Manila
+        }
+        String cleanCity = city.trim().toLowerCase();
+        String cleanProvince = province != null ? province.trim().toLowerCase() : "";
+
+        // First pass: exact start with city and province match
+        for (int r = 0; r <= 17; r++) {
+            String[] labels = getLabelsForRegion(r);
+            double[] lats = getLatsForRegion(r);
+            double[] lons = getLonsForRegion(r);
+            for (int i = 0; i < labels.length; i++) {
+                String lbl = labels[i].toLowerCase();
+                if (lbl.startsWith(cleanCity) && (cleanProvince.isEmpty() || lbl.contains(cleanProvince))) {
+                    if (i < lats.length && i < lons.length) {
+                        return new double[]{lats[i], lons[i]};
+                    }
+                }
+            }
+        }
+
+        // Second pass: city contained in label
+        for (int r = 0; r <= 17; r++) {
+            String[] labels = getLabelsForRegion(r);
+            double[] lats = getLatsForRegion(r);
+            double[] lons = getLonsForRegion(r);
+            for (int i = 0; i < labels.length; i++) {
+                String lbl = labels[i].toLowerCase();
+                if (lbl.contains(cleanCity) && (cleanProvince.isEmpty() || lbl.contains(cleanProvince))) {
+                    if (i < lats.length && i < lons.length) {
+                        return new double[]{lats[i], lons[i]};
+                    }
+                }
+            }
+        }
+
+        // Third pass: province match
+        if (!cleanProvince.isEmpty()) {
+            for (int r = 0; r <= 17; r++) {
+                String[] labels = getLabelsForRegion(r);
+                double[] lats = getLatsForRegion(r);
+                double[] lons = getLonsForRegion(r);
+                for (int i = 0; i < labels.length; i++) {
+                    String lbl = labels[i].toLowerCase();
+                    if (lbl.contains(cleanProvince)) {
+                        if (i < lats.length && i < lons.length) {
+                            return new double[]{lats[i], lons[i]};
+                        }
+                    }
+                }
+            }
+        }
+
+        return new double[]{14.5995, 120.9842};
+    }
 }
 

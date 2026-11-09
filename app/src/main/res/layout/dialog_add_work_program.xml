@@ -12,6 +12,7 @@
         android:orientation="vertical">
 
         <TextView
+            android:id="@+id/addProgramTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Start New Program"
@@ -19,6 +20,18 @@
             android:textSize="22sp"
             android:textStyle="bold"
             android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/ongoingBanner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Ongoing planting: Earlier phases will be marked completed."
+            android:textColor="@android:color/black"
+            android:textSize="13sp"
+            android:padding="10dp"
+            android:background="@color/light_green"
+            android:visibility="gone"
+            android:layout_marginBottom="12dp" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -58,7 +71,7 @@
         <!-- Land Area -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/landAreaLayout"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
@@ -71,11 +84,17 @@
             app:boxCornerRadiusBottomStart="12dp"
             app:boxCornerRadiusBottomEnd="12dp">
 
-            <com.google.android.material.textfield.TextInputEditText
+            <AutoCompleteTextView
                 android:id="@+id/landAreaInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="numberDecimal"
+                android:inputType="none"
+                android:focusable="false"
+                android:clickable="true"
+                android:cursorVisible="false"
+                android:importantForAutofill="no"
+                android:popupBackground="@android:color/white"
+                android:backgroundTint="@android:color/white"
                 android:textColor="@android:color/black"
                 android:textColorHint="@android:color/black" />
         </com.google.android.material.textfield.TextInputLayout>

@@ -19,7 +19,10 @@ import androidx.annotation.Nullable;
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.auth.data.User;
+import com.android.tomatoapp.common.models.UserLocation;
+import com.android.tomatoapp.common.utils.PhilippineLocations;
 import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
+import android.content.SharedPreferences;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
@@ -221,6 +224,56 @@ public class ProfileActivity extends BaseBottomNavActivity {
                     progressBar.setVisibility(View.GONE);
                     btnSave.setEnabled(true);
                     isLoading = false;
+
+                    // Keep Firebase Auth user display name in sync
+                    com.google.firebase.auth.UserProfileChangeRequest profileUpdates =
+                            new com.google.firebase.auth.UserProfileChangeRequest.Builder()
+                                    .setDisplayName(fullName)
+                                    .build();
+                    currentUser.updateProfile(profileUpdates);
+
+                    if (profileNameHeader != null) {
+                        profileNameHeader.setText(fullName);
+                    }
+
+                    if (!address.isEmpty()) {
+                        String[] parts = address.split(", ");
+                        String brgy = parts.length >= 3 ? parts[0].trim() : "";
+                        String city = parts.length >= 2 ? parts[1].trim() : (parts.length == 1 ? parts[0].trim() : "");
+                        String province = parts.length >= 3 ? parts[2].trim() : (parts.length == 2 ? parts[1].trim() : "");
+
+                        double[] coords = PhilippineLocations.getCoordinatesForCity(city, province);
+                        double lat = coords[0];
+                        double lon = coords[1];
+
+                        DatabaseReference locationsRef = userRef.child("locations");
+                        locationsRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                            @Override
+                            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                                String existingDefaultId = null;
+                                for (DataSnapshot ds : snapshot.getChildren()) {
+                                    UserLocation loc = ds.getValue(UserLocation.class);
+                                    if (loc != null && loc.isDefault) {
+                                        existingDefaultId = ds.getKey();
+                                        break;
+                                    }
+                                }
+                                String targetId = existingDefaultId != null ? existingDefaultId : locationsRef.push().getKey();
+                                if (targetId != null) {
+                                    UserLocation updatedLoc = new UserLocation(targetId, province, city, brgy, lat, lon, true);
+                                    locationsRef.child(targetId).setValue(updatedLoc);
+                                }
+                            }
+                            @Override public void onCancelled(@NonNull DatabaseError error) {}
+                        });
+
+                        SharedPreferences wp = getSharedPreferences("WeatherPref", MODE_PRIVATE);
+                        wp.edit()
+                                .putLong("lat", Double.doubleToLongBits(lat))
+                                .putLong("lon", Double.doubleToLongBits(lon))
+                                .putString("name", address)
+                                .apply();
+                    }
                     
                     Toast.makeText(ProfileActivity.this, 
                             "Profile updated successfully!", 
