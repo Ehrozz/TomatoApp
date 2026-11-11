@@ -188,7 +188,7 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
         
         
         android.widget.AutoCompleteTextView cultivarSpinner = dialogView.findViewById(R.id.cultivarSpinner);
-        android.widget.AutoCompleteTextView landAreaInput = dialogView.findViewById(R.id.landAreaInput);
+        com.google.android.material.textfield.TextInputEditText landAreaInput = dialogView.findViewById(R.id.landAreaInput);
         com.google.android.material.textfield.TextInputEditText startDateInput = dialogView.findViewById(R.id.startDateInput);
         com.google.android.material.button.MaterialButton btnSubmit = dialogView.findViewById(R.id.btnSubmit);
         TextView addProgramTitle = dialogView.findViewById(R.id.addProgramTitle);
@@ -228,41 +228,6 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
         };
         cultivarSpinner.setAdapter(adapter);
 
-        // Land Area Dropdown options
-        final String[] landAreaOptions = {
-                "0.25 hectare",
-                "0.5 hectare",
-                "0.75 hectare",
-                "1 hectare"
-        };
-        android.widget.ArrayAdapter<String> landAreaAdapter = new android.widget.ArrayAdapter<String>(this,
-                android.R.layout.simple_dropdown_item_1line, landAreaOptions) {
-            @Override
-            public View getView(int position, View convertView, android.view.ViewGroup parent) {
-                View view = super.getView(position, convertView, parent);
-                android.widget.TextView textView = view.findViewById(android.R.id.text1);
-                if (textView != null) textView.setTextColor(android.graphics.Color.BLACK);
-                view.setBackgroundColor(android.graphics.Color.WHITE);
-                return view;
-            }
-
-            @Override
-            public View getDropDownView(int position, View convertView, android.view.ViewGroup parent) {
-                View view = super.getDropDownView(position, convertView, parent);
-                android.widget.TextView textView = view.findViewById(android.R.id.text1);
-                if (textView != null) textView.setTextColor(android.graphics.Color.BLACK);
-                view.setBackgroundColor(android.graphics.Color.WHITE);
-                return view;
-            }
-        };
-        landAreaInput.setAdapter(landAreaAdapter);
-        landAreaInput.setKeyListener(null);
-        landAreaInput.setThreshold(0);
-        landAreaInput.setOnClickListener(v -> landAreaInput.showDropDown());
-        landAreaInput.setOnFocusChangeListener((v, hasFocus) -> {
-            if (hasFocus) landAreaInput.showDropDown();
-        });
-
         // Date Picker logic
         final java.util.Calendar calendar = java.util.Calendar.getInstance();
         final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
@@ -300,9 +265,9 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
                 return;
             }
 
-            double area = parseSelectedLandAreaHectares(areaStr);
+            double area = parseLandAreaHectares(areaStr);
             if (area <= 0) {
-                Toast.makeText(this, "Please select a land area", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Enter a valid land area in hectares (greater than 0)", Toast.LENGTH_SHORT).show();
                 return;
             }
 
@@ -368,20 +333,16 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
                 ? null : java.time.LocalDate.parse(value);
     }
 
-    /** Maps the land-area dropdown labels to the hectare values used by scheduling and cost formulas. */
-    private static double parseSelectedLandAreaHectares(String selected) {
-        if (selected == null) return -1;
-        switch (selected.trim()) {
-            case "0.25 hectare":
-                return 0.25;
-            case "0.5 hectare":
-                return 0.5;
-            case "0.75 hectare":
-                return 0.75;
-            case "1 hectare":
-                return 1.0;
-            default:
-                return -1;
+    private static double parseLandAreaHectares(String input) {
+        if (input == null) return -1;
+        String s = input.trim().replace(',', '.');
+        if (s.isEmpty()) return -1;
+        try {
+            double v = Double.parseDouble(s);
+            if (Double.isNaN(v) || Double.isInfinite(v) || v <= 0 || v > 1000) return -1;
+            return v;
+        } catch (NumberFormatException e) {
+            return -1;
         }
     }
 

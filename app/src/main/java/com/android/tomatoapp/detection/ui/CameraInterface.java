@@ -85,6 +85,7 @@ public class CameraInterface extends BaseBottomNavActivity {
     public static final String EXTRA_LINKED_CULTIVAR = "extra_linked_cultivar";
     public static final String EXTRA_LINKED_PHASE = "extra_linked_phase";
     public static final String EXTRA_DETECTION_TYPE = "extra_detection_type";
+    public static final String EXTRA_LINKED_DATE = "extra_linked_date";
 
     private PreviewView previewView;
     private ImageCapture imageCapture;
@@ -106,8 +107,10 @@ public class CameraInterface extends BaseBottomNavActivity {
     private WorkProgramRepository workProgramRepository;
     private PlantMonitoringRepository plantMonitoringRepository;
     private String linkedProgramId;
+    private String launchProgramId;
     private String linkedCultivarName;
     private int linkedPhase = -1;
+    private String linkedDate;
 
     // New UI elements wired from redesigned layout
     private View connectivityBadge;
@@ -158,11 +161,13 @@ public class CameraInterface extends BaseBottomNavActivity {
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 if (position == 0) {
                     selectedCultivarLabel = getString(R.string.detection_cultivar_unspecified);
+                    linkedProgramId = launchProgramId;
                     return;
                 }
                 int index = position - 1;
                 if (index >= 0 && index < programOptions.size()) {
                     WorkProgramEntity entity = programOptions.get(index);
+                    linkedProgramId = entity.id;
                     selectedCultivarLabel = entity.cultivarName != null
                             ? entity.cultivarName
                             : getString(R.string.detection_cultivar_unspecified);
@@ -267,8 +272,10 @@ public class CameraInterface extends BaseBottomNavActivity {
         Intent launchIntent = getIntent();
         if (launchIntent != null) {
             linkedProgramId = launchIntent.getStringExtra(EXTRA_LINKED_PROGRAM_ID);
+            launchProgramId = linkedProgramId;
             linkedCultivarName = launchIntent.getStringExtra(EXTRA_LINKED_CULTIVAR);
             linkedPhase = launchIntent.getIntExtra(EXTRA_LINKED_PHASE, -1);
+            linkedDate = launchIntent.getStringExtra(EXTRA_LINKED_DATE);
             
             // Read detection type from Intent
             String detectionTypeStr = launchIntent.getStringExtra(EXTRA_DETECTION_TYPE);
@@ -439,6 +446,18 @@ public class CameraInterface extends BaseBottomNavActivity {
         }, ContextCompat.getMainExecutor(this));
     }
 
+    private String scanDate() {
+        return !TextUtils.isEmpty(linkedDate) ? linkedDate
+                : com.android.tomatoapp.common.utils.AppClock.today(this).toString();
+    }
+
+    private long scanTimestamp() {
+        try {
+            return java.time.LocalDate.parse(scanDate()).atTime(java.time.LocalTime.now())
+                    .atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+        } catch (Exception e) { return System.currentTimeMillis(); }
+    }
+
     private void capturePhoto() {
         if (imageCapture == null) return;
 
@@ -500,6 +519,7 @@ public class CameraInterface extends BaseBottomNavActivity {
                                 detectionResults.getOrDefault("topPredictions", ""),
                                 detectionResults.getOrDefault("confidenceWarning", "")
                         );
+                        DetectionHistoryManager.setScanDate(CameraInterface.this, photoUri.toString(), scanDate());
                         persistDetectionForProgram(detectionResults, photoUri);
 
                         NotificationUseCases.notifyDiseaseDetection(
@@ -593,6 +613,7 @@ public class CameraInterface extends BaseBottomNavActivity {
                     detectionResults.getOrDefault("topPredictions", ""),
                     detectionResults.getOrDefault("confidenceWarning", "")
             );
+            DetectionHistoryManager.setScanDate(CameraInterface.this, imageUriString, scanDate());
             persistDetectionForProgram(detectionResults, savedImageUri);
 
             NotificationUseCases.notifyDiseaseDetection(
@@ -1140,7 +1161,7 @@ public class CameraInterface extends BaseBottomNavActivity {
                 currentUser.getUid(),
                 linkedProgramId,
                 phaseForEntry,
-                System.currentTimeMillis(),
+                scanTimestamp(),
                 shortDescription,
                 issues,
                 warnings,

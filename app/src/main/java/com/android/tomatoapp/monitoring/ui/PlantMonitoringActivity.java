@@ -44,9 +44,7 @@ public class PlantMonitoringActivity extends BaseBottomNavActivity {
     private ImageView referenceImage;
     private TextView referencePhaseLabel;
     private TextView referenceDescription;
-    private MaterialButton btnSave;
     private MaterialButton btnScan;
-    private MaterialButton btnCapture;
     private MaterialButton btnDeleteImage;
     private TextInputEditText inputNotes;
     private ImageView capturedImageView; // Keep as reference to referenceImage for logic consistency
@@ -86,9 +84,7 @@ public class PlantMonitoringActivity extends BaseBottomNavActivity {
         referenceImage = findViewById(R.id.referenceImage);
         referencePhaseLabel = findViewById(R.id.referencePhaseLabel);
         referenceDescription = findViewById(R.id.referenceDescription);
-        btnSave = findViewById(R.id.btnSave);
         btnScan = findViewById(R.id.btnScanDiseases);
-        btnCapture = findViewById(R.id.btnCapture);
         btnDeleteImage = findViewById(R.id.btnDeleteImage);
         inputNotes = findViewById(R.id.inputNotes);
         // Map capturedImageView to referenceImage since we've merged them
@@ -125,21 +121,12 @@ public class PlantMonitoringActivity extends BaseBottomNavActivity {
     }
 
     private void setupActions() {
-        btnSave.setOnClickListener(v -> saveEntry());
         if (btnScan != null) {
             btnScan.setOnClickListener(v -> launchDiseaseScanner());
-        }
-        if (btnCapture != null) {
-            btnCapture.setOnClickListener(v -> launchCapture());
         }
         if (btnDeleteImage != null) {
             btnDeleteImage.setOnClickListener(v -> deleteCapturedImage());
         }
-    }
-    
-    private void launchCapture() {
-        Intent intent = new Intent(this, SimpleCaptureActivity.class);
-        startActivityForResult(intent, REQUEST_CAPTURE_IMAGE);
     }
 
     private void saveEntry() {
@@ -206,6 +193,7 @@ public class PlantMonitoringActivity extends BaseBottomNavActivity {
                 intent.putExtra(CameraInterface.EXTRA_LINKED_CULTIVAR, cultivarName);
             }
             intent.putExtra(CameraInterface.EXTRA_LINKED_PHASE, phase);
+            if (selectedDate != null) intent.putExtra(CameraInterface.EXTRA_LINKED_DATE, selectedDate);
             startActivity(intent);
         });
         dialog.show();
@@ -243,6 +231,8 @@ public class PlantMonitoringActivity extends BaseBottomNavActivity {
                 for (org.json.JSONObject entry : history) {
                     String entryProgramId = entry.optString("programId", "");
                     if (!programId.equals(entryProgramId)) continue;
+                    String wantedDate = selectedDate != null ? selectedDate : com.android.tomatoapp.common.utils.AppClock.today(this).toString();
+                    if (!wantedDate.equals(com.android.tomatoapp.detection.data.DetectionHistoryManager.getScanDate(this, entry.optString("imageUri", "")))) continue;
                     long ts = entry.optLong("timestamp", 0L);
                     if (ts > latestTs) {
                         latestTs = ts;
@@ -312,4 +302,3 @@ public class PlantMonitoringActivity extends BaseBottomNavActivity {
         return true;
     }
 }
-

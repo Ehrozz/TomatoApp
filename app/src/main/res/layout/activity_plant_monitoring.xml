@@ -31,7 +31,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Daily Task Monitor"
+                android:text="Plant Monitoring"
                 android:textColor="@color/text_primary"
                 android:textSize="18sp"
                 android:textStyle="bold" />
@@ -233,16 +233,13 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:weightSum="2"
                 android:layout_marginBottom="16dp">
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnScanDiseases"
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="60dp"
-                    android:layout_weight="1"
-                    android:layout_marginEnd="8dp"
-                    android:text="AI Health Scan"
+                    android:text="Disease Scan"
                     android:textAllCaps="false"
                     android:textStyle="bold"
                     android:textSize="14sp"
@@ -251,39 +248,7 @@
                     app:iconSize="20dp"
                     app:backgroundTint="@color/warm_orange"
                     android:textColor="@color/white" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnCapture"
-                    android:layout_width="0dp"
-                    android:layout_height="60dp"
-                    android:layout_weight="1"
-                    android:layout_marginStart="8dp"
-                    android:text="Take Photo"
-                    android:textAllCaps="false"
-                    android:textStyle="bold"
-                    android:textSize="14sp"
-                    app:cornerRadius="16dp"
-                    app:icon="@android:drawable/ic_menu_camera"
-                    app:iconSize="20dp"
-                    app:backgroundTint="@color/green"
-                    android:textColor="@color/white" />
             </LinearLayout>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnSave"
-                android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:text="Save Progress"
-                android:textAllCaps="true"
-                android:textStyle="bold"
-                android:textSize="16sp"
-                android:letterSpacing="0.1"
-                app:cornerRadius="18dp"
-                app:icon="@android:drawable/ic_menu_save"
-                app:iconSize="22dp"
-                app:backgroundTint="@color/tomato_red"
-                android:textColor="@color/white"
-                app:elevation="4dp" />
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

@@ -185,3 +185,11 @@
     public static *** v(...);
     public static *** i(...);
 }
+
+-keepattributes SourceFile,LineNumberTable,Signature,*Annotation*,InnerClasses,EnclosingMethod
+-renamesourcefileattribute SourceFile
+-keep class org.tensorflow.lite.** { *; }
+-dontwarn org.tensorflow.lite.gpu.**
+-keep class com.github.mikephil.charting.** { *; }
+-keep class com.prolificinteractive.materialcalendarview.** { *; }
+-keep class com.android.tomatoapp.**.data.** { *; }

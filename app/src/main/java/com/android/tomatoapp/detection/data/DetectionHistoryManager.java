@@ -20,6 +20,17 @@ public class DetectionHistoryManager {
     private static final String TAG = "DetectionHistoryManager";
     private static final String PREF_NAME = "detection_history";
     private static final String KEY_HISTORY = "history";
+    private static final String PREF_SCAN_DATES = "detection_scan_dates";
+
+    public static void setScanDate(Context c, String imageUri, String date) {
+        if (imageUri == null || date == null) return;
+        c.getSharedPreferences(PREF_SCAN_DATES, Context.MODE_PRIVATE).edit().putString(imageUri, date).apply();
+    }
+
+    public static String getScanDate(Context c, String imageUri) {
+        if (imageUri == null) return null;
+        return c.getSharedPreferences(PREF_SCAN_DATES, Context.MODE_PRIVATE).getString(imageUri, null);
+    }
 
     public static void addHistory(Context context,
                                   String imageUri,

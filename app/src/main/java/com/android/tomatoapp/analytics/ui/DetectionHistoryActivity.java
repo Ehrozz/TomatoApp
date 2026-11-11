@@ -20,12 +20,17 @@ import com.android.tomatoapp.R;
 import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import com.android.tomatoapp.detection.data.DetectionHistoryManager;
 import com.android.tomatoapp.detection.ui.DetectionResults;
+import com.android.tomatoapp.settings.data.SettingsPreferences;
 import com.google.android.material.card.MaterialCardView;
 
 import org.json.JSONObject;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
+import java.util.Locale;
 
 public class DetectionHistoryActivity extends BaseBottomNavActivity {
 
@@ -213,10 +218,24 @@ public class DetectionHistoryActivity extends BaseBottomNavActivity {
 
                 // Context / date footer
                 if (holder.context != null) {
-                    String timestamp = entry.optString("timestamp", "");
-                    String ctx = timestamp.isEmpty()
-                            ? (phase > 0 ? getString(R.string.detection_context_format, cultivar, phase) : cultivar)
-                            : timestamp + (phase > 0 ? "  •  Phase " + phase : "");
+                    String scanDate = DetectionHistoryManager.getScanDate(DetectionHistoryActivity.this, imageUri);
+                    if (scanDate == null || scanDate.isEmpty()) {
+                        long ts = entry.optLong("timestamp", 0);
+                        if (ts > 0) {
+                            scanDate = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date(ts));
+                        }
+                    }
+                    if (scanDate != null && !scanDate.isEmpty()) {
+                        try {
+                            scanDate = SettingsPreferences.getDateFormatInstance(DetectionHistoryActivity.this)
+                                    .format(SettingsPreferences.getDateParseFormat().parse(scanDate));
+                        } catch (ParseException ignored) {
+                            // Keep the raw scan date when it cannot be parsed.
+                        }
+                    }
+                    String ctx = scanDate != null && !scanDate.isEmpty()
+                            ? "Scanned for " + scanDate + (phase > 0 ? "  •  Phase " + phase : "")
+                            : (phase > 0 ? getString(R.string.detection_context_format, cultivar, phase) : cultivar);
                     holder.context.setText(ctx);
                 }
 

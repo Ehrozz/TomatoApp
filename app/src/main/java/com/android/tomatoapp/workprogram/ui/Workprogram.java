@@ -130,6 +130,7 @@ public class Workprogram extends BaseBottomNavActivity {
     private String stopDate;
     private String placementDate;
     private double farmAreaHectares = 1.0;
+    private boolean calendarPositioned = false;
 
     private DatabaseReference dbRef;
     private DatabaseReference logsRef;
@@ -1051,6 +1052,25 @@ public class Workprogram extends BaseBottomNavActivity {
         updateProgressCard();
     }
 
+    private void positionCalendarOnce() {
+        if (calendarPositioned || calendarView == null || programStartDate == null) return;
+        try {
+            java.time.LocalDate start = java.time.LocalDate.parse(programStartDate);
+            java.time.LocalDate target = start;
+            boolean ongoing = placementDate != null || intakeStartPhase > 1;
+            if (ongoing) {
+                java.time.LocalDate today = appTodayLocal();
+                java.time.LocalDate stop = parseLocalDate(stopDate);
+                if (!today.isBefore(start) && (stop == null || !today.isAfter(stop))) {
+                    target = today;
+                }
+            }
+            calendarView.setCurrentDate(CalendarDay.from(
+                    target.getYear(), target.getMonthValue() - 1, target.getDayOfMonth()));
+            calendarPositioned = true;
+        } catch (RuntimeException ignored) { }
+    }
+
     private void reloadTaskStatuses() {
         if (logsRef == null) return;
         logsRef.get().addOnSuccessListener(this::processTaskStatuses)
@@ -1147,6 +1167,7 @@ public class Workprogram extends BaseBottomNavActivity {
                     attachLogsListener();
                     calendarView.removeDecorators();
                     addPhaseDecorators();
+                    positionCalendarOnce();
                     setCalendarClickListener();
                     loadSummaryStats();
                     showCatchUpPromptFromIntent();

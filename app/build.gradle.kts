@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.google.gms.google.services)
+    alias(libs.plugins.firebase.crashlytics)
 }
 
 /**
@@ -125,7 +126,7 @@ dependencies {
     implementation(libs.constraintlayout)
     implementation(libs.firebase.auth)
     implementation(libs.firebase.inappmessaging)
-    implementation(libs.firebase.crashlytics.buildtools)
+    implementation(libs.firebase.crashlytics)
     implementation(libs.firebase.database)
     implementation(libs.media3.common)
     implementation(libs.credentials)
