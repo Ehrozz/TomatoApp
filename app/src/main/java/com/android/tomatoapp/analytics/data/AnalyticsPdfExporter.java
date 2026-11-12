@@ -5,7 +5,6 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.pdf.PdfDocument;
-import android.os.Environment;
 import android.text.Layout;
 import android.text.StaticLayout;
 import android.text.TextPaint;
@@ -192,6 +191,130 @@ public class AnalyticsPdfExporter {
             document.writeTo(fos);
             document.close();
             fos.close();
+            ExportFileHelper.publishToDownloads(context, pdfFile);
+            return pdfFile.getAbsolutePath();
+        } catch (IOException e) {
+            e.printStackTrace();
+            document.close();
+            return null;
+        }
+    }
+
+    /**
+     * Export disease scan records to PDF: one section per group (program or
+     * "Unlinked scans") with a summary line and a table of scans.
+     * @return File path of created PDF, or null if failed / nothing to export
+     */
+    public static String exportDiseaseToPdf(Context context, List<DiseaseExportGroup> groups) {
+        if (groups == null || groups.isEmpty()) {
+            return null;
+        }
+
+        PdfDocument document = new PdfDocument();
+        TextPaint titlePaint = new TextPaint();
+        titlePaint.setTextSize(TITLE_SIZE);
+        titlePaint.setFakeBoldText(true);
+        titlePaint.setAntiAlias(true);
+
+        TextPaint headerPaint = new TextPaint();
+        headerPaint.setTextSize(HEADER_SIZE);
+        headerPaint.setFakeBoldText(true);
+        headerPaint.setAntiAlias(true);
+
+        TextPaint textPaint = new TextPaint();
+        textPaint.setTextSize(TEXT_SIZE);
+        textPaint.setAntiAlias(true);
+
+        Paint bgPaint = new Paint();
+        bgPaint.setColor(0xFFE0E0E0);
+
+        String[] headers = {"Date", "Phase", "Disease", "Confidence"};
+        float[] widths = {110, 50, 250, 90};
+
+        int pageNumber = 1;
+        PdfDocument.Page page = document.startPage(
+                new PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, pageNumber).create());
+        Canvas canvas = page.getCanvas();
+        int y = MARGIN;
+
+        canvas.drawText("Disease Scan Report", MARGIN, y, titlePaint);
+        y += LINE_HEIGHT * 2;
+        canvas.drawText("Generated: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss",
+                Locale.getDefault()).format(new Date()), MARGIN, y, textPaint);
+        y += LINE_HEIGHT * 2;
+
+        for (DiseaseExportGroup g : groups) {
+            if (y > PAGE_HEIGHT - MARGIN - 120) {
+                document.finishPage(page);
+                pageNumber++;
+                page = document.startPage(
+                        new PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, pageNumber).create());
+                canvas = page.getCanvas();
+                y = MARGIN;
+            }
+
+            canvas.drawText(g.title != null ? g.title : "N/A", MARGIN, y, headerPaint);
+            y += LINE_HEIGHT;
+            canvas.drawText(String.format(Locale.getDefault(), "Start: %s | Area: %.2f ha",
+                    g.startDate != null ? g.startDate : "N/A", g.area), MARGIN, y, textPaint);
+            y += LINE_HEIGHT;
+
+            int total = g.rows.size();
+            int healthy = g.healthyCount();
+            canvas.drawText(String.format(Locale.getDefault(),
+                    "Scans: %d (%d healthy, %d infected) | Avg confidence: %.0f%%",
+                    total, healthy, total - healthy, g.avgConfidence()), MARGIN, y, textPaint);
+            y += LINE_HEIGHT + 5;
+
+            if (total == 0) {
+                canvas.drawText("No scans yet", MARGIN, y, textPaint);
+                y += LINE_HEIGHT * 2;
+                continue;
+            }
+
+            // Table header
+            float x = MARGIN;
+            canvas.drawRect(MARGIN, y - LINE_HEIGHT + 5, PAGE_WIDTH - MARGIN, y + 5, bgPaint);
+            for (int i = 0; i < headers.length; i++) {
+                canvas.drawText(headers[i], x + 5, y, headerPaint);
+                x += widths[i];
+            }
+            y += LINE_HEIGHT;
+
+            // Rows
+            for (DiseaseExportGroup.Row r : g.rows) {
+                if (y > PAGE_HEIGHT - MARGIN) {
+                    document.finishPage(page);
+                    pageNumber++;
+                    page = document.startPage(
+                            new PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, pageNumber).create());
+                    canvas = page.getCanvas();
+                    y = MARGIN;
+                }
+                String disease = r.disease != null ? r.disease : "Unknown";
+                if (disease.length() > 45) {
+                    disease = disease.substring(0, 42) + "...";
+                }
+                String[] cells = {r.date, String.valueOf(r.phase), disease, r.confidence};
+                x = MARGIN;
+                for (int i = 0; i < cells.length; i++) {
+                    canvas.drawText(cells[i] != null ? cells[i] : "", x + 5, y, textPaint);
+                    x += widths[i];
+                }
+                y += LINE_HEIGHT;
+            }
+            y += LINE_HEIGHT;
+        }
+
+        document.finishPage(page);
+
+        try {
+            File pdfFile = createPdfFile(context, "Disease");
+            FileOutputStream fos = new FileOutputStream(pdfFile);
+            document.writeTo(fos);
+            document.close();
+            fos.close();
+            ExportFileHelper.publishToDownloads(context, pdfFile);
             return pdfFile.getAbsolutePath();
         } catch (IOException e) {
             e.printStackTrace();
@@ -285,20 +408,10 @@ public class AnalyticsPdfExporter {
         String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
         String fileName = "Analytics_" + (cultivarName != null ? cultivarName.replaceAll("[^a-zA-Z0-9]", "_") : "All") + "_" + timestamp + ".pdf";
         
-        // Try external storage first (Downloads folder)
-        File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        if (!downloadsDir.exists()) {
-            downloadsDir.mkdirs();
+        try {
+            return ExportFileHelper.createExportFile(context, fileName);
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to create export file", e);
         }
-        
-        // If external storage is not available, use app's external files directory
-        if (!downloadsDir.canWrite()) {
-            File appDir = context.getExternalFilesDir(null);
-            if (appDir != null) {
-                return new File(appDir, fileName);
-            }
-        }
-        
-        return new File(downloadsDir, fileName);
     }
 }

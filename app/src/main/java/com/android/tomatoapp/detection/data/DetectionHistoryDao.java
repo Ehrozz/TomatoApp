@@ -22,6 +22,9 @@ public interface DetectionHistoryDao {
     @Delete
     void delete(DetectionHistoryEntity detection);
 
+    @Query("DELETE FROM detection_history WHERE imageUri = :imageUri AND timestamp = :timestamp")
+    void deleteByImageAndTimestamp(String imageUri, long timestamp);
+
     @Query("DELETE FROM detection_history WHERE userId = :userId")
     void deleteAllByUser(String userId);
 }

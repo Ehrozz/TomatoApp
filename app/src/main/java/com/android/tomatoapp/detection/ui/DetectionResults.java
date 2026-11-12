@@ -75,13 +75,17 @@ public class DetectionResults extends BaseBottomNavActivity {
             }
 
             // Set badge number - show total detections in history
-            ArrayList<org.json.JSONObject> history = DetectionHistoryManager.getHistory(this);
-            int totalDetections = history.size();
-            if (totalDetections > 0) {
-                badgeNumber.setText(String.valueOf(totalDetections));
-            } else {
-                badgeNumber.setText("1");
-            }
+            new Thread(() -> {
+                ArrayList<org.json.JSONObject> history = DetectionHistoryManager.getHistory(this);
+                int totalDetections = history.size();
+                runOnUiThread(() -> {
+                    if (totalDetections > 0) {
+                        badgeNumber.setText(String.valueOf(totalDetections));
+                    } else {
+                        badgeNumber.setText("1");
+                    }
+                });
+            }).start();
 
             // Set identify view text (could include timestamp or ID)
             String identifyText = intent.getStringExtra("identifyView");

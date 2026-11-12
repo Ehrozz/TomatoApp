@@ -158,20 +158,23 @@ public class DetectionHistoryActivity extends BaseBottomNavActivity {
     }
 
     private void loadHistory() {
-        historyData = DetectionHistoryManager.getHistory(this);
+        new Thread(() -> {
+            ArrayList<JSONObject> loadedHistory = DetectionHistoryManager.getHistory(this);
+            runOnUiThread(() -> {
+                historyData = loadedHistory;
 
-        // Reverse to show newest first
-        if (historyData != null && !historyData.isEmpty()) {
-            Collections.reverse(historyData);
-        }
+                if (historyData != null && !historyData.isEmpty()) {
+                    Collections.reverse(historyData);
+                }
 
-        // Update count badge
-        int count = historyData != null ? historyData.size() : 0;
-        if (scanCountText != null) {
-            scanCountText.setText(count + (count == 1 ? " record" : " records"));
-        }
+                int count = historyData != null ? historyData.size() : 0;
+                if (scanCountText != null) {
+                    scanCountText.setText(count + (count == 1 ? " record" : " records"));
+                }
 
-        applyFilter();
+                applyFilter();
+            });
+        }).start();
     }
 
     // RecyclerView Adapter
@@ -414,24 +417,20 @@ public class DetectionHistoryActivity extends BaseBottomNavActivity {
             return;
         }
 
-        try {
-            // Get the entry to delete
-            JSONObject entryToDelete = historyData.get(position);
-            
-            // Remove from local list
-            historyData.remove(position);
-            
-            // Update history in SharedPreferences
-            DetectionHistoryManager.removeDetection(this, entryToDelete);
-            
-            // Refresh the list
-            loadHistory();
-            
-            Toast.makeText(this, "Detection deleted", Toast.LENGTH_SHORT).show();
-        } catch (Exception e) {
-            Log.e(TAG, "Error deleting detection", e);
-            Toast.makeText(this, "Failed to delete detection", Toast.LENGTH_SHORT).show();
-        }
+        JSONObject entryToDelete = historyData.get(position);
+        new Thread(() -> {
+            try {
+                DetectionHistoryManager.removeDetection(this, entryToDelete);
+                runOnUiThread(() -> {
+                    loadHistory();
+                    Toast.makeText(this, "Detection deleted", Toast.LENGTH_SHORT).show();
+                });
+            } catch (Exception e) {
+                Log.e(TAG, "Error deleting detection", e);
+                runOnUiThread(() ->
+                        Toast.makeText(this, "Failed to delete detection", Toast.LENGTH_SHORT).show());
+            }
+        }).start();
     }
 
     @Override

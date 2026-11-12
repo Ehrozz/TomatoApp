@@ -257,14 +257,14 @@ public class LocalDataManager {
         executorService.execute(() -> {
             try {
                 // First, migrate from SharedPreferences
-                ArrayList<JSONObject> historyList = DetectionHistoryManager.getHistory(context);
+                ArrayList<JSONObject> historyList = DetectionHistoryManager.getPrefsHistory(context);
                 for (JSONObject entry : historyList) {
                     try {
                         String id = entry.optString("imageUri", "") + "_" + entry.optLong("timestamp", 0);
                         DetectionHistoryEntity entity = new DetectionHistoryEntity(
                                 id,
                                 userId,
-                                null, // programId
+                                entry.optString("programId", ""),
                                 entry.optString("imageUri", ""),
                                 entry.optString("disease", ""),
                                 entry.optString("accuracy", ""),
@@ -520,6 +520,7 @@ public class LocalDataManager {
                 obj.put("timestamp", det.timestamp);
                 obj.put("cultivar", det.cultivar);
                 obj.put("phase", det.phase);
+                obj.put("programId", det.programId);
                 detectionsArray.put(obj);
             }
             exportData.put("detectionHistory", detectionsArray);
@@ -597,7 +598,7 @@ public class LocalDataManager {
                     DetectionHistoryEntity entity = new DetectionHistoryEntity(
                             obj.optString("id", ""),
                             userId,
-                            null,
+                            obj.optString("programId", null),
                             obj.optString("imageUri", null),
                             obj.optString("disease", null),
                             obj.optString("accuracy", null),

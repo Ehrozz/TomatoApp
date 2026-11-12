@@ -223,29 +223,34 @@ public class PlantMonitoringActivity extends BaseBottomNavActivity {
         // If user scanned a disease (CameraInterface -> DetectionResults) and comes back here,
         // show the latest scan image for this program in the white card.
         if (capturedImageUri == null && programId != null && !programId.isEmpty()) {
-            try {
-                java.util.ArrayList<org.json.JSONObject> history =
-                        com.android.tomatoapp.detection.data.DetectionHistoryManager.getHistory(this);
-                long latestTs = -1L;
-                String latestUri = null;
-                for (org.json.JSONObject entry : history) {
-                    String entryProgramId = entry.optString("programId", "");
-                    if (!programId.equals(entryProgramId)) continue;
-                    String wantedDate = selectedDate != null ? selectedDate : com.android.tomatoapp.common.utils.AppClock.today(this).toString();
-                    if (!wantedDate.equals(com.android.tomatoapp.detection.data.DetectionHistoryManager.getScanDate(this, entry.optString("imageUri", "")))) continue;
-                    long ts = entry.optLong("timestamp", 0L);
-                    if (ts > latestTs) {
-                        latestTs = ts;
-                        latestUri = entry.optString("imageUri", null);
+            new Thread(() -> {
+                try {
+                    java.util.ArrayList<org.json.JSONObject> history =
+                            com.android.tomatoapp.detection.data.DetectionHistoryManager.getHistory(this);
+                    long latestTs = -1L;
+                    String latestUri = null;
+                    for (org.json.JSONObject entry : history) {
+                        String entryProgramId = entry.optString("programId", "");
+                        if (!programId.equals(entryProgramId)) continue;
+                        String wantedDate = selectedDate != null ? selectedDate : com.android.tomatoapp.common.utils.AppClock.today(this).toString();
+                        if (!wantedDate.equals(com.android.tomatoapp.detection.data.DetectionHistoryManager.getScanDate(this, entry.optString("imageUri", "")))) continue;
+                        long ts = entry.optLong("timestamp", 0L);
+                        if (ts > latestTs) {
+                            latestTs = ts;
+                            latestUri = entry.optString("imageUri", null);
+                        }
                     }
+                    String resultUri = latestUri;
+                    if (resultUri != null && !resultUri.isEmpty()) {
+                        runOnUiThread(() -> {
+                            capturedImageUri = Uri.parse(resultUri);
+                            displayCapturedImage(capturedImageUri);
+                        });
+                    }
+                } catch (Exception ignored) {
+                    // keep silent; monitoring can still be used without an image
                 }
-                if (latestUri != null && !latestUri.isEmpty()) {
-                    capturedImageUri = Uri.parse(latestUri);
-                    displayCapturedImage(capturedImageUri);
-                }
-            } catch (Exception ignored) {
-                // keep silent; monitoring can still be used without an image
-            }
+            }).start();
         }
     }
     

@@ -1,7 +1,6 @@
 package com.android.tomatoapp.analytics.data;
 
 import android.content.Context;
-import android.os.Environment;
 
 import com.android.tomatoapp.core.database.AppDatabase;
 import com.android.tomatoapp.weather.data.WeatherData;
@@ -49,12 +48,7 @@ public class ResearchExporter {
             String timestamp = exportSdf.format(new Date());
             String fileName = "Tomato_Research_Data_" + timestamp + ".csv";
             
-            File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-            if (!downloadsDir.exists()) {
-                downloadsDir.mkdirs();
-            }
-            
-            File csvFile = new File(downloadsDir, fileName);
+            File csvFile = ExportFileHelper.createExportFile(context, fileName);
             FileWriter writer = new FileWriter(csvFile);
             
             // Write CSV header with proper formatting
@@ -100,6 +94,7 @@ public class ResearchExporter {
             
             writer.flush();
             writer.close();
+            ExportFileHelper.publishToDownloads(context, csvFile);
             
             return csvFile.getAbsolutePath();
         } catch (IOException e) {
@@ -124,12 +119,7 @@ public class ResearchExporter {
             String timestamp = exportSdf.format(new Date());
             String fileName = "Tomato_Research_Data_With_Weather_" + timestamp + ".csv";
             
-            File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-            if (!downloadsDir.exists()) {
-                downloadsDir.mkdirs();
-            }
-            
-            File csvFile = new File(downloadsDir, fileName);
+            File csvFile = ExportFileHelper.createExportFile(context, fileName);
             FileWriter writer = new FileWriter(csvFile);
             
             // Write CSV header with weather columns
@@ -178,7 +168,43 @@ public class ResearchExporter {
             
             writer.flush();
             writer.close();
+            ExportFileHelper.publishToDownloads(context, csvFile);
             
+            return csvFile.getAbsolutePath();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    /**
+     * Export disease scan records (one row per scan) to CSV.
+     * @return File path of created CSV, or null if failed / nothing to export
+     */
+    public static String exportDiseaseToCsv(Context context, List<DiseaseExportGroup> groups) {
+        if (context == null || groups == null || groups.isEmpty()) {
+            return null;
+        }
+        try {
+            String fileName = "Tomato_Disease_Records_" + exportSdf.format(new Date()) + ".csv";
+            File csvFile = ExportFileHelper.createExportFile(context, fileName);
+            FileWriter writer = new FileWriter(csvFile);
+            writer.append("Program/Cultivar,Start Date,Area (ha),Scan Date,Phase,Disease,Status,Confidence\n");
+            for (DiseaseExportGroup g : groups) {
+                for (DiseaseExportGroup.Row r : g.rows) {
+                    writer.append(escapeCsv(g.title)).append(",");
+                    writer.append(escapeCsv(g.startDate)).append(",");
+                    writer.append(String.format(Locale.US, "%.2f", g.area)).append(",");
+                    writer.append(escapeCsv(r.date)).append(",");
+                    writer.append(String.valueOf(r.phase)).append(",");
+                    writer.append(escapeCsv(r.disease)).append(",");
+                    writer.append(escapeCsv(r.status)).append(",");
+                    writer.append(escapeCsv(r.confidence)).append("\n");
+                }
+            }
+            writer.flush();
+            writer.close();
+            ExportFileHelper.publishToDownloads(context, csvFile);
             return csvFile.getAbsolutePath();
         } catch (IOException e) {
             e.printStackTrace();

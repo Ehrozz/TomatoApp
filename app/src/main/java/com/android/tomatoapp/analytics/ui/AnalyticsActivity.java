@@ -1,8 +1,10 @@
 package com.android.tomatoapp.analytics.ui;
 
 import android.content.Intent;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.AdapterView;
@@ -23,9 +25,13 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.analytics.data.AnalyticsManager;
 import com.android.tomatoapp.analytics.data.AnalyticsPdfExporter;
+import com.android.tomatoapp.analytics.data.DiseaseExportGroup;
 import com.android.tomatoapp.analytics.data.ResearchExporter;
 import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
+import com.android.tomatoapp.detection.data.DetectionHistoryManager;
+import com.android.tomatoapp.detection.ui.DetectionResults;
 import com.android.tomatoapp.financial.ui.CurrentExpensesActivity;
+import com.android.tomatoapp.settings.data.SettingsPreferences;
 import com.android.tomatoapp.workprogram.data.WorkProgramDataHelper;
 import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
 import com.android.tomatoapp.workprogram.data.WorkProgramRepository;
@@ -41,13 +47,20 @@ import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
+import com.google.android.material.button.MaterialButtonToggleGroup;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+
+import org.json.JSONObject;
 
 /**
  * Analytics screen showing cultivar productivity in table and chart form.
@@ -63,6 +76,7 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
     private ProgressBar progressBar;
     private TextView emptyText;
     private final Set<String> expandedProgramIds = new HashSet<>();
+    private final Set<String> expandedDiseaseCards = new HashSet<>();
 
     private WorkProgramRepository repository;
     private AnalyticsManager analyticsManager;
@@ -73,6 +87,21 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
     private final List<AnalyticsManager.CultivarSummary> displayedSummaries = new ArrayList<>();
     private TextView tvNetProfitStat;
     private TextView tvCompletionStat;
+    private boolean diseaseTab = false;
+    private List<JSONObject> diseaseHistory = new ArrayList<>();
+    private List<DiseaseExportGroup> currentDiseaseGroups = new ArrayList<>();
+    private MaterialButtonToggleGroup tabGroup;
+    private TextView headerTitle;
+    private TextView headerSubtitle;
+    private LinearLayout diseaseSection;
+    private LinearLayout diseaseListContainer;
+    private View diseaseEmptyCard;
+    private TextView tvScanTotal;
+    private TextView tvScanHealthy;
+    private TextView tvScanInfected;
+    private LinearLayout exportRow;
+    private View financialResults;
+    private View statsGrid;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -113,18 +142,50 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
         emptyText = findViewById(R.id.emptyText);
         tvNetProfitStat = findViewById(R.id.tvNetProfitStat);
         tvCompletionStat = findViewById(R.id.tvCompletionStat);
+        tabGroup = findViewById(R.id.tabGroup);
+        headerTitle = findViewById(R.id.headerTitle);
+        headerSubtitle = findViewById(R.id.headerSubtitle);
+        diseaseSection = findViewById(R.id.diseaseSection);
+        diseaseListContainer = findViewById(R.id.diseaseListContainer);
+        diseaseEmptyCard = findViewById(R.id.diseaseEmptyCard);
+        tvScanTotal = findViewById(R.id.tvScanTotal);
+        tvScanHealthy = findViewById(R.id.tvScanHealthy);
+        tvScanInfected = findViewById(R.id.tvScanInfected);
+        exportRow = findViewById(R.id.exportRow);
+        financialResults = findViewById(R.id.financialResults);
+        statsGrid = findViewById(R.id.statsGrid);
         Button btnExportPdf = findViewById(R.id.btnExportPdf);
         Button btnExportCsv = findViewById(R.id.btnExportCsv);
 
         setupViewModeSelector();
+        tabGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (isChecked) {
+                diseaseTab = checkedId == R.id.btnTabDisease;
+                applyTab();
+            }
+        });
 
         if (btnExportPdf != null) {
-            btnExportPdf.setOnClickListener(v -> showExportDialog());
+            btnExportPdf.setOnClickListener(v -> {
+                if (diseaseTab) {
+                    exportDiseasePdf();
+                } else {
+                    showExportDialog();
+                }
+            });
         }
         
         if (btnExportCsv != null) {
-            btnExportCsv.setOnClickListener(v -> exportToCsv());
+            btnExportCsv.setOnClickListener(v -> {
+                if (diseaseTab) {
+                    exportDiseaseCsv();
+                } else {
+                    exportToCsv();
+                }
+            });
         }
+        ((com.google.android.material.button.MaterialButton) findViewById(R.id.btnTabFinancial)).setChecked(true);
+        applyTab();
     }
 
     private void setupViewModeSelector() {
@@ -159,6 +220,10 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
                 if (view instanceof TextView) {
                     ((TextView) view).setTextColor(android.graphics.Color.BLACK);
                 }
+                if (diseaseTab) {
+                    renderDiseaseView();
+                    return;
+                }
                 updateViewMode(position == 0 ? "table" : "chart");
             }
 
@@ -170,7 +235,31 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        com.google.android.material.button.MaterialButton matchingTab =
+                findViewById(diseaseTab ? R.id.btnTabDisease : R.id.btnTabFinancial);
+        if (matchingTab != null) matchingTab.setChecked(true);
+        applyTab();
         loadData();
+    }
+
+    private void applyTab() {
+        if (diseaseTab) {
+            if (statsGrid != null) statsGrid.setVisibility(View.GONE);
+            if (exportRow != null) exportRow.setVisibility(View.VISIBLE);
+            if (financialResults != null) financialResults.setVisibility(View.GONE);
+            if (diseaseSection != null) diseaseSection.setVisibility(View.VISIBLE);
+            if (viewModeSpinner != null) viewModeSpinner.setVisibility(View.VISIBLE);
+            if (headerTitle != null) headerTitle.setText("Disease Analytics");
+            if (headerSubtitle != null) headerSubtitle.setText("Scan results by work program");
+            loadDiseaseAnalytics();
+        } else {
+            if (statsGrid != null) statsGrid.setVisibility(View.VISIBLE);
+            if (exportRow != null) exportRow.setVisibility(View.VISIBLE);
+            if (financialResults != null) financialResults.setVisibility(View.VISIBLE);
+            if (diseaseSection != null) diseaseSection.setVisibility(View.GONE);
+            if (headerTitle != null) headerTitle.setText("Financial Analytics");
+            if (headerSubtitle != null) headerSubtitle.setText("Track expenses and profitability by saved work program");
+        }
     }
 
     private void loadData() {
@@ -204,6 +293,7 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
                     chartsContainer.setVisibility(View.GONE);
                 }
                 barChart.setVisibility(View.GONE);
+                if (diseaseTab) loadDiseaseAnalytics();
             } else {
                 if (emptyStateCard != null) {
                     emptyStateCard.setVisibility(View.GONE);
@@ -322,6 +412,7 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
         updateTopStatsFromPrograms(displayedPrograms);
         updateChart();
         updateCompletionChart();
+        if (diseaseTab) loadDiseaseAnalytics();
     }
 
     private String currentSeasonFilter = null;
@@ -364,6 +455,7 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
         updateTopStatsFromPrograms(displayedPrograms);
         updateChart();
         updateCompletionChart();
+        if (diseaseTab) loadDiseaseAnalytics();
     }
 
     private void updateTopStatsFromPrograms(List<WorkProgramEntity> programs) {
@@ -394,6 +486,395 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
         double avgCompletion = weightedCompletionArea > 0 ? weightedCompletionSum / weightedCompletionArea : 0.0;
         tvNetProfitStat.setText(String.format(Locale.getDefault(), "₱%.1fk", totalProfit / 1000.0));
         tvCompletionStat.setText(String.format(Locale.getDefault(), "%.0f%%", avgCompletion));
+    }
+
+    private void loadDiseaseAnalytics() {
+        new Thread(() -> {
+            try {
+                diseaseHistory = DetectionHistoryManager.getHistory(this);
+            } catch (Exception e) {
+                Log.e("AnalyticsActivity", "Error loading disease analytics", e);
+                diseaseHistory = new ArrayList<>();
+            }
+            runOnUiThread(this::renderDiseaseView);
+        }).start();
+    }
+
+    private void renderDiseaseView() {
+        Set<String> historyIds = new HashSet<>();
+        StringBuilder historyIdsDebugBuilder = new StringBuilder();
+        for (JSONObject entry : diseaseHistory) {
+            String programId = entry.optString("programId", "");
+            if (historyIds.add(programId)) {
+                if (historyIdsDebugBuilder.length() > 0) historyIdsDebugBuilder.append(",");
+                historyIdsDebugBuilder.append(programId);
+            }
+        }
+        String historyIdsDebug = historyIdsDebugBuilder.toString();
+        StringBuilder displayedIdsDebugBuilder = new StringBuilder();
+        for (WorkProgramEntity program : displayedPrograms) {
+            if (displayedIdsDebugBuilder.length() > 0) displayedIdsDebugBuilder.append(",");
+            displayedIdsDebugBuilder.append(program.id);
+        }
+        String displayedIdsDebug = displayedIdsDebugBuilder.toString();
+        Log.d("DiseaseTab", "history=" + diseaseHistory.size() + " programs=" + displayedPrograms.size() + " historyIds=" + historyIdsDebug + " displayedIds=" + displayedIdsDebug);
+        if (!diseaseTab) return;
+
+        Map<String, List<JSONObject>> entriesByProgram = new HashMap<>();
+        List<JSONObject> unlinked = new ArrayList<>();
+        for (JSONObject entry : diseaseHistory) {
+            String programId = entry.optString("programId", "");
+            boolean displayed = false;
+            for (WorkProgramEntity program : displayedPrograms) {
+                if (program.id.equals(programId)) {
+                    displayed = true;
+                    break;
+                }
+            }
+            if (displayed) {
+                if (!entriesByProgram.containsKey(programId)) {
+                    entriesByProgram.put(programId, new ArrayList<>());
+                }
+                entriesByProgram.get(programId).add(entry);
+            } else if (currentCultivarFilter == null && currentSeasonFilter == null) {
+                unlinked.add(entry);
+            }
+        }
+
+        int total = 0;
+        int healthy = 0;
+        for (List<JSONObject> entries : entriesByProgram.values()) {
+            total += entries.size();
+            for (JSONObject entry : entries) {
+                if (entry.optString("disease", "").toLowerCase(Locale.US).contains("healthy")) {
+                    healthy++;
+                }
+            }
+        }
+        total += unlinked.size();
+        for (JSONObject entry : unlinked) {
+            if (entry.optString("disease", "").toLowerCase(Locale.US).contains("healthy")) {
+                healthy++;
+            }
+        }
+        int infected = total - healthy;
+        tvScanTotal.setText(String.valueOf(total));
+        tvScanHealthy.setText(String.format(Locale.US, "%d%%", total == 0 ? 0 : Math.round(healthy * 100f / total)));
+        tvScanInfected.setText(String.format(Locale.US, "%d%%", total == 0 ? 0 : Math.round(infected * 100f / total)));
+
+        currentDiseaseGroups = new ArrayList<>();
+        if (displayedPrograms.isEmpty() && unlinked.isEmpty()) {
+            diseaseEmptyCard.setVisibility(View.VISIBLE);
+            diseaseListContainer.setVisibility(View.GONE);
+            diseaseListContainer.removeAllViews();
+            return;
+        }
+
+        diseaseEmptyCard.setVisibility(View.GONE);
+        diseaseListContainer.setVisibility(View.VISIBLE);
+        diseaseListContainer.removeAllViews();
+        boolean tableMode = viewModeSpinner.getSelectedItemPosition() == 0;
+        for (WorkProgramEntity program : displayedPrograms) {
+            List<JSONObject> entries = entriesByProgram.get(program.id);
+            if (entries == null) entries = new ArrayList<>();
+            DiseaseExportGroup group = new DiseaseExportGroup(
+                    program.cultivarName,
+                    program.startingDate != null ? program.startingDate : "N/A",
+                    program.areaSize);
+            addDiseaseExportRows(group, entries);
+            currentDiseaseGroups.add(group);
+            diseaseListContainer.addView(buildDiseaseCard(
+                    program.id,
+                    program.cultivarName,
+                    String.format(Locale.getDefault(), "Start: %s | Area: %.2f ha",
+                            program.startingDate != null ? program.startingDate : "N/A", program.areaSize),
+                    entries,
+                    tableMode));
+        }
+        if (!unlinked.isEmpty()) {
+            DiseaseExportGroup group = new DiseaseExportGroup("Unlinked scans", "N/A", 0);
+            addDiseaseExportRows(group, unlinked);
+            currentDiseaseGroups.add(group);
+            diseaseListContainer.addView(buildDiseaseCard(
+                    "unlinked",
+                    "Unlinked scans",
+                    "Scans not linked to a displayed program",
+                    unlinked,
+                    tableMode));
+        }
+    }
+
+    private void addDiseaseExportRows(DiseaseExportGroup group, List<JSONObject> entries) {
+        List<JSONObject> sortedEntries = new ArrayList<>(entries);
+        Collections.sort(sortedEntries, (a, b) -> scanDate(b).compareTo(scanDate(a)));
+        for (JSONObject entry : sortedEntries) {
+            String disease = entry.optString("disease", "Unknown");
+            String status = disease.toLowerCase(Locale.US).contains("healthy") ? "Healthy" : "Infected";
+            group.rows.add(new DiseaseExportGroup.Row(
+                    displayScanDate(scanDate(entry)),
+                    entry.optInt("phase", 0),
+                    disease,
+                    status,
+                    entry.optString("accuracy", "0%")));
+        }
+    }
+
+    private View buildDiseaseCard(String key, String title, String subtitle, List<JSONObject> entries, boolean tableMode) {
+        com.google.android.material.card.MaterialCardView card =
+                new com.google.android.material.card.MaterialCardView(this);
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        cardParams.bottomMargin = dp(12);
+        card.setLayoutParams(cardParams);
+        card.setRadius(dp(14));
+        card.setCardBackgroundColor(Color.WHITE);
+        card.setContentPadding(dp(16), dp(16), dp(16), dp(16));
+
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        LinearLayout headerText = new LinearLayout(this);
+        headerText.setOrientation(LinearLayout.VERTICAL);
+        headerText.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        headerText.addView(diseaseText(title, 16, R.color.text_primary, true));
+        headerText.addView(diseaseText(subtitle, 12, R.color.text_secondary, false));
+        String scanSummary = "No scans yet";
+        if (!entries.isEmpty()) {
+            int healthy = 0;
+            double confidenceTotal = 0;
+            int confidenceCount = 0;
+            Map<String, Integer> diseaseCounts = new HashMap<>();
+            for (JSONObject entry : entries) {
+                String disease = entry.optString("disease", "Unknown");
+                if (disease.toLowerCase(Locale.US).contains("healthy")) healthy++;
+                diseaseCounts.put(disease, diseaseCounts.containsKey(disease) ? diseaseCounts.get(disease) + 1 : 1);
+                Double confidence = parseConfidence(entry.optString("accuracy", ""));
+                if (confidence != null) {
+                    confidenceTotal += confidence;
+                    confidenceCount++;
+                }
+            }
+            String topDisease = "Unknown";
+            int topCount = 0;
+            for (Map.Entry<String, Integer> disease : diseaseCounts.entrySet()) {
+                if (disease.getValue() > topCount) {
+                    topDisease = disease.getKey();
+                    topCount = disease.getValue();
+                }
+            }
+            List<JSONObject> sortedEntries = new ArrayList<>(entries);
+            Collections.sort(sortedEntries, (a, b) -> scanDate(b).compareTo(scanDate(a)));
+            double averageConfidence = confidenceCount == 0 ? 0 : confidenceTotal / confidenceCount;
+            scanSummary = String.format(Locale.getDefault(),
+                    "Scans: %d (%d healthy, %d infected) · Avg confidence: %.0f%% · Top: %s · Last scan: %s",
+                    entries.size(), healthy, entries.size() - healthy, averageConfidence, topDisease,
+                    displayScanDate(scanDate(sortedEntries.get(0))));
+        }
+        headerText.addView(diseaseText(scanSummary, 12, R.color.sidebar_dark_green, true));
+        ImageView arrow = new ImageView(this);
+        arrow.setImageResource(android.R.drawable.arrow_down_float);
+        arrow.setRotation(expandedDiseaseCards.contains(key) ? 180f : 0f);
+        header.addView(headerText);
+        header.addView(arrow, new LinearLayout.LayoutParams(dp(24), dp(24)));
+        content.addView(header);
+
+        LinearLayout body = new LinearLayout(this);
+        body.setOrientation(LinearLayout.VERTICAL);
+        body.setVisibility(expandedDiseaseCards.contains(key) ? View.VISIBLE : View.GONE);
+
+        if (entries.isEmpty()) {
+            body.addView(diseaseText("No scans yet", 12, R.color.sidebar_dark_green, true));
+        } else {
+            int healthy = 0;
+            double confidenceTotal = 0;
+            int confidenceCount = 0;
+            Map<String, Integer> diseaseCounts = new HashMap<>();
+            for (JSONObject entry : entries) {
+                String disease = entry.optString("disease", "Unknown");
+                if (disease.toLowerCase(Locale.US).contains("healthy")) healthy++;
+                diseaseCounts.put(disease, diseaseCounts.containsKey(disease) ? diseaseCounts.get(disease) + 1 : 1);
+                Double confidence = parseConfidence(entry.optString("accuracy", ""));
+                if (confidence != null) {
+                    confidenceTotal += confidence;
+                    confidenceCount++;
+                }
+            }
+            String topDisease = "Unknown";
+            int topCount = 0;
+            for (Map.Entry<String, Integer> disease : diseaseCounts.entrySet()) {
+                if (disease.getValue() > topCount) {
+                    topDisease = disease.getKey();
+                    topCount = disease.getValue();
+                }
+            }
+            List<JSONObject> sortedEntries = new ArrayList<>(entries);
+            Collections.sort(sortedEntries, (a, b) -> scanDate(b).compareTo(scanDate(a)));
+            double averageConfidence = confidenceCount == 0 ? 0 : confidenceTotal / confidenceCount;
+            if (tableMode) {
+                body.addView(diseaseTableHeader());
+                for (int i = 0; i < sortedEntries.size(); i++) {
+                    body.addView(diseaseScanRow(sortedEntries.get(i)));
+                    if (i < sortedEntries.size() - 1) {
+                        View divider = new View(this);
+                        divider.setLayoutParams(new LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.MATCH_PARENT, dp(1)));
+                        divider.setBackgroundColor(getResources().getColor(R.color.divider, null));
+                        body.addView(divider);
+                    }
+                }
+            } else {
+                body.addView(diseaseChart(sortedEntries));
+            }
+        }
+        content.addView(body);
+        header.setOnClickListener(v -> {
+            if (expandedDiseaseCards.contains(key)) {
+                expandedDiseaseCards.remove(key);
+                body.setVisibility(View.GONE);
+                arrow.setRotation(0f);
+            } else {
+                expandedDiseaseCards.add(key);
+                body.setVisibility(View.VISIBLE);
+                arrow.setRotation(180f);
+            }
+        });
+        card.addView(content);
+        return card;
+    }
+
+    private TextView diseaseText(String text, int size, int color, boolean bold) {
+        TextView view = new TextView(this);
+        view.setText(text);
+        view.setTextSize(size);
+        view.setTextColor((color >>> 24) == 0xFF ? color : getResources().getColor(color, null));
+        if (bold) view.setTypeface(null, android.graphics.Typeface.BOLD);
+        view.setPadding(0, 0, 0, dp(6));
+        return view;
+    }
+
+    private View diseaseTableHeader() {
+        LinearLayout row = diseaseRow();
+        row.addView(diseaseCell("Date", 3f, R.color.text_secondary, true));
+        row.addView(diseaseCell("Phase", 1.5f, R.color.text_secondary, true));
+        row.addView(diseaseCell("Disease", 4f, R.color.text_secondary, true));
+        row.addView(diseaseCell("Confidence", 2.5f, R.color.text_secondary, true));
+        return row;
+    }
+
+    private View diseaseScanRow(JSONObject entry) {
+        LinearLayout row = diseaseRow();
+        boolean healthy = entry.optString("disease", "").toLowerCase(Locale.US).contains("healthy");
+        int diseaseColor = healthy ? R.color.fresh_green : R.color.tomato_red;
+        row.addView(diseaseCell(displayScanDate(scanDate(entry)), 3f, R.color.text_primary, false));
+        row.addView(diseaseCell(String.valueOf(entry.optInt("phase", 0)), 1.5f, R.color.text_primary, false));
+        row.addView(diseaseCell(entry.optString("disease", "Unknown"), 4f, diseaseColor, false));
+        row.addView(diseaseCell(entry.optString("accuracy", "0%"), 2.5f, R.color.text_primary, false));
+        row.setOnClickListener(v -> openDetection(entry));
+        return row;
+    }
+
+    private LinearLayout diseaseRow() {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        row.setPadding(0, dp(6), 0, dp(6));
+        return row;
+    }
+
+    private TextView diseaseCell(String text, float weight, int color, boolean bold) {
+        TextView cell = diseaseText(text, 12, color, bold);
+        cell.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, weight));
+        return cell;
+    }
+
+    private BarChart diseaseChart(List<JSONObject> entries) {
+        BarChart chart = new BarChart(this);
+        chart.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(200)));
+        Map<String, Integer> counts = new HashMap<>();
+        for (JSONObject entry : entries) {
+            String disease = entry.optString("disease", "Unknown");
+            counts.put(disease, counts.containsKey(disease) ? counts.get(disease) + 1 : 1);
+        }
+        List<Map.Entry<String, Integer>> sorted = new ArrayList<>(counts.entrySet());
+        Collections.sort(sorted, (a, b) -> Integer.compare(b.getValue(), a.getValue()));
+        List<BarEntry> bars = new ArrayList<>();
+        List<String> labels = new ArrayList<>();
+        for (int i = 0; i < sorted.size(); i++) {
+            bars.add(new BarEntry(i, sorted.get(i).getValue()));
+            labels.add(sorted.get(i).getKey());
+        }
+        BarDataSet dataSet = new BarDataSet(bars, "Scans");
+        dataSet.setColors(getResources().getColor(R.color.sidebar_dark_green, null),
+                getResources().getColor(R.color.tomato_red, null),
+                getResources().getColor(R.color.fresh_green, null),
+                getResources().getColor(R.color.scan_blue, null));
+        dataSet.setValueTextSize(12f);
+        chart.setData(new BarData(dataSet));
+        chart.getXAxis().setValueFormatter(new IndexAxisValueFormatter(labels));
+        chart.getXAxis().setGranularity(1f);
+        chart.getXAxis().setGranularityEnabled(true);
+        chart.getXAxis().setPosition(XAxis.XAxisPosition.BOTTOM);
+        chart.getXAxis().setDrawGridLines(false);
+        chart.getAxisLeft().setDrawGridLines(false);
+        chart.getAxisRight().setEnabled(false);
+        chart.getDescription().setEnabled(false);
+        chart.getLegend().setEnabled(false);
+        chart.invalidate();
+        return chart;
+    }
+
+    private void openDetection(JSONObject entry) {
+        Intent intent = new Intent(this, DetectionResults.class);
+        intent.putExtra("title", entry.optString("disease", "Unknown"));
+        intent.putExtra("imageUri", entry.optString("imageUri", ""));
+        intent.putExtra("description", entry.optString("description", ""));
+        intent.putExtra("symptoms", entry.optString("symptoms", ""));
+        intent.putExtra("cause", entry.optString("cause", ""));
+        intent.putExtra("cure", entry.optString("cure", ""));
+        intent.putExtra("prevention", entry.optString("prevention", ""));
+        intent.putExtra("pestTitle", entry.optString("pestTitle", ""));
+        intent.putExtra("pestDescription", entry.optString("pestDescription", ""));
+        intent.putExtra("pestImageUri", entry.optString("pestImageUri", ""));
+        intent.putExtra("accuracy", entry.optString("accuracy", "0%"));
+        intent.putExtra("topPredictions", entry.optString("topPredictions", ""));
+        intent.putExtra("confidenceWarning", entry.optString("confidenceWarning", ""));
+        intent.putExtra("detectionCultivar", entry.optString("cultivar", getString(R.string.detection_cultivar_unspecified)));
+        intent.putExtra("detectionPhase", entry.optInt("phase", 0));
+        startActivity(intent);
+    }
+
+    private String scanDate(JSONObject entry) {
+        String date = DetectionHistoryManager.getScanDate(this, entry.optString("imageUri", ""));
+        if (date == null || date.isEmpty()) {
+            date = new SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                    .format(new Date(entry.optLong("timestamp", 0)));
+        }
+        return date;
+    }
+
+    private String displayScanDate(String date) {
+        try {
+            Date parsed = SettingsPreferences.getDateParseFormat().parse(date);
+            return parsed == null ? date : SettingsPreferences.getDateFormatInstance(this).format(parsed);
+        } catch (Exception e) {
+            return date;
+        }
+    }
+
+    private Double parseConfidence(String accuracy) {
+        try {
+            return Double.parseDouble(accuracy.replace("%", "").trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
     private void updateViewMode(String mode) {
@@ -846,6 +1327,62 @@ public class AnalyticsActivity extends BaseBottomNavActivity {
                     Toast.makeText(this, "Data exported to Downloads: " + filePath, Toast.LENGTH_LONG).show();
                 } else {
                     Toast.makeText(this, "Failed to export data", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }).start();
+    }
+
+    private void exportDiseaseCsv() {
+        boolean hasRows = false;
+        for (DiseaseExportGroup group : currentDiseaseGroups) {
+            if (!group.rows.isEmpty()) {
+                hasRows = true;
+                break;
+            }
+        }
+        if (!hasRows) {
+            Toast.makeText(this, "No scan records to export", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        List<DiseaseExportGroup> groups = new ArrayList<>(currentDiseaseGroups);
+        progressBar.setVisibility(View.VISIBLE);
+        new Thread(() -> {
+            String filePath = ResearchExporter.exportDiseaseToCsv(this, groups);
+            runOnUiThread(() -> {
+                progressBar.setVisibility(View.GONE);
+                if (filePath != null) {
+                    Toast.makeText(this, "Data exported to Downloads: " + filePath, Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(this, "Failed to export data", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }).start();
+    }
+
+    private void exportDiseasePdf() {
+        boolean hasRows = false;
+        for (DiseaseExportGroup group : currentDiseaseGroups) {
+            if (!group.rows.isEmpty()) {
+                hasRows = true;
+                break;
+            }
+        }
+        if (!hasRows) {
+            Toast.makeText(this, "No scan records to export", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        List<DiseaseExportGroup> groups = new ArrayList<>(currentDiseaseGroups);
+        progressBar.setVisibility(View.VISIBLE);
+        new Thread(() -> {
+            String filePath = AnalyticsPdfExporter.exportDiseaseToPdf(this, groups);
+            runOnUiThread(() -> {
+                progressBar.setVisibility(View.GONE);
+                if (filePath != null) {
+                    Toast.makeText(this, "PDF exported to Downloads: " + filePath, Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(this, "Failed to export PDF", Toast.LENGTH_SHORT).show();
                 }
             });
         }).start();

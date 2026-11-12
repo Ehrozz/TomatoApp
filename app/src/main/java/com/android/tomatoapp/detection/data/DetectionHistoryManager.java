@@ -14,6 +14,7 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.android.tomatoapp.core.database.AppDatabase;
 import com.android.tomatoapp.core.network.LocalDataManager;
 
 public class DetectionHistoryManager {
@@ -157,6 +158,7 @@ public class DetectionHistoryManager {
                 if (!historyList.isEmpty()) {
                     return historyList;
                 }
+
             } catch (Exception e) {
                 Log.e(TAG, "Error retrieving detection history from local database", e);
             }
@@ -177,12 +179,34 @@ public class DetectionHistoryManager {
         return historyList;
     }
 
+    public static ArrayList<JSONObject> getPrefsHistory(Context context) {
+        ArrayList<JSONObject> historyList = new ArrayList<>();
+        SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        String historyJson = prefs.getString(KEY_HISTORY, "[]");
+
+        try {
+            JSONArray historyArray = new JSONArray(historyJson);
+            for (int i = 0; i < historyArray.length(); i++) {
+                historyList.add(historyArray.getJSONObject(i));
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Error parsing detection history JSON", e);
+        }
+        return historyList;
+    }
+
     public static void clearHistory(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         prefs.edit().remove(KEY_HISTORY).apply();
     }
 
     public static void removeDetection(Context context, JSONObject entryToRemove) {
+        try {
+            AppDatabase.getInstance(context).detectionHistoryDao().deleteByImageAndTimestamp(entryToRemove.optString("imageUri", ""), entryToRemove.optLong("timestamp", 0));
+        } catch (Exception e) {
+            Log.e(TAG, "Error removing detection from local database", e);
+        }
+
         SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         String historyJson = prefs.getString(KEY_HISTORY, "[]");
 
