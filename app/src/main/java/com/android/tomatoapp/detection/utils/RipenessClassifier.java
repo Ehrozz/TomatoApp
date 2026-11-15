@@ -41,10 +41,10 @@ public final class RipenessClassifier {
         if (w <= 0 || h <= 0) return new Result("Unknown", "Unknown", 0f);
 
         // Focus on center region to reduce background influence.
-        int x0 = (int) (w * 0.15f);
-        int x1 = (int) (w * 0.85f);
-        int y0 = (int) (h * 0.15f);
-        int y1 = (int) (h * 0.85f);
+        int x0 = (int) (w * 0.20f);
+        int x1 = (int) (w * 0.80f);
+        int y0 = (int) (h * 0.20f);
+        int y1 = (int) (h * 0.80f);
 
         // Sampling step: scale with image size.
         int step = Math.max(2, Math.min(w, h) / 120);
@@ -67,7 +67,7 @@ public final class RipenessClassifier {
                 float val = hsv[2];        // 0..1
 
                 // Ignore low-saturation/low-value pixels (white/gray/black background, glare).
-                if (sat < 0.25f || val < 0.20f) continue;
+                if (sat < 0.25f || val < 0.25f) continue;
 
                 valid += 1f;
 
@@ -102,13 +102,13 @@ public final class RipenessClassifier {
         }
         if (redRatio >= 0.15f && greenRatio >= 0.15f) {
             // Mixed colors typically indicates breaker/turning stages
-            return new Result(redRatio >= greenRatio ? "Ripe" : "Unripe", "Breaker/Turning", confidence);
+            return new Result(redRatio >= greenRatio ? "Ripe" : "Unripe", "Turning", confidence);
         }
         if (redRatio >= 0.18f) {
             return new Result("Ripe", "Turning", confidence);
         }
         if (greenRatio >= 0.22f) {
-            return new Result("Unripe", "Light Green", confidence);
+            return new Result("Unripe", "Green", confidence);
         }
         return new Result("Unknown", "Unknown", clamp01(confidence * 0.6f));
     }

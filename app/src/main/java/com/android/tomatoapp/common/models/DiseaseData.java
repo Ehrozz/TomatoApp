@@ -9,7 +9,7 @@ public class DiseaseData {
     static {
 
         diseaseMap.put("Healthy Tomato", new DiseaseInfo(
-                "This tomato plant shows no visible signs of disease. Leaves, stems, and fruits appear normal and healthy.",
+                "This tomato fruit shows no visible signs of disease and may be ripe or unripe. Harvest timing depends on the fruit's ripeness.",
                 "No disease-causing pathogen present.",
                 "• Maintain good farming practices\n" +
                         "• Ensure proper irrigation, spacing, and nutrition\n" +
@@ -39,6 +39,60 @@ public class DiseaseData {
                         "• Premature flower drop, poor fruit set\n" +
                         "• Yield loss up to 100%",
                 "Whitefly (Bemisia tabaci) → Small sap-sucking insect with powdery white wings. Feeds on leaf undersides, causing leaf curling, yellowing, and transmitting TLCV."
+        ));
+        diseaseMap.put("Tomato Yellow Leaf Curl Virus (TYLCV)",
+                diseaseMap.get("Tomato Leaf Curl Virus (TLCV)"));
+
+        diseaseMap.put("Bacterial Spot (Xanthomonas spp.)", new DiseaseInfo(
+                "A bacterial disease causing dark leaf spots and lesions on tomato fruit.",
+                "Xanthomonas bacteria spread by infected seed, rain splash, tools, and wet foliage.",
+                "• Use certified disease-free seed and resistant varieties\n" +
+                        "• Avoid overhead irrigation and work in wet crops\n" +
+                        "• Remove infected debris and rotate crops\n" +
+                        "• Disinfect tools and provide good plant spacing",
+                "Remove severely infected leaves. Apply copper-based bactericides according to the label; rotate products and observe the pre-harvest interval.",
+                "Bacteria",
+                "Small water-soaked spots that turn dark brown, yellow halos, leaf drop, and raised or scabby fruit spots.",
+                "Xanthomonas spp. → bacteria favored by warm, wet weather and spread by splashing water."
+        ));
+
+        diseaseMap.put("Leaf Mold (Passalora fulva)", new DiseaseInfo(
+                "A fungal disease that mainly affects tomato leaves in humid, poorly ventilated conditions.",
+                "Passalora fulva spores spread through air, water splash, infected debris, and contaminated seed.",
+                "• Improve airflow and reduce humidity\n" +
+                        "• Space and prune plants properly\n" +
+                        "• Avoid wetting leaves and remove infected debris\n" +
+                        "• Plant resistant varieties",
+                "Remove affected leaves and apply a registered fungicide such as chlorothalonil, mancozeb, or copper according to the label.",
+                "Fungus",
+                "Pale yellow spots on the upper leaf surface with olive-green to brown mold on the underside, followed by leaf death.",
+                "Passalora fulva → fungus favored by high humidity and persistent leaf wetness."
+        ));
+
+        diseaseMap.put("Spider Mites (Tetranychus urticae)", new DiseaseInfo(
+                "Tiny sap-feeding pests that can weaken tomato plants and cause bronzing or leaf loss.",
+                "Tetranychus urticae populations increase in hot, dry weather and spread on plants, tools, and clothing.",
+                "• Monitor leaf undersides regularly\n" +
+                        "• Reduce dust and maintain adequate irrigation\n" +
+                        "• Conserve predatory mites and other beneficial insects\n" +
+                        "• Remove heavily infested leaves",
+                "Use a labeled miticide or insecticidal soap/neem product with thorough underside coverage; repeat only as directed and rotate modes of action.",
+                "Mite",
+                "Fine stippling, yellowing or bronzing, webbing under leaves, leaf curling, and premature leaf drop.",
+                "Tetranychus urticae → very small mites found mostly on leaf undersides, favored by heat and dry conditions."
+        ));
+
+        diseaseMap.put("Tomato Mosaic Virus (ToMV)", new DiseaseInfo(
+                "A persistent viral disease that can reduce tomato growth, leaf quality, and fruit yield.",
+                "Tomato mosaic virus spreads through infected seed, plant sap, hands, tools, and plant contact.",
+                "• Use certified seed and resistant varieties\n" +
+                        "• Wash hands and disinfect tools frequently\n" +
+                        "• Remove infected plants and crop debris\n" +
+                        "• Avoid handling plants while tobacco products are present",
+                "There is no cure. Remove and destroy infected plants; do not compost them, and control spread through strict sanitation.",
+                "Virus",
+                "Mottled light and dark green leaves, leaf distortion, stunting, uneven fruit ripening, and reduced fruit quality.",
+                "Tomato mosaic virus → stable virus spread mechanically through sap, seed, tools, and handling."
         ));
 
         diseaseMap.put("Early Blight (Alternaria solani)", new DiseaseInfo(
@@ -97,6 +151,66 @@ public class DiseaseData {
                         "Leaves: Irregular necrotic spots, yellowing.\n" +
                         "Stems: Elongated dark lesions.",
                 "Colletotrichum spp. → fungus infecting fruits, survives in crop debris, spread by splashing water."
+        ));
+
+        diseaseMap.put("Blossom End Rot", new DiseaseInfo(
+                "A non-infectious physiological disorder causing a dark, sunken lesion at the blossom end of the fruit.",
+                "Inconsistent water supply and poor calcium movement to developing fruit, often worsened by root stress.",
+                "• Keep soil moisture even with mulch and regular irrigation\n" +
+                        "• Avoid root damage and excessive nitrogen\n" +
+                        "• Maintain balanced soil fertility",
+                "Remove affected fruit and maintain steady watering; follow the product label for any soil amendment.",
+                "None",
+                "Brown or black, firm, sunken lesion on the blossom end that may enlarge as the fruit develops.",
+                "No pest causes this physiological disorder."
+        ));
+
+        diseaseMap.put("Blotchy Ripening", new DiseaseInfo(
+                "A non-infectious physiological disorder causing uneven color development and gray or yellow patches on ripe fruit.",
+                "Uneven ripening related to temperature, nutrition, light, and plant stress; some cases are associated with whitefly feeding.",
+                "• Maintain balanced nutrition and consistent irrigation\n" +
+                        "• Improve canopy health and airflow\n" +
+                        "• Use tolerant varieties where available",
+                "There is no direct cure; remove severely affected fruit and follow the product label for any permitted pest control.",
+                "None",
+                "Fruit remains green, yellow, or gray in irregular patches while other areas turn red; internal tissue may remain pale.",
+                "Usually physiological; inspect plants for whiteflies if feeding damage is suspected."
+        ));
+
+        diseaseMap.put("Fruit Cracking", new DiseaseInfo(
+                "A non-infectious physiological disorder in which tomato skin splits as fruit expands.",
+                "Rapid fruit expansion after irregular watering, high humidity, or sudden changes in moisture.",
+                "• Keep soil moisture consistent\n" +
+                        "• Mulch and avoid severe pruning\n" +
+                        "• Harvest promptly when fruit reaches maturity",
+                "Harvest cracked fruit promptly and remove badly damaged fruit; follow the product label for any protective treatment.",
+                "None",
+                "Radial cracks from the stem end or concentric cracks around the shoulder, often exposing inner tissue.",
+                "No pest causes this disorder, though exposed fruit can attract secondary pests."
+        ));
+
+        diseaseMap.put("Sun Scald", new DiseaseInfo(
+                "A non-infectious physiological disorder caused by excessive direct sunlight on exposed tomato fruit.",
+                "Fruit is exposed after defoliation, pruning, disease, or weak canopy cover during hot bright weather.",
+                "• Maintain healthy foliage and avoid excessive pruning\n" +
+                        "• Provide shade during extreme heat\n" +
+                        "• Maintain adequate soil moisture",
+                "Remove severely damaged fruit and protect developing fruit from intense sun; follow the product label for any permitted protective treatment.",
+                "None",
+                "Pale yellow or white, firm patch on the sun-facing side that may become papery or necrotic.",
+                "No pest causes this physiological disorder."
+        ));
+
+        diseaseMap.put("Fruit Worm (Fruit Borer)", new DiseaseInfo(
+                "Fruit-feeding caterpillars bore into tomato fruit and damage the flesh and seeds.",
+                "Larvae of fruit-boring moths, commonly Helicoverpa species, feed on flowers and developing fruit.",
+                "• Scout flowers and fruit regularly\n" +
+                        "• Remove damaged fruit and crop debris\n" +
+                        "• Use nets or biological controls where practical",
+                "Hand-pick larvae where possible and use an approved insecticide or biological control; follow the product label.",
+                "Caterpillar",
+                "Small entry holes, frass near the opening, internal feeding tunnels, and rotting fruit.",
+                "Fruit-boring caterpillar → usually hides inside fruit during feeding and may leave dark droppings near entry holes."
         ));
 
         diseaseMap.put("Black Leaf Mold (Pseudocercospora fuligena)", new DiseaseInfo(

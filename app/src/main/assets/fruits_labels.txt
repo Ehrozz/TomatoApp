@@ -1,6 +1,9 @@
-0 Anthracnose
-1 Black Leaf Mold
-2 Early blight
-3 Late Blight
-4 Yellow Leaf Curl
-5 Healty
+anthracnose
+blossom end rot
+blotchy ripening
+cracks
+healthy
+non-tomato
+sun scald
+tomato_leaf
+worm

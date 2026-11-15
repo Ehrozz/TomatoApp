@@ -43,8 +43,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = false
+            isShrinkResources = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -147,7 +147,8 @@ dependencies {
     implementation("com.google.android.gms:play-services-auth:21.2.0")
     implementation("com.google.firebase:firebase-auth:23.0.0")
 
-    implementation("org.tensorflow:tensorflow-lite:2.12.0")
+    //implementation("org.tensorflow:tensorflow-lite:2.12.0")
+    implementation("com.google.ai.edge.litert:litert:1.4.0")
 
     // Location services for fetching device location (weather)
     implementation("com.google.android.gms:play-services-location:21.3.0")

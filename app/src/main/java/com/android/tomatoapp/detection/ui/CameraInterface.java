@@ -5,6 +5,8 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import android.media.ExifInterface;
 import android.media.MediaScannerConnection;
 import android.net.ConnectivityManager;
 import android.net.NetworkCapabilities;
@@ -70,6 +72,8 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import com.android.tomatoapp.detection.utils.RipenessClassifier;
@@ -79,6 +83,9 @@ public class CameraInterface extends BaseBottomNavActivity {
     private static final String TAG = "CameraInterface";
     private static final float MIN_ACCEPTED_CONFIDENCE = 0.80f;
     private static final float MIN_PREDICTION_MARGIN = 0.15f;
+    private static final float FRUIT_MIN_CONFIDENCE = 0.70f;
+    private static final float FRUIT_MIN_MARGIN = 0.15f;
+    private static final float FRUIT_NON_TOMATO_P = 0.40f;
     private static final String DETECTION_DISCLAIMER =
             "AI-assisted screening only. Results are estimates and should be verified by observing the plant or consulting an agricultural specialist.";
     public static final String EXTRA_LINKED_PROGRAM_ID = "extra_linked_program_id";
@@ -92,7 +99,9 @@ public class CameraInterface extends BaseBottomNavActivity {
     private ProcessCameraProvider cameraProvider;
     private static final int CAMERA_PERMISSION_CODE = 100;
     private Interpreter tflite;
+    private final ExecutorService detectionExecutor = Executors.newSingleThreadExecutor();
     private ArrayList<String> labels;
+    private View captureButton;
     private View modelSelectorBtn; // Can be Button or Chip
     private ModelType loadedModelType = null; // Track which model is currently loaded
     private Spinner cultivarSpinner;
@@ -312,8 +321,8 @@ public class CameraInterface extends BaseBottomNavActivity {
         loadCultivarOptions();
         
         // Capture button (now MaterialCardView)
-        View captureBtn = findViewById(R.id.captureBtn);
-        captureBtn.setOnClickListener(v -> capturePhoto());
+        captureButton = findViewById(R.id.captureBtn);
+        captureButton.setOnClickListener(v -> capturePhoto());
         
         // Gallery button (hidden by default, can be accessed via menu)
         com.google.android.material.floatingactionbutton.FloatingActionButton openGalleryBtn = findViewById(R.id.openGalleryButton);
@@ -460,6 +469,7 @@ public class CameraInterface extends BaseBottomNavActivity {
 
     private void capturePhoto() {
         if (imageCapture == null) return;
+        captureButton.setEnabled(false);
 
         File photoFile = new File(
                 getExternalFilesDir(null),
@@ -493,52 +503,11 @@ public class CameraInterface extends BaseBottomNavActivity {
                                 "Photo saved: " + photoFile.getAbsolutePath(),
                                 Toast.LENGTH_SHORT).show();
 
-                        HashMap<String, String> detectionResults = runTeachableMachineDetection(photoUri);
-                        if (!isAcceptedDetection(detectionResults)) {
-                            showRetakeMessage(detectionResults);
-                            return;
-                        }
-
-                        // Save detection with all details to history
-                        DetectionHistoryManager.addHistory(
-                                CameraInterface.this,
-                                photoUri.toString(),
-                                detectionResults.get("title"),
-                                detectionResults.get("accuracy"),
-                                detectionResults.get("description"),
-                                detectionResults.get("symptoms"),
-                                detectionResults.get("cause"),
-                                detectionResults.get("cure"),
-                                detectionResults.getOrDefault("prevention", ""),   // add prevention if available
-                                detectionResults.get("pestTitle"),
-                                detectionResults.get("pestDescription"),
-                                detectionResults.getOrDefault("pestImageUri", ""),  // add pest image if available
-                                selectedCultivarLabel,
-                                selectedPhase,
-                                linkedProgramId,
-                                detectionResults.getOrDefault("topPredictions", ""),
-                                detectionResults.getOrDefault("confidenceWarning", "")
-                        );
-                        DetectionHistoryManager.setScanDate(CameraInterface.this, photoUri.toString(), scanDate());
-                        persistDetectionForProgram(detectionResults, photoUri);
-
-                        NotificationUseCases.notifyDiseaseDetection(
-                                CameraInterface.this,
-                                photoUri.toString(),
-                                detectionResults,
-                                selectedCultivarLabel != null ? selectedCultivarLabel : "Tomato",
-                                selectedPhase
-                        );
-
-                        // Pass results to DetectionResults activity
-                        Intent intent = new Intent(CameraInterface.this, DetectionResults.class);
-                        intent.putExtra("imageUri", photoUri.toString());
-                        for (String key : detectionResults.keySet()) {
-                            intent.putExtra(key, detectionResults.get(key));
-                        }
-                        intent.putExtra("detectionCultivar", selectedCultivarLabel);
-                        intent.putExtra("detectionPhase", selectedPhase);
-                        startActivity(intent);
+                        detectionExecutor.execute(() -> {
+                            HashMap<String, String> detectionResults =
+                                    runTeachableMachineDetection(photoUri);
+                            runOnUiThread(() -> handleDetectionResult(detectionResults, photoUri));
+                        });
                     }
 
                     @Override
@@ -547,6 +516,7 @@ public class CameraInterface extends BaseBottomNavActivity {
                         Toast.makeText(CameraInterface.this,
                                 "Failed to save photo: " + exception.getMessage(),
                                 Toast.LENGTH_SHORT).show();
+                        captureButton.setEnabled(true);
                     }
                 }
         );
@@ -578,62 +548,12 @@ public class CameraInterface extends BaseBottomNavActivity {
                 return;
             }
             
-            // Run detection on the saved image
-            HashMap<String, String> detectionResults = runTeachableMachineDetection(savedImageUri);
-            
-            // Check if detection was successful
-            if (detectionResults == null || detectionResults.isEmpty()) {
-                Toast.makeText(this, "Detection failed. Please try again.", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (!isAcceptedDetection(detectionResults)) {
-                showRetakeMessage(detectionResults);
-                return;
-            }
-
-            String imageUriString = savedImageUri.toString();
-            
-            // Save detection with all details to history (same as camera photos)
-            DetectionHistoryManager.addHistory(
-                    CameraInterface.this,
-                    imageUriString,
-                    detectionResults.get("title"),
-                    detectionResults.get("accuracy"),
-                    detectionResults.get("description"),
-                    detectionResults.get("symptoms"),
-                    detectionResults.get("cause"),
-                    detectionResults.get("cure"),
-                    detectionResults.getOrDefault("prevention", ""),
-                    detectionResults.get("pestTitle"),
-                    detectionResults.get("pestDescription"),
-                    detectionResults.getOrDefault("pestImageUri", ""),
-                    selectedCultivarLabel,
-                    selectedPhase,
-                    linkedProgramId,
-                    detectionResults.getOrDefault("topPredictions", ""),
-                    detectionResults.getOrDefault("confidenceWarning", "")
-            );
-            DetectionHistoryManager.setScanDate(CameraInterface.this, imageUriString, scanDate());
-            persistDetectionForProgram(detectionResults, savedImageUri);
-
-            NotificationUseCases.notifyDiseaseDetection(
-                    CameraInterface.this,
-                    imageUriString,
-                    detectionResults,
-                    selectedCultivarLabel != null ? selectedCultivarLabel : "Tomato",
-                    selectedPhase
-            );
-
-            // Pass results to DetectionResults activity (same as camera photos)
-            Intent intent = new Intent(CameraInterface.this, DetectionResults.class);
-            intent.putExtra("imageUri", imageUriString);
-            for (String key : detectionResults.keySet()) {
-                intent.putExtra(key, detectionResults.get(key));
-            }
-            intent.putExtra("detectionCultivar", selectedCultivarLabel);
-            intent.putExtra("detectionPhase", selectedPhase);
-            startActivity(intent);
-
+            captureButton.setEnabled(false);
+            detectionExecutor.execute(() -> {
+                HashMap<String, String> detectionResults =
+                        runTeachableMachineDetection(savedImageUri);
+                runOnUiThread(() -> handleDetectionResult(detectionResults, savedImageUri));
+            });
         }
     }
     
@@ -691,21 +611,143 @@ public class CameraInterface extends BaseBottomNavActivity {
         }
     }
 
+    private Bitmap decodeImage(Uri imageUri) throws IOException {
+        BitmapFactory.Options bounds = new BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        try (InputStream boundsStream = getContentResolver().openInputStream(imageUri)) {
+            if (boundsStream == null) {
+                return null;
+            }
+            BitmapFactory.decodeStream(boundsStream, null, bounds);
+        }
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
+            return null;
+        }
+
+        int shorterSide = Math.min(bounds.outWidth, bounds.outHeight);
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inSampleSize = 1;
+        while (shorterSide / (options.inSampleSize * 2) >= 448) {
+            options.inSampleSize *= 2;
+        }
+        Bitmap bitmap;
+        try (InputStream imageStream = getContentResolver().openInputStream(imageUri)) {
+            if (imageStream == null) {
+                return null;
+            }
+            bitmap = BitmapFactory.decodeStream(imageStream, null, options);
+        }
+        if (bitmap == null) {
+            return null;
+        }
+
+        try (InputStream exifStream = getContentResolver().openInputStream(imageUri)) {
+            if (exifStream == null) {
+                return bitmap;
+            }
+            ExifInterface exif = new ExifInterface(exifStream);
+            int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION,
+                    ExifInterface.ORIENTATION_NORMAL);
+            Matrix matrix = new Matrix();
+            if (orientation == ExifInterface.ORIENTATION_ROTATE_90) {
+                matrix.postRotate(90);
+            } else if (orientation == ExifInterface.ORIENTATION_ROTATE_180) {
+                matrix.postRotate(180);
+            } else if (orientation == ExifInterface.ORIENTATION_ROTATE_270) {
+                matrix.postRotate(270);
+            } else if (orientation == ExifInterface.ORIENTATION_FLIP_HORIZONTAL) {
+                matrix.setScale(-1, 1);
+            } else if (orientation == ExifInterface.ORIENTATION_FLIP_VERTICAL) {
+                matrix.setScale(1, -1);
+            } else if (orientation == ExifInterface.ORIENTATION_TRANSPOSE) {
+                matrix.setRotate(90);
+                matrix.postScale(-1, 1);
+            } else if (orientation == ExifInterface.ORIENTATION_TRANSVERSE) {
+                matrix.setRotate(270);
+                matrix.postScale(-1, 1);
+            } else {
+                return bitmap;
+            }
+            Bitmap rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(),
+                    bitmap.getHeight(), matrix, true);
+            if (rotated != bitmap) {
+                bitmap.recycle();
+            }
+            return rotated;
+        }
+    }
+
+    private ByteBuffer bitmapToInput(Bitmap bitmap, boolean rawPixels) {
+        ByteBuffer input = ByteBuffer.allocateDirect(224 * 224 * 3 * 4)
+                .order(ByteOrder.nativeOrder());
+        int[] pixels = new int[224 * 224];
+        bitmap.getPixels(pixels, 0, 224, 0, 0, 224, 224);
+        for (int pixel : pixels) {
+            input.putFloat(rawPixels ? (pixel >> 16) & 0xFF : ((pixel >> 16) & 0xFF) / 255.0f);
+            input.putFloat(rawPixels ? (pixel >> 8) & 0xFF : ((pixel >> 8) & 0xFF) / 255.0f);
+            input.putFloat(rawPixels ? pixel & 0xFF : (pixel & 0xFF) / 255.0f);
+        }
+        input.rewind();
+        return input;
+    }
+
+    private String normalizeLabel(String raw) {
+        return raw == null ? "" : raw.toLowerCase(Locale.ROOT)
+                .replace('_', ' ').replace('-', ' ').trim();
+    }
+
+    private String friendlyLabel(String rawLabel, HashMap<String, String> labelMapping) {
+        String normalized = normalizeLabel(rawLabel);
+        String mapped = labelMapping.get(normalized);
+        if (mapped != null) return mapped;
+        if ("non tomato".equals(normalized)) return "Non-Tomato";
+        if ("tomato leaf".equals(normalized)) return "Tomato Leaf";
+        String[] words = normalized.split("\\s+");
+        StringBuilder result = new StringBuilder();
+        for (String word : words) {
+            if (word.isEmpty()) continue;
+            if (result.length() > 0) result.append(" ");
+            result.append(word.substring(0, 1).toUpperCase()).append(word.substring(1));
+        }
+        return result.toString();
+    }
+
+    private float meanLuminance(Bitmap bitmap) {
+        long total = 0;
+        int count = 0;
+        for (int y = 0; y < bitmap.getHeight(); y++) {
+            for (int x = 0; x < bitmap.getWidth(); x++) {
+                int pixel = bitmap.getPixel(x, y);
+                total += (299 * ((pixel >> 16) & 0xFF)
+                        + 587 * ((pixel >> 8) & 0xFF)
+                        + 114 * (pixel & 0xFF)) / 1000;
+                count++;
+            }
+        }
+        return count == 0 ? 0f : (float) total / count;
+    }
+
+    private float[] infer(ByteBuffer input) {
+        float[][] output = new float[1][labels.size()];
+        tflite.run(input, output);
+        float sum = 0f;
+        float maxVal = Float.NEGATIVE_INFINITY;
+        float minVal = Float.POSITIVE_INFINITY;
+        for (float val : output[0]) {
+            sum += val;
+            maxVal = Math.max(maxVal, val);
+            minVal = Math.min(minVal, val);
+        }
+        if (minVal >= 0f && maxVal <= 1.0f && Math.abs(sum - 1.0f) < 0.01f) {
+            return output[0].clone();
+        }
+        return applySoftmax(output[0]);
+    }
+
     private HashMap<String, String> runTeachableMachineDetection(Uri imageUri) {
         HashMap<String, String> results = new HashMap<>();
         try {
-            // Load and preprocess image with better quality
-            Bitmap bitmap = null;
-            try {
-                bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(imageUri));
-            } catch (Exception e) {
-                Log.e(TAG, "Error loading image bitmap", e);
-                results.put("title", "Image Loading Error");
-                results.put("accuracy", "0%");
-                results.put("description", "Failed to load image: " + e.getMessage());
-                return results;
-            }
-            
+            Bitmap bitmap = decodeImage(imageUri);
             if (bitmap == null) {
                 results.put("title", "Image Error");
                 results.put("accuracy", "0%");
@@ -715,52 +757,49 @@ public class CameraInterface extends BaseBottomNavActivity {
 
             // Extra signal derived from the image itself (non-static):
             // For FRUITS model runs, estimate ripeness + maturity stage (Green/Turning/Red).
-            if (currentModelType == ModelType.FRUITS) {
-                try {
-                    RipenessClassifier.Result r = RipenessClassifier.classify(bitmap);
-                    results.put("ripeness", r.ripeness);
-                    results.put("ripenessStage", r.stage);
-                    results.put("ripenessConfidence", String.format(Locale.getDefault(), "%.0f%%", r.confidence01 * 100f));
-                } catch (Exception ignored) {
-                    // Keep detection flow resilient if classifier fails
+            RipenessClassifier.Result ripenessResult = currentModelType == ModelType.FRUITS
+                    ? RipenessClassifier.classify(bitmap) : null;
+            
+            Bitmap resized;
+            if (currentModelType == ModelType.LEAVES) {
+                int cropSize = Math.min(bitmap.getWidth(), bitmap.getHeight());
+                int left = (bitmap.getWidth() - cropSize) / 2;
+                int top = (bitmap.getHeight() - cropSize) / 2;
+                Bitmap cropped = Bitmap.createBitmap(bitmap, left, top, cropSize, cropSize);
+                resized = Bitmap.createScaledBitmap(cropped, 224, 224, true);
+                if (cropped != bitmap) {
+                    cropped.recycle();
                 }
+            } else if (currentModelType == ModelType.FRUITS) {
+                resized = Bitmap.createScaledBitmap(bitmap, 224, 224, true);
+            } else {
+                resized = preprocessImage(bitmap, 224, 224);
             }
             
-            // Enhanced image preprocessing: use high-quality scaling and maintain aspect ratio
-            Bitmap resized = preprocessImage(bitmap, 224, 224);
-            
-            // Clean up original bitmap (resized is a new bitmap)
-            bitmap.recycle();
+            boolean shouldRecycleResized = resized != bitmap;
+            if (shouldRecycleResized) {
+                bitmap.recycle();
+            }
 
-            // Improved pixel normalization - normalize to [0, 1] range
-            // Using float32 format for better precision
-            // Teachable Machine models expect RGB format with values normalized to [0, 1]
-            ByteBuffer input = ByteBuffer.allocateDirect(224 * 224 * 3 * 4).order(ByteOrder.nativeOrder());
-            int[] pixels = new int[224 * 224];
-            resized.getPixels(pixels, 0, 224, 0, 0, 224, 224);
-            
-            // Enhanced normalization with better color space handling
-            // Ensure proper RGB extraction and normalization
-            for (int pixel : pixels) {
-                // Extract RGB values (ARGB format from getPixels)
-                int r = (pixel >> 16) & 0xFF;
-                int g = (pixel >> 8) & 0xFF;
-                int b = pixel & 0xFF;
-                
-                // Normalize to [0, 1] range (matching Teachable Machine training format)
-                float rNorm = r / 255.0f;
-                float gNorm = g / 255.0f;
-                float bNorm = b / 255.0f;
-                
-                // Add to buffer (RGB order - matching model input format)
-                input.putFloat(rNorm);
-                input.putFloat(gNorm);
-                input.putFloat(bNorm);
+            ByteBuffer input = bitmapToInput(resized,
+                    currentModelType == ModelType.LEAVES || currentModelType == ModelType.FRUITS);
+            Bitmap flipped = null;
+            ByteBuffer flippedInput = null;
+            if (currentModelType == ModelType.LEAVES || currentModelType == ModelType.FRUITS) {
+                Matrix matrix = new Matrix();
+                matrix.setScale(-1f, 1f);
+                flipped = Bitmap.createBitmap(resized, 0, 0, resized.getWidth(),
+                        resized.getHeight(), matrix, true);
+                flippedInput = bitmapToInput(flipped, true);
             }
-            input.rewind();
-            
-            // Clean up resized bitmap
-            resized.recycle();
+            float imageLuminance = currentModelType == ModelType.FRUITS
+                    ? meanLuminance(resized) : 0f;
+            if (shouldRecycleResized) {
+                resized.recycle();
+            }
+            if (flipped != null) {
+                flipped.recycle();
+            }
 
             // Load model if not loaded or if model type changed
             if (tflite == null || loadedModelType != currentModelType) {
@@ -789,6 +828,15 @@ public class CameraInterface extends BaseBottomNavActivity {
                         // XNNPACK not available, continue without it
                     }
                     tflite = new Interpreter(modelBuffer, options);
+                    if (tflite.getOutputTensor(0).shape().length < 2
+                            || tflite.getOutputTensor(0).shape()[1] != labels.size()) {
+                        tflite.close();
+                        tflite = null;
+                        results.put("title", "Model Configuration Error");
+                        results.put("accuracy", "0%");
+                        results.put("description", "Model output size does not match the loaded labels.");
+                        return results;
+                    }
                     loadedModelType = currentModelType;
                 } catch (Exception e) {
                     Log.e(TAG, "Error loading TensorFlow model", e);
@@ -799,42 +847,21 @@ public class CameraInterface extends BaseBottomNavActivity {
                 }
             }
 
-            // Run inference with error handling
-            float[][] output = new float[1][labels.size()];
+            float[] probabilities;
             try {
-                tflite.run(input, output);
+                probabilities = infer(input);
+                if (currentModelType == ModelType.LEAVES || currentModelType == ModelType.FRUITS) {
+                    float[] flippedProbabilities = infer(flippedInput);
+                    for (int i = 0; i < probabilities.length; i++) {
+                        probabilities[i] = (probabilities[i] + flippedProbabilities[i]) / 2f;
+                    }
+                }
             } catch (Exception e) {
                 Log.e(TAG, "Error running ML inference", e);
                 results.put("title", "Inference Error");
                 results.put("accuracy", "0%");
                 results.put("description", "Failed to run detection: " + e.getMessage());
                 return results;
-            }
-
-            // Check if model outputs are already probabilities (sum close to 1.0) or logits
-            float sum = 0f;
-            float maxVal = Float.NEGATIVE_INFINITY;
-            float minVal = Float.POSITIVE_INFINITY;
-            for (float val : output[0]) {
-                sum += val;
-                if (val > maxVal) maxVal = val;
-                if (val < minVal) minVal = val;
-            }
-            
-            float[] probabilities;
-            // Teachable Machine models typically output probabilities (already softmaxed)
-            // Check if values are in [0, 1] range and sum to ~1.0 (with some tolerance)
-            // Also check if all values are positive (probabilities should be >= 0)
-            boolean allPositive = minVal >= 0f;
-            boolean inRange = maxVal <= 1.0f;
-            boolean sumsToOne = Math.abs(sum - 1.0f) < 0.15f; // Allow some tolerance for floating point errors
-            
-            if (allPositive && inRange && sumsToOne) {
-                // Already probabilities, use directly (most common for Teachable Machine)
-                probabilities = output[0].clone();
-            } else {
-                // Likely logits, apply softmax to convert to probabilities
-                probabilities = applySoftmax(output[0]);
             }
             
             // Get top 3 predictions for better accuracy
@@ -848,16 +875,9 @@ public class CameraInterface extends BaseBottomNavActivity {
             float maxProb = topProbs[0];
             float secondProb = topProbs.length > 1 ? topProbs[1] : 0f;
             float thirdProb = topProbs.length > 2 ? topProbs[2] : 0f;
-            boolean accepted = maxProb >= MIN_ACCEPTED_CONFIDENCE
-                    && (maxProb - secondProb) >= MIN_PREDICTION_MARGIN;
-            results.put("accepted", String.valueOf(accepted));
-            if (!accepted) {
-                results.put("rejectionReason", String.format(Locale.getDefault(),
-                        "Confidence must be at least %.0f%% and lead the next prediction by at least %.0f%%. Current result: %.1f%% confidence and %.1f%% lead.",
-                        MIN_ACCEPTED_CONFIDENCE * 100f,
-                        MIN_PREDICTION_MARGIN * 100f,
-                        maxProb * 100f,
-                        (maxProb - secondProb) * 100f));
+            for (int i = 0; i < Math.min(3, topIndices.length); i++) {
+                Log.d(TAG, "top3 " + labels.get(topIndices[i]).trim() + " "
+                        + topProbs[i]);
             }
 
             // Adaptive threshold based on model type and dataset quality
@@ -867,7 +887,7 @@ public class CameraInterface extends BaseBottomNavActivity {
             float highConfidenceThreshold = 0.75f; // 75% for high confidence
             float mediumConfidenceThreshold = 0.60f; // 60% for medium confidence
             
-            String rawLabel = labels.get(maxIdx).trim().toLowerCase();
+            String rawLabel = labels.get(maxIdx).trim();
             
             // Store top 3 predictions for user reference (always include for transparency)
             StringBuilder topPredictions = new StringBuilder();
@@ -895,16 +915,25 @@ public class CameraInterface extends BaseBottomNavActivity {
             
             // Map labels based on current model type
             if (currentModelType == ModelType.FRUITS) {
-                // Fruits model labels
                 labelMapping.put("anthracnose", "Anthracnose (Colletotrichum spp.)");
-                labelMapping.put("black leaf mold", "Black Leaf Mold (Pseudocercospora fuligena)");
-                labelMapping.put("early blight", "Early Blight (Alternaria solani)");
-                labelMapping.put("late blight", "Late Blight (Phytophthora infestans)");
-                labelMapping.put("yellow leaf curl", "Tomato Yellow Leaf Curl Virus (TYLCV)");
-                labelMapping.put("healty", "Healthy Tomato");
+                labelMapping.put("blossom end rot", "Blossom End Rot");
+                labelMapping.put("blotchy ripening", "Blotchy Ripening");
+                labelMapping.put("cracks", "Fruit Cracking");
+                labelMapping.put("sun scald", "Sun Scald");
+                labelMapping.put("worm", "Fruit Worm (Fruit Borer)");
                 labelMapping.put("healthy", "Healthy Tomato");
+            } else if (currentModelType == ModelType.LEAVES) {
+                labelMapping.put("Tomato___Bacterial_spot", "Bacterial Spot (Xanthomonas spp.)");
+                labelMapping.put("Tomato___Early_blight", "Early Blight (Alternaria solani)");
+                labelMapping.put("Tomato___Late_blight", "Late Blight (Phytophthora infestans)");
+                labelMapping.put("Tomato___Leaf_Mold", "Leaf Mold (Passalora fulva)");
+                labelMapping.put("Tomato___Spider_mites Two-spotted_spider_mite",
+                        "Spider Mites (Tetranychus urticae)");
+                labelMapping.put("Tomato___Tomato_Yellow_Leaf_Curl_Virus",
+                        "Tomato Leaf Curl Virus (TLCV)");
+                labelMapping.put("Tomato___Tomato_mosaic_virus", "Tomato Mosaic Virus (ToMV)");
+                labelMapping.put("Tomato___healthy", "Healthy Tomato");
             } else {
-                // Leaves model labels
                 labelMapping.put("bacterial spot", "Bacterial Spot");
                 labelMapping.put("early blight", "Early Blight (Alternaria solani)");
                 labelMapping.put("healty", "Healthy Tomato");
@@ -916,7 +945,14 @@ public class CameraInterface extends BaseBottomNavActivity {
                 labelMapping.put("mosaic virus", "Mosaic Virus");
             }
 
-            String mappedLabel = labelMapping.getOrDefault(rawLabel, rawLabel);
+            String mappingKey = currentModelType == ModelType.LEAVES
+                    ? rawLabel : normalizeLabel(rawLabel);
+            String mappedLabel = labelMapping.getOrDefault(mappingKey, rawLabel);
+            if (currentModelType == ModelType.LEAVES && "non-tomato".equals(rawLabel)) {
+                results.put("accepted", "false");
+                results.put("rejectionReason",
+                        "This doesn't look like a tomato leaf. Please frame a single tomato leaf.");
+            }
             // If not found in mapping, capitalize first letter of each word
             if (mappedLabel.equals(rawLabel)) {
                 String[] words = rawLabel.split("\\s+");
@@ -929,6 +965,62 @@ public class CameraInterface extends BaseBottomNavActivity {
                 }
                 mappedLabel = sb.toString();
             }
+
+            boolean accepted;
+            if (currentModelType == ModelType.FRUITS) {
+                int nonTomatoIndex = -1;
+                for (int i = 0; i < labels.size(); i++) {
+                    if ("non tomato".equals(normalizeLabel(labels.get(i)))) {
+                        nonTomatoIndex = i;
+                        break;
+                    }
+                }
+                String topLabel = normalizeLabel(rawLabel);
+                float nonTomatoProbability = nonTomatoIndex >= 0
+                        ? probabilities[nonTomatoIndex] : 0f;
+                accepted = true;
+                if ("non tomato".equals(topLabel) || nonTomatoProbability >= FRUIT_NON_TOMATO_P) {
+                    accepted = false;
+                    results.put("rejectionReason",
+                            "No tomato fruit detected. Please frame a single tomato fruit.");
+                } else if ("tomato leaf".equals(topLabel)) {
+                    accepted = false;
+                    results.put("rejectionReason",
+                            "This looks like a leaf, not a fruit. Switch to the Leaves scan or frame a tomato fruit.");
+                } else if (imageLuminance < 40f || imageLuminance > 220f) {
+                    accepted = false;
+                    results.put("rejectionReason",
+                            "Image is too dark / overexposed. Retake in even daylight.");
+                } else {
+                    float minConfidence = "worm".equals(topLabel) ? 0.60f
+                            : ("anthracnose".equals(topLabel) || "cracks".equals(topLabel)
+                            ? 0.65f : FRUIT_MIN_CONFIDENCE);
+                    if (maxProb < minConfidence) {
+                        accepted = false;
+                        results.put("rejectionReason", String.format(Locale.getDefault(),
+                                "Confidence too low (%.1f%%, needs %.0f%%). Move closer, keep the fruit in focus, avoid glare and shadows.",
+                                maxProb * 100f, minConfidence * 100f));
+                    } else if (maxProb - secondProb < FRUIT_MIN_MARGIN) {
+                        accepted = false;
+                        results.put("rejectionReason", "Unsure between "
+                                + friendlyLabel(labels.get(topIndices[0]), labelMapping) + " and "
+                                + friendlyLabel(labels.get(topIndices[1]), labelMapping)
+                                + ". Take a closer photo of the affected area.");
+                    }
+                }
+            } else {
+                accepted = maxProb >= MIN_ACCEPTED_CONFIDENCE
+                        && (maxProb - secondProb) >= MIN_PREDICTION_MARGIN;
+                if (!accepted) {
+                    results.put("rejectionReason", String.format(Locale.getDefault(),
+                            "Confidence must be at least %.0f%% and lead the next prediction by at least %.0f%%. Current result: %.1f%% confidence and %.1f%% lead.",
+                            MIN_ACCEPTED_CONFIDENCE * 100f,
+                            MIN_PREDICTION_MARGIN * 100f,
+                            maxProb * 100f,
+                            (maxProb - secondProb) * 100f));
+                }
+            }
+            results.put("accepted", String.valueOf(accepted));
 
             // Generate dynamic results based on actual model predictions
             // Build comprehensive prediction analysis
@@ -987,24 +1079,7 @@ public class CameraInterface extends BaseBottomNavActivity {
             DiseaseInfo staticInfo = DiseaseData.getDiseaseInfo(mappedLabel);
             
             // Build comprehensive results
-            if (maxProb < threshold) {
-                // Very low confidence - show all predictions
-                results.put("title", "Uncertain Detection");
-                results.put("accuracy", String.format("%.1f%%", maxProb * 100));
-                results.put("description", dynamicDescription + "\n\n" + predictionAnalysis.toString() +
-                        "\nRecommendations:\n" +
-                        "• Ensure good lighting and focus\n" +
-                        "• Capture clear image of affected area\n" +
-                        "• Try different angles\n" +
-                        "• Use the appropriate model (Fruits vs Leaves vs Pest)");
-                results.put("symptoms", "Unable to reliably detect symptoms due to low confidence.");
-                results.put("cause", "Detection confidence too low to determine cause.");
-                results.put("cure", "Please retake photo with better conditions for accurate diagnosis.");
-                results.put("prevention", "Ensure proper image quality for reliable detection.");
-                results.put("pestTitle", "Unknown");
-                results.put("pestDescription", "Cannot determine pest information with current confidence level.");
-                results.put("confidenceWarning", confidenceWarning);
-            } else {
+            {
                 // Valid detection - combine dynamic analysis with static info
                 results.put("title", mappedLabel);
                 results.put("accuracy", String.format("%.1f%%", maxProb * 100));
@@ -1025,6 +1100,24 @@ public class CameraInterface extends BaseBottomNavActivity {
                         fullDescription.append(confidenceWarning).append("\n\n");
                     }
                     fullDescription.append(staticInfo.getDescription());
+                    if (accepted && currentModelType == ModelType.FRUITS
+                            && "Healthy Tomato".equals(mappedLabel)
+                            && ripenessResult != null
+                            && !"Unknown".equals(ripenessResult.stage)) {
+                        String stageDescription;
+                        if ("Green".equals(ripenessResult.stage)) {
+                            stageDescription = "Stage: Unripe (Green) - leave on the plant";
+                        } else if ("Turning".equals(ripenessResult.stage)) {
+                            stageDescription = "Stage: Turning - harvest in a few days";
+                        } else {
+                            stageDescription = "Stage: Ripe (Red) - ready to harvest";
+                        }
+                        fullDescription.append("\n").append(stageDescription);
+                        results.put("ripeness", ripenessResult.ripeness);
+                        results.put("ripenessStage", ripenessResult.stage);
+                        results.put("ripenessConfidence", String.format(Locale.getDefault(),
+                                "%.0f%%", ripenessResult.confidence01 * 100f));
+                    }
                 } else if (!confidenceWarning.isEmpty()) {
                     fullDescription.append("\n\n").append(confidenceWarning);
                 }
@@ -1065,6 +1158,57 @@ public class CameraInterface extends BaseBottomNavActivity {
                 && "true".equalsIgnoreCase(detectionResults.get("accepted"));
     }
 
+    private void handleDetectionResult(HashMap<String, String> detectionResults, Uri imageUri) {
+        captureButton.setEnabled(true);
+        if (detectionResults == null || detectionResults.isEmpty()) {
+            Toast.makeText(this, "Detection failed. Please try again.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!isAcceptedDetection(detectionResults)) {
+            showRetakeMessage(detectionResults);
+            return;
+        }
+
+        String imageUriString = imageUri.toString();
+        DetectionHistoryManager.addHistory(
+                this,
+                imageUriString,
+                detectionResults.get("title"),
+                detectionResults.get("accuracy"),
+                detectionResults.get("description"),
+                detectionResults.get("symptoms"),
+                detectionResults.get("cause"),
+                detectionResults.get("cure"),
+                detectionResults.getOrDefault("prevention", ""),
+                detectionResults.get("pestTitle"),
+                detectionResults.get("pestDescription"),
+                detectionResults.getOrDefault("pestImageUri", ""),
+                selectedCultivarLabel,
+                selectedPhase,
+                linkedProgramId,
+                detectionResults.getOrDefault("topPredictions", ""),
+                detectionResults.getOrDefault("confidenceWarning", "")
+        );
+        DetectionHistoryManager.setScanDate(this, imageUriString, scanDate());
+        persistDetectionForProgram(detectionResults, imageUri);
+        NotificationUseCases.notifyDiseaseDetection(
+                this,
+                imageUriString,
+                detectionResults,
+                selectedCultivarLabel != null ? selectedCultivarLabel : "Tomato",
+                selectedPhase
+        );
+
+        Intent intent = new Intent(this, DetectionResults.class);
+        intent.putExtra("imageUri", imageUriString);
+        for (String key : detectionResults.keySet()) {
+            intent.putExtra(key, detectionResults.get(key));
+        }
+        intent.putExtra("detectionCultivar", selectedCultivarLabel);
+        intent.putExtra("detectionPhase", selectedPhase);
+        startActivity(intent);
+    }
+
     private void showRetakeMessage(HashMap<String, String> detectionResults) {
         String message = detectionResults != null
                 ? detectionResults.get("rejectionReason")
@@ -1072,7 +1216,9 @@ public class CameraInterface extends BaseBottomNavActivity {
         if (TextUtils.isEmpty(message)) {
             message = "The image could not be analyzed reliably.";
         }
-        message += "\n\nPlease retake a clear photo of one tomato leaf, fruit, or pest.";
+        message += "\n\n" + (currentModelType == ModelType.FRUITS
+                ? "Please retake a clear photo of one tomato fruit."
+                : "Please retake a clear photo of one tomato leaf, fruit, or pest.");
 
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Retake Photo")
@@ -1176,11 +1322,13 @@ public class CameraInterface extends BaseBottomNavActivity {
     }
 
     private MappedByteBuffer loadModelFile(String modelName) throws IOException {
-        try (FileInputStream fileInputStream = new FileInputStream(getAssets().openFd(modelName).getFileDescriptor())) {
+        try (android.content.res.AssetFileDescriptor assetFileDescriptor =
+                     getAssets().openFd(modelName);
+             FileInputStream fileInputStream =
+                     new FileInputStream(assetFileDescriptor.getFileDescriptor())) {
             FileChannel fileChannel = fileInputStream.getChannel();
-            long startOffset = getAssets().openFd(modelName).getStartOffset();
-            long declaredLength = getAssets().openFd(modelName).getDeclaredLength();
-            return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
+            return fileChannel.map(FileChannel.MapMode.READ_ONLY,
+                    assetFileDescriptor.getStartOffset(), assetFileDescriptor.getDeclaredLength());
         }
     }
 
@@ -1201,14 +1349,7 @@ public class CameraInterface extends BaseBottomNavActivity {
             for (String line : lines) {
                 line = line.trim();
                 if (!line.isEmpty()) {
-                    // Parse format like "0 anthracnose" or "1 black leaf mold"
-                    // Remove the index number and keep only the label name
-                    String[] parts = line.split("\\s+", 2);
-                    if (parts.length >= 2) {
-                        labels.add(parts[1].trim());
-                    } else {
-                        labels.add(line);
-                    }
+                    labels.add(line.replaceFirst("^\\d+[\\s:.\\-]+", "").trim());
                 }
             }
         } catch (IOException e) {
@@ -1456,6 +1597,7 @@ public class CameraInterface extends BaseBottomNavActivity {
 
     @Override
     protected void onDestroy() {
+        detectionExecutor.shutdownNow();
         super.onDestroy();
         // Clean up TensorFlow Lite interpreter
         if (tflite != null) {
