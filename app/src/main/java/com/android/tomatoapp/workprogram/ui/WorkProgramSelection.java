@@ -68,6 +68,8 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
     private DatabaseReference dbRef;
     private String userId;
     private String currentSortOrder = "date_desc"; // Default: newest first
+    private ValueEventListener programsListener;
+    private boolean offlineToastShown = false;
 
 
     @Override
@@ -104,7 +106,7 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
         loadWorkPrograms();
 
         // Set up Firebase listener for real-time updates (when online)
-        dbRef.addValueEventListener(new ValueEventListener() {
+        programsListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 // Only update if online (to avoid conflicts with offline data)
@@ -157,7 +159,9 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
                     loadWorkProgramsFromLocal();
                 }
             }
-        });
+        };
+        dbRef.addValueEventListener(programsListener);
+
 
         btnAdd.setOnClickListener(v -> showAddProgramChoice());
 
@@ -167,6 +171,12 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
 
         // Header menu button - Sort options
         headerMenuButton.setOnClickListener(v -> showSortMenu());
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (dbRef != null && programsListener != null) dbRef.removeEventListener(programsListener);
     }
 
     private void showAddProgramChoice() {
@@ -310,8 +320,7 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
         if (answers == null || evaluation == null) return true;
         try {
             java.time.LocalDate appToday = AppClock.today(this);
-            java.time.LocalDate planting = java.time.LocalDate.parse(
-                    earliestDate(appToday.toString(), answers.seedsConfirmedDate, answers.sowingDate));
+            java.time.LocalDate planting = appToday;
             java.time.LocalDate seeds = parseDateOrNull(answers.seedsConfirmedDate);
             java.time.LocalDate sowing = parseDateOrNull(answers.sowingDate);
             java.time.LocalDate transplant = parseDateOrNull(answers.transplantDate);
@@ -363,10 +372,10 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
             }
         }
         final int finalMaturity = tempMaturity;
-        String plantingStartDate = answers == null
-                ? (startDate == null || startDate.isEmpty() ? AppClock.today(this).toString() : startDate)
-                : earliestDate(AppClock.today(this).toString(), answers.seedsConfirmedDate, answers.sowingDate);
-
+        String plantingStartDate = (startDate == null || startDate.isEmpty())
+        ? AppClock.today(this).toString()
+        : startDate;
+        
         // Prepare Firebase data
         java.util.Map<String, Object> data = new java.util.HashMap<>();
         data.put("cultivarName", cultivar);
@@ -594,7 +603,8 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
                     }
                 }
                 updateUI();
-                if (!LocalDataManager.isOnline(this) && !cultivarList.isEmpty()) {
+                if (!LocalDataManager.isOnline(this) && !cultivarList.isEmpty() && !offlineToastShown) {
+                    offlineToastShown = true;
                     Toast.makeText(this, "Showing offline data", Toast.LENGTH_SHORT).show();
                 }
             });
@@ -639,20 +649,9 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
         new AlertDialog.Builder(this)
                 .setTitle("Sort Work Programs")
                 .setItems(sortOptions, (dialog, which) -> {
-                    switch (which) {
-                        case 0: // Newest First
-                            sortPrograms("date_desc");
-                            break;
-                        case 1: // Oldest First
-                            sortPrograms("date_asc");
-                            break;
-                        case 2: // Name A-Z
-                            sortPrograms("name_asc");
-                            break;
-                        case 3: // Name Z-A
-                            sortPrograms("name_desc");
-                            break;
-                    }
+                    String[] orders = {"date_desc", "date_asc", "name_asc", "name_desc"};
+                    sortPrograms(orders[which]);
+                    Toast.makeText(this, "Sorted: " + sortOptions[which], Toast.LENGTH_SHORT).show();
                 })
                 .show();
     }
@@ -694,7 +693,6 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
         }
 
         adapter.notifyDataSetChanged();
-        Toast.makeText(this, "Sorted", Toast.LENGTH_SHORT).show();
     }
 
     private Date parseDate(SimpleDateFormat sdf, String dateStr, Date fallback) {

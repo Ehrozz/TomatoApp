@@ -214,7 +214,7 @@ public class Register extends AppCompatActivity {
                         final String finalBrgy = brgy;
 
                         // Create clean user model object for Firebase Realtime Database
-                        User newUser = new User(fullName, "", "", address, email, "", "", "");
+                        User newUser = new User(fullName, null, null, address, email, null, null, null);
 
                         databaseRef.child(user.getUid()).setValue(newUser)
                                 .addOnSuccessListener(unused -> {

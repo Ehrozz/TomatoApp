@@ -28,6 +28,8 @@ import com.android.tomatoapp.notifications.NotificationPermissionHelper;
 import com.android.tomatoapp.notifications.NotificationPreferences;
 import com.android.tomatoapp.notifications.MorningRemindersScheduler;
 import com.android.tomatoapp.settings.data.SettingsPreferences;
+import com.android.tomatoapp.notifications.NotificationScheduleManager;
+import com.android.tomatoapp.notifications.TaskNotificationScheduler;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -218,6 +220,9 @@ public class SettingsActivity extends BaseBottomNavActivity {
                 backupSettings();
                 if (isChecked) {
                     NotificationPermissionHelper.ensurePermission(this);
+                    TaskNotificationScheduler.ensureTaskNotificationsScheduled(this);
+                } else {
+                    TaskNotificationScheduler.cancelTaskNotifications(this);
                 }
             });
         }
@@ -237,13 +242,12 @@ public class SettingsActivity extends BaseBottomNavActivity {
                 NotificationPreferences.setGeneralNotificationsEnabled(this, isChecked);
                 backupSettings();
                 if (isChecked) {
-                    if (NotificationPermissionHelper.ensurePermission(this)) {
-                        GeneralUpdateScheduler.ensureDailyTipScheduled(this);
-                                            MorningRemindersScheduler.ensureMorningRemindersScheduled(this);
-                    }
+                    NotificationPermissionHelper.ensurePermission(this);
+                    GeneralUpdateScheduler.ensureDailyTipScheduled(this);
+                    MorningRemindersScheduler.ensureMorningRemindersScheduled(this);
                 } else {
                     GeneralUpdateScheduler.cancelDailyTip(this);
-                                    MorningRemindersScheduler.cancelMorningReminders(this);
+                    MorningRemindersScheduler.cancelMorningReminders(this);
                 }
             });
         }
@@ -434,7 +438,7 @@ public class SettingsActivity extends BaseBottomNavActivity {
                     String selected = which == 0 ? SettingsPreferences.LANGUAGE_ENGLISH : SettingsPreferences.LANGUAGE_FILIPINO;
                     SettingsPreferences.setLanguage(this, selected);
                     editTextLanguage.setText(languages[which]);
-                    backupSettings();
+                    backupSettingsWithRestart();
                     dialog.dismiss();
                 })
                 .setNegativeButton("Cancel", null)
@@ -458,7 +462,7 @@ public class SettingsActivity extends BaseBottomNavActivity {
                     
                     SettingsPreferences.setTheme(this, selected);
                     editTextTheme.setText(themes[which]);
-                    backupSettings();
+                    backupSettingsWithRestart();
                     dialog.dismiss();
                 })
                 .setNegativeButton("Cancel", null)
@@ -593,6 +597,7 @@ public class SettingsActivity extends BaseBottomNavActivity {
                     SettingsPreferences.setNotificationMinute(this, selectedMinute);
                     editTextNotificationTime.setText(String.format("%02d:%02d", selectedHour, selectedMinute));
                     backupSettings();
+                    GeneralUpdateScheduler.ensureDailyTipScheduled(this);
                 },
                 hour, minute, true);
         timePicker.setTitle("Select Notification Time");
@@ -632,18 +637,21 @@ public class SettingsActivity extends BaseBottomNavActivity {
     }
 
     private void backupSettings() {
-        com.google.firebase.auth.FirebaseUser currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+        com.google.firebase.auth.FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser != null) {
             LocalDataManager.getInstance(this).syncSettingsToLocal(this, currentUser.getUid());
         }
+    }
+
+    private void backupSettingsWithRestart() {
+        backupSettings();
         promptAppRestart();
     }
 
     private void promptAppRestart() {
         new AlertDialog.Builder(this)
-                .setTitle("Restart required")
-                .setMessage("Settings were updated. Restart the app now to apply the changes.")
-                .setCancelable(false)
+                .setTitle("Restart Required")
+                .setMessage("The app needs to restart to apply your language or theme changes. Restart now?")
                 .setPositiveButton("Restart", (dialog, which) -> restartApp())
                 .setNegativeButton("Later", null)
                 .show();
@@ -660,8 +668,8 @@ public class SettingsActivity extends BaseBottomNavActivity {
     
     @Override
     public void onRequestPermissionsResult(int requestCode,
-                                           @androidx.annotation.NonNull String[] permissions,
-                                           @androidx.annotation.NonNull int[] grantResults) {
+                    @androidx.annotation.NonNull String[] permissions,
+                    @androidx.annotation.NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == NotificationHelper.REQUEST_POST_NOTIFICATIONS) {
             if (!NotificationHelper.hasPermission(this)) {
@@ -676,7 +684,7 @@ public class SettingsActivity extends BaseBottomNavActivity {
                     switchGeneralNotifications.setChecked(false);
                 }
             } else {
-                GeneralUpdateScheduler.ensureDailyTipScheduled(this);
+                NotificationScheduleManager.rescheduleAll(this);
             }
         }
     }

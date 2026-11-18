@@ -186,7 +186,7 @@ public class AnalyticsPdfExporter {
 
         // Save PDF
         try {
-            File pdfFile = createPdfFile(context, cultivarName);
+            File pdfFile = createPdfFile(context, ExportFileHelper.cultivarLabel(workPrograms, cultivarName));
             FileOutputStream fos = new FileOutputStream(pdfFile);
             document.writeTo(fos);
             document.close();
@@ -309,7 +309,7 @@ public class AnalyticsPdfExporter {
         document.finishPage(page);
 
         try {
-            File pdfFile = createPdfFile(context, "Disease");
+            File pdfFile = ExportFileHelper.createExportFile(context, "analytics_disease_reports.pdf");
             FileOutputStream fos = new FileOutputStream(pdfFile);
             document.writeTo(fos);
             document.close();
@@ -404,10 +404,8 @@ public class AnalyticsPdfExporter {
         }
     }
 
-    private static File createPdfFile(Context context, String cultivarName) {
-        String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
-        String fileName = "Analytics_" + (cultivarName != null ? cultivarName.replaceAll("[^a-zA-Z0-9]", "_") : "All") + "_" + timestamp + ".pdf";
-        
+    private static File createPdfFile(Context context, String cultivarLabel) {
+        String fileName = "Analytics Report for " + ExportFileHelper.safeFileName(cultivarLabel) + ".pdf";
         try {
             return ExportFileHelper.createExportFile(context, fileName);
         } catch (IOException e) {

@@ -1,7 +1,6 @@
 package com.android.tomatoapp.task.data;
 
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -239,13 +238,21 @@ public class TaskSchedule {
 
     public static int getPhaseNumber(LocalDate plantingStart, LocalDate transplantDate,
                                      LocalDate stopDate, LocalDate date) {
+        return getPhaseNumber(plantingStart, transplantDate, stopDate, date, null, null, null);
+    }
+
+    public static int getPhaseNumber(LocalDate plantingStart, LocalDate transplantDate,
+                                     LocalDate stopDate, LocalDate date,
+                                     LocalDate p3, LocalDate p4, LocalDate p5) {
         if (plantingStart == null || date == null || date.isBefore(plantingStart)) return 0;
         if (stopDate != null && date.isAfter(stopDate)) return 0;
         if (transplantDate == null || date.isBefore(transplantDate)) return 1;
-        long dat = ChronoUnit.DAYS.between(transplantDate, date);
-        if (dat <= 27) return 2;
-        if (dat <= 55) return 3;
-        if (dat <= 83) return 4;
+        LocalDate phase3Start = p3 != null ? p3 : transplantDate.plusDays(28);
+        LocalDate phase4Start = p4 != null ? p4 : transplantDate.plusDays(56);
+        LocalDate phase5Start = p5 != null ? p5 : transplantDate.plusDays(84);
+        if (date.isBefore(phase3Start)) return 2;
+        if (date.isBefore(phase4Start)) return 3;
+        if (date.isBefore(phase5Start)) return 4;
         return 5;
     }
 }

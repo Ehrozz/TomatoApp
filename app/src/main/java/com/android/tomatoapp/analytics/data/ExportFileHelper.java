@@ -1,4 +1,7 @@
 package com.android.tomatoapp.analytics.data;
+import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
+import java.util.LinkedHashSet;
+import java.util.List;
 
 import android.content.ContentValues;
 import android.content.Context;
@@ -16,6 +19,27 @@ import java.io.IOException;
 final class ExportFileHelper {
 
     private ExportFileHelper() {
+    }
+
+    static String cultivarLabel(List<WorkProgramEntity> programs, String cultivarName) {
+        if (cultivarName != null && !cultivarName.trim().isEmpty()) return cultivarName.trim();
+        LinkedHashSet<String> names = new LinkedHashSet<>();
+        if (programs != null) {
+            for (WorkProgramEntity p : programs) {
+                if (p != null && p.cultivarName != null && !p.cultivarName.trim().isEmpty()) {
+                    names.add(p.cultivarName.trim());
+                }
+            }
+        }
+        if (names.isEmpty()) return "All Cultivars";
+        return android.text.TextUtils.join(", ", names);
+    }
+
+    /** Removes characters Android does not allow in file names and caps the length. */
+    static String safeFileName(String name) {
+        String cleaned = name.replaceAll("[\\\\/:*?\"<>|]", "_").trim();
+        if (cleaned.length() > 100) cleaned = cleaned.substring(0, 100).trim();
+        return cleaned;
     }
 
     static File createExportFile(Context context, String fileName) throws IOException {

@@ -11,6 +11,8 @@ import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
+import android.widget.TableLayout;
+import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -20,8 +22,10 @@ import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.financial.data.CalculationModel;
 import com.android.tomatoapp.financial.data.DailyExpenseMath;
+import com.android.tomatoapp.settings.data.SettingsPreferences;
 import com.android.tomatoapp.task.data.TaskSchedule;
 import com.android.tomatoapp.workprogram.data.WorkProgramDataHelper;
+import com.google.android.material.card.MaterialCardView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -40,26 +44,32 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.HashSet;
+import java.util.Set;
 
 public class Calculator extends BaseBottomNavActivity {
 
     private static final String TAG = "Calculator";
     
     EditText etHectare, etAWF, etAFP, etMarketValue;
-    TextView tvCultivarName, tvDateSaved, tvNP, tvSubTotalHarvest;
+    TextView tvCultivarName, tvCultivarNameTag, tvDateSaved, tvNP, tvSubTotalHarvest;
     Spinner spinnerHarvestUnit;
     TextView tvHarvestPredictionYieldPerHa, tvHarvestPredictionTotalYield, tvHarvestPredictionDate;
     TextView tvNetIncomeCard, tvSummarySubtitle, tvCompletionRate, tvAdjustedNetIncome, tvAdjustedSubtitle, tvAdjustedExpenses, tvCompletionWarning;
     TextView tvTotalExpenses;
     com.google.android.material.button.MaterialButton btnDailyExpensesHistory;
+    com.google.android.material.button.MaterialButton btnSaveToAnalytics;
+    com.google.android.material.button.MaterialButton btnEditMetrics;
     // Expense category cards
     TextView tvLaborTotalCost, tvLaborTotalWorkers;
     TextView tvMaterialTotalCost;
     TextView tvEquipmentTotalCost, tvEquipmentTotalUsage;
     TextView tvMiscellaneousTotalCost;
-    // Expenses card aggregated totals
-    TextView tvExpensesLaborTotal, tvExpensesEquipmentTotal, tvExpensesMaterialTotal, tvExpensesMiscellaneousTotal;
     LinearLayout laborItemsContainer, materialItemsContainer, equipmentItemsContainer, miscItemsContainer;
+    LinearLayout breakdownContainer;
+    private final Set<String> expandedBreakdownKeys = new HashSet<>();
 
     double hectare = 0, AWF = 0, AFP = 0, baseNP = 0, currentNP = 0, marketValue = 0;
     double manpower = 0;
@@ -95,9 +105,11 @@ public class Calculator extends BaseBottomNavActivity {
     private List<MaterialItem> materialItems = new ArrayList<>();
     private List<EquipmentItem> equipmentItems = new ArrayList<>();
     private List<MiscItem> miscItems = new ArrayList<>();
+    private List<DayLog> dayLogs = new ArrayList<>();
     
     // Helper classes for expense items
     private static class LaborItem {
+        String notes;
         String activityName;
         double dailyWage;
         int numWorkers;
@@ -108,6 +120,7 @@ public class Calculator extends BaseBottomNavActivity {
         String materialName;
         double quantity;
         String quantityUnit;
+        double unitCost;
         double totalCost;
     }
     
@@ -115,6 +128,7 @@ public class Calculator extends BaseBottomNavActivity {
         String equipmentName;
         double usageValue;
         String usageUnit;
+        boolean isOwned;
         double cost;
         double totalCost;
     }
@@ -122,6 +136,18 @@ public class Calculator extends BaseBottomNavActivity {
     private static class MiscItem {
         String expenseName;
         double cost;
+    }
+
+    private static class DayLog {
+        String dateKey;
+        int dayNumber;
+        boolean catchUp;
+        int phase;
+        List<LaborItem> laborItems = new ArrayList<>();
+        List<MaterialItem> materialItems = new ArrayList<>();
+        List<EquipmentItem> equipmentItems = new ArrayList<>();
+        List<MiscItem> miscItems = new ArrayList<>();
+        double dayTotal;
     }
 
     @Override
@@ -142,6 +168,7 @@ public class Calculator extends BaseBottomNavActivity {
         etMarketValue = findViewById(R.id.etMarketValue);
         
         tvCultivarName = findViewById(R.id.tvCultivarName);
+        tvCultivarNameTag = findViewById(R.id.tvCultivarNameTag);
         tvDateSaved = findViewById(R.id.tvDateSaved);
         tvNP = findViewById(R.id.tvNP);
         tvSubTotalHarvest = findViewById(R.id.tvSubTotalHarvest);
@@ -172,12 +199,7 @@ public class Calculator extends BaseBottomNavActivity {
         materialItemsContainer = findViewById(R.id.materialItemsContainer);
         equipmentItemsContainer = findViewById(R.id.equipmentItemsContainer);
         miscItemsContainer = findViewById(R.id.miscItemsContainer);
-        
-        // Expenses card aggregated totals
-        tvExpensesLaborTotal = findViewById(R.id.tvExpensesLaborTotal);
-        tvExpensesEquipmentTotal = findViewById(R.id.tvExpensesEquipmentTotal);
-        tvExpensesMaterialTotal = findViewById(R.id.tvExpensesMaterialTotal);
-        tvExpensesMiscellaneousTotal = findViewById(R.id.tvExpensesMiscellaneousTotal);
+        breakdownContainer = findViewById(R.id.breakdownContainer);
 
         // Get values from intent
         cultivarName = getIntent().getStringExtra("cultivar_name");
@@ -189,6 +211,11 @@ public class Calculator extends BaseBottomNavActivity {
 
         // Display cultivar info
         tvCultivarName.setText(String.format(Locale.getDefault(), "Cultivar: %s", (cultivarName != null ? cultivarName : "N/A")));
+        if (tvCultivarNameTag != null) {
+            String tagText = cultivarName != null ? cultivarName : "N/A";
+            if (dateSaved != null) tagText += " · " + dateSaved;
+            tvCultivarNameTag.setText(tagText);
+        }
         tvDateSaved.setText(String.format(Locale.getDefault(), "Date Saved: %s", (dateSaved != null ? dateSaved : "N/A")));
         tvNP.setText(String.format(Locale.getDefault(), "Number of Plants Per Hectare (NP): %s", df.format(baseNP)));
         
@@ -244,6 +271,7 @@ public class Calculator extends BaseBottomNavActivity {
         etAWF.addTextChangedListener(watcher);
         etAFP.addTextChangedListener(watcher);
         etMarketValue.addTextChangedListener(watcher);
+        if (prefilledHectare > 0) compute();
         
         // Initial calculations
         computeExpenses();
@@ -259,7 +287,7 @@ public class Calculator extends BaseBottomNavActivity {
         
         // Initialize expense category cards (show empty state if no data yet)
         updateExpenseCategoryCards();
-        updateExpensesCardTotals();
+        renderBreakdown();
         
         // Set default net income to zero
         if (tvNetIncomeCard != null) {
@@ -271,26 +299,78 @@ public class Calculator extends BaseBottomNavActivity {
         
         // Setup "Save to Analytics" button
         setupSaveToAnalyticsButton();
+
+        if (programId != null) {
+            loadFarmMetrics();
+        }
+
+        // Show the estimated harvest date (same timeline as the work program)
+        loadEstimatedHarvestDate();
+    }
+
+    private void setMetricsLocked(boolean locked) {
+        etHectare.setEnabled(!locked);
+        etAWF.setEnabled(!locked);
+        etAFP.setEnabled(!locked);
+        etMarketValue.setEnabled(!locked);
+        if (btnEditMetrics != null) btnEditMetrics.setEnabled(locked);
+        if (btnSaveToAnalytics != null) btnSaveToAnalytics.setEnabled(!locked);
+    }
+
+    private void loadFarmMetrics() {
+        if (programId == null || currentUser == null) return;
+
+        DatabaseReference farmMetricsRef = FirebaseDatabase.getInstance()
+                .getReference("users")
+                .child(currentUser.getUid())
+                .child("workPrograms")
+                .child(programId)
+                .child("farmMetrics");
+
+        farmMetricsRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (!snapshot.exists()) return;
+                Double awf = snapshot.child("awf").getValue(Double.class);
+                Double afp = snapshot.child("afp").getValue(Double.class);
+                Double market = snapshot.child("marketValue").getValue(Double.class);
+                if (awf != null && awf > 0) etAWF.setText(df2.format(awf));
+                if (afp != null && afp > 0) etAFP.setText(df2.format(afp));
+                if (market != null && market > 0) etMarketValue.setText(df2.format(market));
+                setMetricsLocked(true);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+            }
+        });
     }
     
     /**
      * Sets up the "Save to Analytics" button
      */
     private void setupSaveToAnalyticsButton() {
-        com.google.android.material.button.MaterialButton btnSaveToAnalytics = findViewById(R.id.btnSaveToAnalytics);
+        btnSaveToAnalytics = findViewById(R.id.btnSaveToAnalytics);
+        btnEditMetrics = findViewById(R.id.btnEditMetrics);
         if (btnSaveToAnalytics == null) return;
         
         // Only show button if we have a program ID (linked to a work program)
         if (programId == null || cultivarName == null || dateSaved == null) {
             btnSaveToAnalytics.setVisibility(View.GONE);
+            if (btnEditMetrics != null) btnEditMetrics.setVisibility(View.GONE);
             return;
         }
         
         btnSaveToAnalytics.setVisibility(View.VISIBLE);
+        if (btnEditMetrics != null) {
+            btnEditMetrics.setVisibility(View.VISIBLE);
+            btnEditMetrics.setOnClickListener(v -> setMetricsLocked(false));
+        }
+        setMetricsLocked(false);
         btnSaveToAnalytics.setOnClickListener(v -> {
             // Validate that calculation is complete
             if (hectare <= 0 || grossIncome <= 0) {
-                Toast.makeText(this, "Please complete the calculation before saving to analytics", Toast.LENGTH_SHORT).show();
+                showSingleToast("Please complete the calculation before saving to analytics", Toast.LENGTH_SHORT);
                 return;
             }
             
@@ -337,19 +417,26 @@ public class Calculator extends BaseBottomNavActivity {
      */
     private void updateHarvestDisplay() {
         if (tvSubTotalHarvest == null || spinnerHarvestUnit == null) return;
-        
+
         String selectedUnit = (String) spinnerHarvestUnit.getSelectedItem();
         if (selectedUnit == null) selectedUnit = "kg";
-        
-        if (totalHarvestKg > 0 || totalHarvestGrams > 0) {
-            if (selectedUnit.equals("kg")) {
-                tvSubTotalHarvest.setText(String.format(Locale.getDefault(), "₱%s", df2.format(totalHarvestKg)));
-            } else {
-                tvSubTotalHarvest.setText(String.format(Locale.getDefault(), "₱%s", df2.format(totalHarvestGrams)));
-            }
+
+        double displayValue;
+
+        if (selectedUnit.equals("kg")) {
+            displayValue = totalHarvestKg;
         } else {
-            tvSubTotalHarvest.setText("₱—");
+            displayValue = totalHarvestGrams;
         }
+
+        tvSubTotalHarvest.setText(
+                String.format(
+                        Locale.getDefault(),
+                        "%s %s",
+                        df2.format(displayValue),
+                        selectedUnit
+                )
+        );
     }
     
     /**
@@ -370,12 +457,12 @@ public class Calculator extends BaseBottomNavActivity {
         btnDailyExpensesHistory.setOnClickListener(v -> {
             // Double-check that all required data is available before navigating
             if (programId == null || programId.isEmpty()) {
-                Toast.makeText(Calculator.this, "Daily expenses history is only available for saved work programs", Toast.LENGTH_SHORT).show();
+                showSingleToast("Daily expenses history is only available for saved work programs", Toast.LENGTH_SHORT);
                 return;
             }
             
             if (cultivarName == null || dateSaved == null) {
-                Toast.makeText(Calculator.this, "Missing required information", Toast.LENGTH_SHORT).show();
+                showSingleToast("Missing required information", Toast.LENGTH_SHORT);
                 return;
             }
             
@@ -386,7 +473,7 @@ public class Calculator extends BaseBottomNavActivity {
                 intent.putExtra("startDate", dateSaved);
                 startActivity(intent);
             } catch (Exception e) {
-                Toast.makeText(Calculator.this, "Unable to open daily expenses history", Toast.LENGTH_SHORT).show();
+                showSingleToast("Unable to open daily expenses history", Toast.LENGTH_SHORT);
                 Log.e(TAG, "Error opening daily expenses history", e);
             }
         });
@@ -415,10 +502,23 @@ public class Calculator extends BaseBottomNavActivity {
                 materialItems.clear();
                 equipmentItems.clear();
                 miscItems.clear();
+                dayLogs.clear();
                 
                 // Iterate through all dates with expenses
                 for (DataSnapshot dateSnapshot : snapshot.getChildren()) {
                     double dailyTotal = 0;
+                    String dateKey = dateSnapshot.getKey() == null ? "" : dateSnapshot.getKey();
+                    DayLog dayLog = new DayLog();
+                    dayLog.dateKey = dateKey;
+                    dayLog.catchUp = "CATCH_UP".equals(DailyExpenseMath.asString(dateSnapshot.child("entryType").getValue()));
+                    dayLog.phase = DailyExpenseMath.asInt(dateSnapshot.child("phase").getValue());
+                    try {
+                        dayLog.dayNumber = (int) ChronoUnit.DAYS.between(
+                                LocalDate.parse(dateSaved),
+                                LocalDate.parse(dateKey.substring(0, 10))) + 1;
+                    } catch (Exception e) {
+                        dayLog.dayNumber = 0;
+                    }
                     
                     // Process labor expenses
                     if (dateSnapshot.hasChild("labor")) {
@@ -434,10 +534,12 @@ public class Calculator extends BaseBottomNavActivity {
                                 
                                 LaborItem item = new LaborItem();
                                 item.activityName = !notes.isEmpty() ? notes : "Labor";
+                                item.notes = notes;
                                 item.dailyWage = dailyWage;
                                 item.numWorkers = numWorkers;
                                 item.totalCost = totalCost;
                                 laborItems.add(item);
+                                dayLog.laborItems.add(item);
                             }
                             
                             if (numWorkers > 0) {
@@ -453,6 +555,7 @@ public class Calculator extends BaseBottomNavActivity {
                             String materialName = DailyExpenseMath.asString(materialSnapshot.child("materialName").getValue());
                             double quantity = DailyExpenseMath.asDouble(materialSnapshot.child("quantity").getValue());
                             String quantityUnit = DailyExpenseMath.asString(materialSnapshot.child("quantityUnit").getValue());
+                            double unitCost = DailyExpenseMath.asDouble(materialSnapshot.child("unitCost").getValue());
                             
                             if (totalCost > 0) {
                                 aggregatedMaterialCost += totalCost;
@@ -462,8 +565,10 @@ public class Calculator extends BaseBottomNavActivity {
                                 item.materialName = !materialName.isEmpty() ? materialName : "Material";
                                 item.quantity = quantity;
                                 item.quantityUnit = quantityUnit;
+                                item.unitCost = unitCost;
                                 item.totalCost = totalCost;
                                 materialItems.add(item);
+                                dayLog.materialItems.add(item);
                             }
                         }
                     }
@@ -480,6 +585,14 @@ public class Calculator extends BaseBottomNavActivity {
                             double usageValue = DailyExpenseMath.asDouble(equipmentSnapshot.child("usageValue").getValue());
                             String usageUnit = DailyExpenseMath.asString(equipmentSnapshot.child("usageUnit").getValue());
                             double cost = DailyExpenseMath.asDouble(equipmentSnapshot.child("cost").getValue());
+                            EquipmentItem dayItem = new EquipmentItem();
+                            dayItem.equipmentName = !equipmentName.isEmpty() ? equipmentName : "Equipment";
+                            dayItem.usageValue = usageValue;
+                            dayItem.usageUnit = usageUnit.isEmpty() ? "hours" : usageUnit;
+                            dayItem.isOwned = isOwned;
+                            dayItem.cost = cost;
+                            dayItem.totalCost = isOwned ? 0 : totalCost;
+                            dayLog.equipmentItems.add(dayItem);
                             
                             if (usageValue > 0) {
                                 double hours = "hours".equals(usageUnit) || usageUnit.isEmpty() ? usageValue : (usageValue / 60.0);
@@ -496,6 +609,7 @@ public class Calculator extends BaseBottomNavActivity {
                                     item.equipmentName = !equipmentName.isEmpty() ? equipmentName : "Equipment";
                                     item.usageValue = usageValue;
                                     item.usageUnit = usageUnit.isEmpty() ? "hours" : usageUnit;
+                                    item.isOwned = false;
                                     item.cost = cost;
                                     item.totalCost = totalCost;
                                     equipmentItems.add(item);
@@ -518,6 +632,7 @@ public class Calculator extends BaseBottomNavActivity {
                                 item.expenseName = !expenseName.isEmpty() ? expenseName : "Miscellaneous";
                                 item.cost = cost;
                                 miscItems.add(item);
+                                dayLog.miscItems.add(item);
                             }
                         }
                     }
@@ -526,6 +641,8 @@ public class Calculator extends BaseBottomNavActivity {
                     if (dailyTotal > 0) {
                         dailyExpenseTotals.add(dailyTotal);
                     }
+                    dayLog.dayTotal = dailyTotal;
+                    dayLogs.add(dayLog);
                 }
                 
                 // Display individual items
@@ -542,8 +659,7 @@ public class Calculator extends BaseBottomNavActivity {
                 // Update expense category cards
                 updateExpenseCategoryCards();
                 
-                // Update Expenses card totals
-                updateExpensesCardTotals();
+                renderBreakdown();
             }
             
             @Override
@@ -759,65 +875,180 @@ public class Calculator extends BaseBottomNavActivity {
         }
     }
     
-    /**
-     * Updates the Expenses card to show aggregated totals from daily expenses
-     */
-    private void updateExpensesCardTotals() {
-        // Update Labor Total in Expenses card
-        if (tvExpensesLaborTotal != null) {
-            tvExpensesLaborTotal.setText(String.format(Locale.getDefault(), "Labor Total Cost: ₱%,.2f", aggregatedLaborCost));
+    private void renderBreakdown() {
+        if (breakdownContainer == null) return;
+        breakdownContainer.removeAllViews();
+        if (dayLogs.isEmpty()) {
+            TextView empty = new TextView(this);
+            empty.setText("No daily expenses logged yet");
+            empty.setTextSize(13);
+            empty.setTextColor(getResources().getColor(android.R.color.darker_gray));
+            breakdownContainer.addView(empty);
+            return;
         }
-        
-        // Update Equipment/Tools Total in Expenses card
-        if (tvExpensesEquipmentTotal != null) {
-            tvExpensesEquipmentTotal.setText(String.format(Locale.getDefault(), "Equipment/Tools Total Cost: ₱%,.2f", aggregatedEquipmentCost));
+
+        Collections.sort(dayLogs, (left, right) -> left.dateKey.compareTo(right.dateKey));
+        int logNumber = 1;
+        for (DayLog log : dayLogs) {
+            MaterialCardView card = new MaterialCardView(this);
+            card.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
+            card.setRadius(dp(16));
+            card.setCardElevation(dp(2));
+            card.setCardBackgroundColor(getResources().getColor(android.R.color.white));
+
+            LinearLayout content = new LinearLayout(this);
+            content.setOrientation(LinearLayout.VERTICAL);
+            LinearLayout header = new LinearLayout(this);
+            header.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            header.setPadding(dp(14), dp(14), dp(14), dp(14));
+
+            TextView headerText = new TextView(this);
+            headerText.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
+            String dateText = formatBreakdownDate(log.dateKey);
+            String label = log.catchUp
+                    ? String.format(Locale.getDefault(), "Before joining – Phase %d", log.phase)
+                    : String.format(Locale.getDefault(), "Day %d", log.dayNumber);
+            headerText.setText(String.format(Locale.getDefault(), "Log %d · %s · %s · ₱%,.2f",
+                    logNumber, label, dateText, log.dayTotal));
+            headerText.setTextSize(13);
+            headerText.setTypeface(null, android.graphics.Typeface.BOLD);
+            header.addView(headerText);
+
+            TextView indicator = new TextView(this);
+            indicator.setText(expandedBreakdownKeys.contains(log.dateKey) ? "▼" : "▶");
+            indicator.setTextSize(13);
+            header.addView(indicator);
+
+            LinearLayout body = new LinearLayout(this);
+            body.setOrientation(LinearLayout.VERTICAL);
+            body.setPadding(dp(14), 0, dp(14), dp(14));
+            body.setVisibility(expandedBreakdownKeys.contains(log.dateKey) ? View.VISIBLE : View.GONE);
+            addBreakdownSections(body, log);
+            header.setOnClickListener(v -> {
+                boolean expanded = body.getVisibility() == View.VISIBLE;
+                body.setVisibility(expanded ? View.GONE : View.VISIBLE);
+                indicator.setText(expanded ? "▶" : "▼");
+                if (expanded) expandedBreakdownKeys.remove(log.dateKey);
+                else expandedBreakdownKeys.add(log.dateKey);
+            });
+            content.addView(header);
+            content.addView(body);
+            card.addView(content);
+            LinearLayout.LayoutParams cardParams = (LinearLayout.LayoutParams) card.getLayoutParams();
+            cardParams.bottomMargin = dp(9);
+            card.setLayoutParams(cardParams);
+            breakdownContainer.addView(card);
+            logNumber++;
         }
-        
-        // Update Material Total in Expenses card
-        if (tvExpensesMaterialTotal != null) {
-            tvExpensesMaterialTotal.setText(String.format(Locale.getDefault(), "Material Total Cost: ₱%,.2f", aggregatedMaterialCost));
+    }
+
+    private void addBreakdownSections(LinearLayout body, DayLog log) {
+        if (!log.laborItems.isEmpty()) {
+            TableLayout table = createBreakdownTable(body, "Labor");
+            addBreakdownRow(table, true, "Labor item #", "No. of workers", "Activity", "Daily wage (₱)", "Sub-total");
+            double subtotal = 0;
+            int index = 1;
+            for (LaborItem item : log.laborItems) {
+                addBreakdownRow(table, false, String.valueOf(index++), String.valueOf(item.numWorkers),
+                        item.notes.isEmpty() ? item.activityName : item.notes, money(item.dailyWage), money(item.totalCost));
+                subtotal += item.totalCost;
+            }
+            addBreakdownRow(table, false, "Sub-total", "", "", "", money(subtotal));
         }
-        
-        // Update Miscellaneous Total in Expenses card
-        if (tvExpensesMiscellaneousTotal != null) {
-            tvExpensesMiscellaneousTotal.setText(String.format(Locale.getDefault(), "Miscellaneous Total Cost: ₱%,.2f", aggregatedMiscCost));
+        if (!log.materialItems.isEmpty()) {
+            TableLayout table = createBreakdownTable(body, "Material");
+            addBreakdownRow(table, true, "Material item #", "Material", "Quantity", "Unit cost (₱)", "Sub-total");
+            double subtotal = 0;
+            int index = 1;
+            for (MaterialItem item : log.materialItems) {
+                addBreakdownRow(table, false, String.valueOf(index++), item.materialName,
+                        df2.format(item.quantity) + " " + item.quantityUnit, money(item.unitCost), money(item.totalCost));
+                subtotal += item.totalCost;
+            }
+            addBreakdownRow(table, false, "Sub-total", "", "", "", money(subtotal));
         }
+        if (!log.equipmentItems.isEmpty()) {
+            TableLayout table = createBreakdownTable(body, "Equipment");
+            addBreakdownRow(table, true, "Equipment item #", "Equipment", "Usage", "Rate/hr (₱)", "Sub-total");
+            double subtotal = 0;
+            int index = 1;
+            for (EquipmentItem item : log.equipmentItems) {
+                addBreakdownRow(table, false, String.valueOf(index++), item.equipmentName,
+                        df2.format(item.usageValue) + " " + item.usageUnit,
+                        item.isOwned ? "Owned" : money(item.cost), money(item.totalCost));
+                subtotal += item.totalCost;
+            }
+            addBreakdownRow(table, false, "Sub-total", "", "", "", money(subtotal));
+        }
+        if (!log.miscItems.isEmpty()) {
+            TableLayout table = createBreakdownTable(body, "Miscellaneous");
+            addBreakdownRow(table, true, "Misc item #", "Expense", "Cost (₱)");
+            double subtotal = 0;
+            int index = 1;
+            for (MiscItem item : log.miscItems) {
+                addBreakdownRow(table, false, String.valueOf(index++), item.expenseName, money(item.cost));
+                subtotal += item.cost;
+            }
+            addBreakdownRow(table, false, "Sub-total", "", money(subtotal));
+        }
+    }
+
+    private TableLayout createBreakdownTable(LinearLayout body, String title) {
+        TextView sectionTitle = new TextView(this);
+        sectionTitle.setText(title);
+        sectionTitle.setTextSize(12);
+        sectionTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+        sectionTitle.setPadding(0, dp(10), 0, dp(4));
+        body.addView(sectionTitle);
+        TableLayout table = new TableLayout(this);
+        table.setStretchAllColumns(true);
+        body.addView(table);
+        return table;
+    }
+
+    private void addBreakdownRow(TableLayout table, boolean bold, String... values) {
+        TableRow row = new TableRow(this);
+        for (String value : values) {
+            TextView cell = new TextView(this);
+            cell.setText(value);
+            cell.setTextSize(11);
+            cell.setPadding(dp(3), dp(4), dp(3), dp(4));
+            if (bold) cell.setTypeface(null, android.graphics.Typeface.BOLD);
+            row.addView(cell);
+        }
+        table.addView(row);
+    }
+
+    private String formatBreakdownDate(String dateKey) {
+        try {
+            Date date = Date.from(LocalDate.parse(dateKey.substring(0, 10))
+                    .atStartOfDay(java.time.ZoneId.systemDefault()).toInstant());
+            return SettingsPreferences.getDateFormatInstance(this).format(date);
+        } catch (Exception e) {
+            return dateKey;
+        }
+    }
+
+    private String money(double value) {
+        return String.format(Locale.getDefault(), "₱%,.2f", value);
+    }
+
+    private int dp(int value) {
+        return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
     }
     
     /**
-     * Updates Harvest Prediction card with calculated harvest predictions
+     * Updates the yield part of the Harvest Prediction card.
+     * The estimated harvest DATE is handled separately by loadEstimatedHarvestDate().
      */
     private void updateHarvestPrediction(double totalHarvestKg, double hectareValue) {
         if (hectareValue > 0 && totalHarvestKg > 0) {
-            // Calculate yield per hectare
             double yieldPerHa = totalHarvestKg / hectareValue;
-            
             if (tvHarvestPredictionYieldPerHa != null) {
                 tvHarvestPredictionYieldPerHa.setText(String.format(Locale.getDefault(), "%.2f kg/hectare", yieldPerHa));
             }
-            
             if (tvHarvestPredictionTotalYield != null) {
                 tvHarvestPredictionTotalYield.setText(String.format(Locale.getDefault(), "%.2f kg", totalHarvestKg));
-            }
-            
-            // Calculate predicted harvest date based on start date and maturity days
-            if (dateSaved != null && maturityDays > 0 && tvHarvestPredictionDate != null) {
-                try {
-                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-                    Date startDate = sdf.parse(dateSaved);
-                    if (startDate != null) {
-                        Calendar cal = Calendar.getInstance();
-                        cal.setTime(startDate);
-                        cal.add(Calendar.DAY_OF_YEAR, maturityDays);
-                        Date harvestDate = cal.getTime();
-                        String formattedDate = sdf.format(harvestDate);
-                        tvHarvestPredictionDate.setText(formattedDate);
-                    }
-                } catch (Exception e) {
-                    tvHarvestPredictionDate.setText("—");
-                }
-            } else if (tvHarvestPredictionDate != null) {
-                tvHarvestPredictionDate.setText("—");
             }
         } else {
             if (tvHarvestPredictionYieldPerHa != null) {
@@ -826,9 +1057,62 @@ public class Calculator extends BaseBottomNavActivity {
             if (tvHarvestPredictionTotalYield != null) {
                 tvHarvestPredictionTotalYield.setText("— kg");
             }
-            if (tvHarvestPredictionDate != null) {
-                tvHarvestPredictionDate.setText("—");
+        }
+    }
+
+    /** Reads the program's saved milestone dates, then shows the estimated harvest date. */
+    private void loadEstimatedHarvestDate() {
+        if (tvHarvestPredictionDate == null) return;
+        if (currentUser == null || programId == null) {
+            showEstimatedHarvestDate(null, null);
+            return;
+        }
+        FirebaseDatabase.getInstance()
+                .getReference("users").child(currentUser.getUid())
+                .child("workPrograms").child(programId)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        String sowing = readProgramDate(snapshot, "sowingDate");
+                        String transplant = readProgramDate(snapshot, "transplantDate");
+                        showEstimatedHarvestDate(sowing, transplant);
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        showEstimatedHarvestDate(null, null);
+                    }
+                });
+    }
+
+    private String readProgramDate(DataSnapshot program, String key) {
+        DataSnapshot[] places = {
+                program,
+                program.child("intake"),
+                program.child("placement").child("answers")
+        };
+        for (DataSnapshot place : places) {
+            Object value = place.child(key).getValue();
+            if (value != null && !String.valueOf(value).trim().isEmpty()) {
+                return String.valueOf(value);
             }
+        }
+        return null;
+    }
+
+    /** Same timeline the Workprogram calendar uses: transplant = sowing/start + 25 days. */
+    private void showEstimatedHarvestDate(String sowing, String transplant) {
+        if (tvHarvestPredictionDate == null) return;
+        try {
+            java.time.LocalDate start = java.time.LocalDate.parse(dateSaved);
+            java.time.LocalDate transplantDay = transplant != null
+                    ? java.time.LocalDate.parse(transplant)
+                    : (sowing != null ? java.time.LocalDate.parse(sowing) : start).plusDays(25);
+            java.time.LocalDate harvest = transplantDay.plusDays(maturityDays);
+            Date harvestDate = Date.from(harvest.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant());
+            tvHarvestPredictionDate.setText(SettingsPreferences.getDateFormatInstance(this).format(harvestDate));
+        } catch (Exception e) {
+            tvHarvestPredictionDate.setText("—");
         }
     }
     
@@ -877,7 +1161,7 @@ public class Calculator extends BaseBottomNavActivity {
                 .child("workPrograms")
                 .child(programId);
         
-        workProgramRef.child("landArea").addListenerForSingleValueEvent(
+        workProgramRef.child("areaSize").addListenerForSingleValueEvent(
                 new com.google.firebase.database.ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull com.google.firebase.database.DataSnapshot snapshot) {
@@ -987,21 +1271,26 @@ public class Calculator extends BaseBottomNavActivity {
         Map<String, Object> updates = new HashMap<>();
         // Legacy fields (already used in the app)
         updates.put("cultivar", cultivarName);
-        updates.put("startDate", dateSaved);
         updates.put("landArea", hectare);
         // Analytics-friendly fields
         updates.put("cultivarName", cultivarName);
-        updates.put("startingDate", dateSaved);
         updates.put("areaSize", hectare);
         updates.put("projectedIncome", grossIncome);
         updates.put("projectedExpenses", totalExpenses);
+        updates.put("farmMetrics/awf", AWF);
+        updates.put("farmMetrics/afp", AFP);
+        updates.put("farmMetrics/marketValue", marketValue);
+
+        if (btnSaveToAnalytics != null) btnSaveToAnalytics.setEnabled(false);
 
         workProgramRef.updateChildren(updates)
                 .addOnSuccessListener(aVoid -> {
                     Toast.makeText(this, "Successfully saved to Analytics and Season Comparison", Toast.LENGTH_SHORT).show();
+                    setMetricsLocked(true);
                 })
                 .addOnFailureListener(e -> {
                     Toast.makeText(this, "Failed to save to analytics: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    if (btnSaveToAnalytics != null) btnSaveToAnalytics.setEnabled(true);
                 });
     }
 
@@ -1015,9 +1304,9 @@ public class Calculator extends BaseBottomNavActivity {
             // 🔹 Update NP immediately when hectare changes
             currentNP = baseNP * hectare;
             if (hectare > 0) {
-                tvNP.setText(String.format(Locale.getDefault(), "Number of Plants (NP): %s", df.format(currentNP)));
+                tvNP.setText(String.format(Locale.getDefault(), "Number of Plants (NP): ₱%s", df.format(currentNP)));
             } else {
-                tvNP.setText(String.format(Locale.getDefault(), "Number of Plants (NP): %s", df.format(baseNP)));
+                tvNP.setText(String.format(Locale.getDefault(), "Number of Plants (NP): ₱%s", df.format(baseNP)));
             }
 
             // 🔹 Compute totals only when all fields are filled
@@ -1040,15 +1329,12 @@ public class Calculator extends BaseBottomNavActivity {
                 // Update harvest display
                 updateHarvestDisplay();
                 
-                // Clear Harvest Prediction card
+                // Clear yield values (the estimated harvest date stays visible)
                 if (tvHarvestPredictionYieldPerHa != null) {
                     tvHarvestPredictionYieldPerHa.setText("— kg/hectare");
                 }
                 if (tvHarvestPredictionTotalYield != null) {
                     tvHarvestPredictionTotalYield.setText("— kg");
-                }
-                if (tvHarvestPredictionDate != null) {
-                    tvHarvestPredictionDate.setText("—");
                 }
             }
             

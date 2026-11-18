@@ -63,7 +63,6 @@
                         android:id="@+id/tvCultivarNameTag"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Roma VF Tomato"
                         android:background="@drawable/bg_pill_input"
                         android:backgroundTint="#26FFFFFF"
                         android:textColor="@color/white"
@@ -174,7 +173,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Total Yield"
+                                android:text="Estimated Total Yield"
                                 android:textColor="#2E7D32"
                                 android:textSize="12sp" />
                             <View
@@ -198,7 +197,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Harvest Date"
+                                android:text="Estimated Harvest Date"
                                 android:textColor="#2E7D32"
                                 android:textSize="12sp" />
                             <View
@@ -296,7 +295,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="0dp"
                                 android:layout_weight="1" />
-                            <TextView android:id="@+id/tvSubTotalHarvest" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="₱0.00" android:textSize="15sp" android:textStyle="bold" android:textColor="@color/green" android:fontFamily="serif" />
+                            <TextView android:id="@+id/tvSubTotalHarvest" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0 kg" android:textSize="15sp" android:textStyle="bold" android:textColor="@color/green" android:fontFamily="serif" />
                         </LinearLayout>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
@@ -311,158 +310,44 @@
                     android:letterSpacing="0.05"
                     android:layout_marginBottom="12dp" />
 
-                <!-- Labor Expense Item -->
-                <com.google.android.material.card.MaterialCardView
+                <LinearLayout
+                    android:id="@+id/breakdownContainer"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="9dp"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="2dp"
-                    app:cardBackgroundColor="@color/white">
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:padding="14dp">
-                        <TextView
-                            android:layout_width="44dp"
-                            android:layout_height="44dp"
-                            android:text="👷"
-                            android:background="@drawable/bg_pill_input"
-                            android:backgroundTint="#E8F5E9"
-                            android:gravity="center"
-                            android:textSize="18sp"
-                            android:layout_marginEnd="12dp" />
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Labor" android:textSize="14sp" android:textStyle="bold" android:textColor="@color/text" />
-                            <TextView android:id="@+id/tvExpensesLaborTotal_Sub" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Logged entries" android:textSize="11sp" android:textColor="@color/muted" />
-                        </LinearLayout>
-                        <TextView android:id="@+id/tvExpensesLaborTotal" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="₱0" android:textSize="14sp" android:textStyle="bold" android:textColor="@color/green" android:fontFamily="serif" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
+                    android:orientation="vertical" />
 
-                <!-- Material Expense Item -->
-                <com.google.android.material.card.MaterialCardView
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="9dp"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="2dp"
-                    app:cardBackgroundColor="@color/white">
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:padding="14dp">
-                        <TextView
-                            android:layout_width="44dp"
-                            android:layout_height="44dp"
-                            android:text="🧪"
-                            android:background="@drawable/bg_pill_input"
-                            android:backgroundTint="@color/blue_light"
-                            android:gravity="center"
-                            android:textSize="18sp"
-                            android:layout_marginEnd="12dp" />
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Materials" android:textSize="14sp" android:textStyle="bold" android:textColor="@color/text" />
-                            <TextView android:id="@+id/tvExpensesMaterialTotal_Sub" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Logged entries" android:textSize="11sp" android:textColor="@color/muted" />
-                        </LinearLayout>
-                        <TextView android:id="@+id/tvExpensesMaterialTotal" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="₱0" android:textSize="14sp" android:textStyle="bold" android:textColor="@color/green" android:fontFamily="serif" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
+                    android:orientation="horizontal"
+                    android:layout_marginTop="12dp">
 
-                <!-- Equipment Expense Item -->
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="9dp"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="2dp"
-                    app:cardBackgroundColor="@color/white">
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:padding="14dp">
-                        <TextView
-                            android:layout_width="44dp"
-                            android:layout_height="44dp"
-                            android:text="🔧"
-                            android:background="@drawable/bg_pill_input"
-                            android:backgroundTint="@color/orange_light"
-                            android:gravity="center"
-                            android:textSize="18sp"
-                            android:layout_marginEnd="12dp" />
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Equipment" android:textSize="14sp" android:textStyle="bold" android:textColor="@color/text" />
-                            <TextView android:id="@+id/tvExpensesEquipmentTotal_Sub" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Logged entries" android:textSize="11sp" android:textColor="@color/muted" />
-                        </LinearLayout>
-                        <TextView android:id="@+id/tvExpensesEquipmentTotal" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="₱0" android:textSize="14sp" android:textStyle="bold" android:textColor="@color/green" android:fontFamily="serif" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSaveToAnalytics"
+                        android:layout_width="0dp"
+                        android:layout_height="56dp"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="8dp"
+                        android:text="Save to Analytics"
+                        android:textColor="@color/white"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textAllCaps="false"
+                        app:backgroundTint="@color/green_save"
+                        app:cornerRadius="28dp" />
 
-                <!-- Miscellaneous Expense Item -->
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="9dp"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="2dp"
-                    app:cardBackgroundColor="@color/white">
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:padding="14dp">
-                        <TextView
-                            android:layout_width="44dp"
-                            android:layout_height="44dp"
-                            android:text="📝"
-                            android:background="@drawable/bg_pill_input"
-                            android:backgroundTint="#F5F5F5"
-                            android:gravity="center"
-                            android:textSize="18sp"
-                            android:layout_marginEnd="12dp" />
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Miscellaneous" android:textSize="14sp" android:textStyle="bold" android:textColor="@color/text" />
-                            <TextView android:id="@+id/tvExpensesMiscellaneousTotal_Sub" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Other expenses" android:textSize="11sp" android:textColor="@color/muted" />
-                        </LinearLayout>
-                        <TextView android:id="@+id/tvExpensesMiscellaneousTotal" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="₱0" android:textSize="14sp" android:textStyle="bold" android:textColor="@color/green" android:fontFamily="serif" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnSaveToAnalytics"
-                    android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:text="Save to Analytics"
-                    android:textColor="@color/white"
-                    android:textSize="15sp"
-                    android:textStyle="bold"
-                    android:textAllCaps="false"
-                    android:layout_marginTop="12dp"
-                    app:backgroundTint="@color/green_save"
-                    app:cornerRadius="28dp" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnEditMetrics"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="0dp"
+                        android:layout_height="56dp"
+                        android:layout_weight="1"
+                        android:text="Edit"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textAllCaps="false"
+                        app:cornerRadius="28dp" />
+                </LinearLayout>
 
                 <!-- Dummy/Hidden views for compatibility -->
                 <TextView android:id="@+id/tvSummarySubtitle" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>

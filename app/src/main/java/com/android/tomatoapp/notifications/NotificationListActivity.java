@@ -25,10 +25,16 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import android.util.Log;
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.common.managers.AppNotificationManager;
 import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
+
+import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
+import java.util.Collections;
+import java.util.Iterator;
 
 public class NotificationListActivity extends BaseBottomNavActivity {
     
@@ -139,6 +145,7 @@ public class NotificationListActivity extends BaseBottomNavActivity {
             }
             notificationList.clear();
             notificationList.addAll(AppNotificationManager.getNotifications(this));
+            Collections.sort(notificationList, (a, b) -> Long.compare(b.timestamp, a.timestamp));
             if (adapter != null) {
                 adapter.notifyDataSetChanged();
             }
@@ -175,42 +182,57 @@ public class NotificationListActivity extends BaseBottomNavActivity {
             Toast.makeText(this, "No target activity specified", Toast.LENGTH_SHORT).show();
             return;
         }
-        
+
+        Class<?> targetClass = resolveActivity(notification.targetActivity);
+        if (targetClass == null) {
+            Toast.makeText(this, "Target activity not found: " + notification.targetActivity,
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Intent intent = new Intent(this, targetClass);
+
+        if (notification.extraData != null && !notification.extraData.isEmpty()) {
+            try {
+                JSONObject extraData = new JSONObject(notification.extraData);
+                Iterator<String> keys = extraData.keys();
+                while (keys.hasNext()) {
+                    String key = keys.next();
+                    intent.putExtra(key, extraData.optString(key));
+                }
+                // Workprogram expects "startDate"; fall back to "date" if missing
+                if (!extraData.has("startDate") && extraData.has("date")) {
+                    intent.putExtra("startDate", extraData.optString("date"));
+                }
+            } catch (Exception e) {
+                Log.w("NotifNav", "Bad extraData", e);
+            }
+        }
+
+        startActivity(intent);
+        AppNotificationManager.removeNotification(this, notification.id);
+        loadNotifications();
+    }
+
+    /** Finds the activity among those declared in the manifest, by full or simple name. */
+    private Class<?> resolveActivity(String name) {
         try {
-            Class<?> targetClass = Class.forName("com.android.tomatoapp." + notification.targetActivity);
-            Intent intent = new Intent(this, targetClass);
-            
-            // Parse extra data if available
-            if (notification.extraData != null && !notification.extraData.isEmpty()) {
-                try {
-                    JSONObject extraData = new JSONObject(notification.extraData);
-                    // Add common extras
-                    if (extraData.has("programId")) {
-                        intent.putExtra("programId", extraData.getString("programId"));
-                    }
-                    if (extraData.has("cultivar")) {
-                        intent.putExtra("cultivar", extraData.getString("cultivar"));
-                    }
-                    if (extraData.has("date")) {
-                        intent.putExtra("date", extraData.getString("date"));
-                    }
-                    if (extraData.has("detectionId")) {
-                        intent.putExtra("detectionId", extraData.getString("detectionId"));
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
+            ActivityInfo[] activities = getPackageManager()
+                    .getPackageInfo(getPackageName(), PackageManager.GET_ACTIVITIES).activities;
+            if (activities == null) return null;
+            String simple = name.contains(".") ? name.substring(name.lastIndexOf('.') + 1) : name;
+            String bySimpleName = null;
+            for (ActivityInfo info : activities) {
+                if (info.name.equals(name)) return Class.forName(info.name);
+                if (bySimpleName == null && info.name.endsWith("." + simple)) {
+                    bySimpleName = info.name;
                 }
             }
-            
-            startActivity(intent);
-            
-            // Remove notification after navigating
-            AppNotificationManager.removeNotification(this, notification.id);
-            loadNotifications();
-        } catch (ClassNotFoundException e) {
-            Toast.makeText(this, "Target activity not found", Toast.LENGTH_SHORT).show();
-            e.printStackTrace();
+            if (bySimpleName != null) return Class.forName(bySimpleName);
+        } catch (Exception e) {
+            Log.e("NotifNav", "Unresolved targetActivity: " + name, e);
         }
+        return null;
     }
     
     private class NotificationAdapter extends RecyclerView.Adapter<NotificationAdapter.NotificationViewHolder> {

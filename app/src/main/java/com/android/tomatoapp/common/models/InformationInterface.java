@@ -38,28 +38,14 @@ public class InformationInterface extends BaseBottomNavActivity {
     private MaterialCardView catAll, catFungal, catBacterial, catPest, catViral;
     private String activeCategory = null; // null = all
     private String searchQuery = "";
-
     
-    // Map short names to full names in DiseaseData
-    private static final HashMap<String, String> diseaseNameMap = new HashMap<>();
-    static {
-        diseaseNameMap.put("Tomato Leaf Curl Virus", "Tomato Leaf Curl Virus (TLCV)");
-        diseaseNameMap.put("Early Blight", "Early Blight (Alternaria solani)");
-        diseaseNameMap.put("Late Blight", "Late Blight (Phytophthora infestans)");
-        diseaseNameMap.put("Anthracnose ", "Anthracnose (Colletotrichum spp.)");
-        diseaseNameMap.put("Black Leaf Mold", "Black Leaf Mold (Pseudocercospora fuligena)");
-    }
-    
-    // Map disease names to image resources
+   // Map disease names to image resources
     private static final HashMap<String, Integer> diseaseImageMap = new HashMap<>();
     static {
         diseaseImageMap.put("Anthracnose", R.drawable.disease_anthracnose);
-        diseaseImageMap.put("Anthracnose ", R.drawable.disease_anthracnose);
-        diseaseImageMap.put("Black Leaf Mold", R.drawable.disease_black_leaf_mold);
         diseaseImageMap.put("Early Blight", R.drawable.disease_early_blight);
         diseaseImageMap.put("Late Blight", R.drawable.disease_late_blight);
-        diseaseImageMap.put("Yellow Leaf Curl", R.drawable.disease_yellow_leaf_curl);
-        diseaseImageMap.put("Tomato Leaf Curl Virus", R.drawable.disease_yellow_leaf_curl);
+        diseaseImageMap.put("Tomato Yellow Leaf Curl Virus", R.drawable.disease_yellow_leaf_curl);
     }
 
 
@@ -150,27 +136,44 @@ public class InformationInterface extends BaseBottomNavActivity {
         adapter.updateItems(filtered);
     }
 
-    private void prepareDiseaseList() {
-        // { displayName, dataKey, category }
+        private void prepareDiseaseList() {
+        // { displayName, category }  (displayName is also the lookup key in DiseaseData)
         String[][] entries = {
-                {"Early Blight",           "Early Blight",          "fungal"},
-                {"Late Blight",            "Late Blight",           "fungal"},
-                {"Anthracnose",            "Anthracnose ",          "fungal"},
-                {"Black Leaf Mold",        "Black Leaf Mold",       "fungal"},
-                {"Tomato Leaf Curl Virus", "Tomato Leaf Curl Virus","viral"},
+                // Leaves
+                {"Bacterial Spot",                "bacterial"},
+                {"Early Blight",                  "fungal"},
+                {"Late Blight",                   "fungal"},
+                {"Leaf Mold",                     "fungal"},
+                {"Tomato Yellow Leaf Curl Virus", "viral"},
+                {"Tomato Mosaic Virus",           "viral"},
+                {"Spider Mites",                  "pest"},
+                // Fruits
+                {"Anthracnose",                   "fungal"},
+                {"Blossom End Rot",               "disorder"},
+                {"Blotchy Ripening",              "disorder"},
+                {"Fruit Cracking",                "disorder"},
+                {"Sun Scald",                     "disorder"},
+                {"Fruit Worm",                    "pest"},
+                // Pests
+                {"Whiteflies",                    "pest"},
+                {"Aphids",                        "pest"},
+                {"Flea Beetles",                  "pest"},
+                {"Leaf Miner",                    "pest"},
+                {"Melon Fly",                     "pest"},
+                {"Lady Beetle",                   "pest"},
+                {"Worms",                         "pest"},
         };
         for (String[] row : entries) {
-            String shortName = row[0];
-            String dataKey   = row[1];
-            String category  = row[2];
-            String fullName  = diseaseNameMap.containsKey(dataKey) ? diseaseNameMap.get(dataKey) : dataKey;
-            DiseaseInfo info = DiseaseData.getDiseaseInfo(fullName);
+            String name = row[0];
+            String category = row[1];
+            String fullName = DiseaseData.findFullName(name);
+            DiseaseInfo info = DiseaseData.getDiseaseInfo(fullName != null ? fullName : name);
             String description = "Information not available.";
             if (info != null) {
                 description = info.getDescription();
                 if (description.length() > 150) description = description.substring(0, 147) + "...";
             }
-            diseaseList.add(new DiseaseItem(shortName, description, dataKey, category));
+            diseaseList.add(new DiseaseItem(name, description, name, category));
         }
     }
 

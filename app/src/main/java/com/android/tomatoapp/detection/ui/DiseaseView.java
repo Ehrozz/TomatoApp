@@ -79,20 +79,6 @@ public class DiseaseView extends BaseBottomNavActivity {
         // Tomato Leaf Curl Virus - Whiteflies
         pestCommonNameMap.put("Tomato Leaf Curl Virus", "Whiteflies");
         pestCommonNameMap.put("Yellow Leaf Curl", "Whiteflies");
-        
-        // Early Blight - Spider mites
-        pestCommonNameMap.put("Early Blight", "Spider mites");
-        
-        // Late Blight - Leaf beetles
-        pestCommonNameMap.put("Late Blight", "Leaf beetles");
-        
-        
-        // Anthracnose - Fruitworm
-        pestCommonNameMap.put("Anthracnose", "Fruitworm");
-        pestCommonNameMap.put("Anthracnose ", "Fruitworm");
-        
-        // Black Leaf Mold - Aphids
-        pestCommonNameMap.put("Black Leaf Mold", "Aphids");
     }
 
     @Override
@@ -156,7 +142,8 @@ public class DiseaseView extends BaseBottomNavActivity {
         // Get full name from map
         String fullName = diseaseNameMap.get(shortName);
         if (fullName == null) {
-            fullName = shortName; // Use as-is if not in map
+            String found = DiseaseData.findFullName(shortName);
+            fullName = found != null ? found : shortName;
         }
 
         // Get disease info from DiseaseData

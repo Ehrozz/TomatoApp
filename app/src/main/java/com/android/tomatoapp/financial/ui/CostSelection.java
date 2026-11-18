@@ -2,36 +2,21 @@ package com.android.tomatoapp.financial.ui;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.text.InputType;
 import android.view.LayoutInflater;
 import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
-import android.widget.AutoCompleteTextView;
-import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.cardview.widget.CardView;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.android.material.textfield.TextInputEditText;
-import com.google.android.material.textfield.TextInputLayout;
-
-import androidx.cardview.widget.CardView;
-import androidx.core.content.ContextCompat;
-
-// FloatingActionButton removed: add action disabled
-import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -42,14 +27,6 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Collections;
-
-import com.github.mikephil.charting.animation.Easing;
-import com.github.mikephil.charting.components.XAxis;
-import com.github.mikephil.charting.components.YAxis;
-import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
-import com.github.mikephil.charting.formatter.ValueFormatter;
-// ExtendedFloatingActionButton removed: add action disabled
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.auth.ui.Login;
@@ -57,7 +34,6 @@ import com.android.tomatoapp.common.models.CultivarNPData;
 import com.android.tomatoapp.common.utils.CultivarImageHelper;
 import com.android.tomatoapp.core.network.LocalDataManager;
 import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
-import com.android.tomatoapp.financial.data.CalculationModel;
 import com.android.tomatoapp.financial.data.DailyExpenseMath;
 import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
 
@@ -69,12 +45,12 @@ public class CostSelection extends BaseBottomNavActivity {
     private TextView programCountText;
     private View emptyState;
     private ImageView headerMenuButton;
-    private com.github.mikephil.charting.charts.HorizontalBarChart expensesBarChart;
 
     private DatabaseReference dbRef;
     private String userId;
     private String currentSortOrder = "date_desc"; // Default: newest first
-
+    private ValueEventListener programsListener;
+    private boolean offlineToastShown = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,11 +62,9 @@ public class CostSelection extends BaseBottomNavActivity {
         adapter = new CultivarAdapter(cultivarList);
         recyclerView.setAdapter(adapter);
 
-        // FAB removed from layout; add action is disabled
         programCountText = findViewById(R.id.programCountText);
         emptyState = findViewById(R.id.emptyState);
         headerMenuButton = findViewById(R.id.headerMenuButton);
-        expensesBarChart = null;
 
         // Check if user is logged in
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -100,47 +74,31 @@ public class CostSelection extends BaseBottomNavActivity {
             finish();
             return;
         }
-        
+
         userId = currentUser.getUid();
         dbRef = FirebaseDatabase.getInstance().getReference("users").child(userId).child("workPrograms");
 
         // Load data with offline fallback
         loadWorkPrograms();
-        // No chart on this screen
 
-        // Set up Firebase listener for real-time updates (when online)
-        dbRef.addValueEventListener(new ValueEventListener() {
+        // Real-time updates (when online)
+        programsListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                // Only update if online (to avoid conflicts with offline data)
                 if (LocalDataManager.isOnline(CostSelection.this)) {
-                    cultivarList.clear();
-
-                    for (DataSnapshot child : snapshot.getChildren()) {
-                        String programId = child.getKey();
-                        String cultivar = child.child("cultivarName").getValue(String.class);
-                        String startDate = child.child("startingDate").getValue(String.class);
-
-                        if (programId != null && cultivar != null && startDate != null) {
-                            cultivarList.add(new Cultivar(programId, cultivar, startDate, CultivarImageHelper.getCultivarImageResource(cultivar),
-                                    DailyExpenseMath.asInt(child.child("completionRate").getValue())));
-                        }
-                    }
-                    
+                    readPrograms(snapshot);
                     updateUI();
                 }
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                // If Firebase fails, try loading from local database
                 if (!LocalDataManager.isOnline(CostSelection.this)) {
                     loadWorkProgramsFromLocal();
                 }
             }
-        });
-
-        // Add button previously opened calculate dialog; feature removed
+        };
+        dbRef.addValueEventListener(programsListener);
 
         setupBottomNavigation();
 
@@ -152,139 +110,44 @@ public class CostSelection extends BaseBottomNavActivity {
         headerMenuButton.setOnClickListener(v -> showSortMenu());
     }
 
-    private void setupExpensesOverviewChart() {
-        if (expensesBarChart == null || userId == null) return;
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (dbRef != null && programsListener != null) {
+            dbRef.removeEventListener(programsListener);
+        }
+    }
 
-        expensesBarChart.setNoDataText("Loading expense data...");
-        expensesBarChart.setNoDataTextColor(ContextCompat.getColor(this, R.color.text_secondary));
+    private void readPrograms(DataSnapshot snapshot) {
+        cultivarList.clear();
+        for (DataSnapshot child : snapshot.getChildren()) {
+            String programId = child.getKey();
+            String cultivar = child.child("cultivarName").getValue(String.class);
+            String startDate = child.child("startingDate").getValue(String.class);
 
-        dbRef.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                // TreeMap to keep cultivar names sorted
-                java.util.TreeMap<String, Double> cultivarTotals = new java.util.TreeMap<>();
-
-                for (DataSnapshot programSnapshot : snapshot.getChildren()) {
-                    String cultivar = programSnapshot.child("cultivarName").getValue(String.class);
-                    if (cultivar == null) cultivar = programSnapshot.child("cultivar").getValue(String.class);
-                    if (cultivar == null) continue;
-
-                    double programDailyTotal = 0;
-                    DataSnapshot dailyExpensesSnapshot = programSnapshot.child("dailyExpenses");
-                    if (dailyExpensesSnapshot.exists()) {
-                        for (DataSnapshot dateSnapshot : dailyExpensesSnapshot.getChildren()) {
-                            programDailyTotal += sumCategoryCosts(dateSnapshot.child("labor"));
-                            programDailyTotal += sumCategoryCosts(dateSnapshot.child("material"));
-                            programDailyTotal += sumCategoryCosts(dateSnapshot.child("equipment"));
-                            programDailyTotal += sumCategoryCosts(dateSnapshot.child("miscellaneous"));
-                        }
-                    }
-
-                    Double existing = cultivarTotals.get(cultivar);
-                    double existingVal = (existing != null) ? existing : 0.0;
-                    cultivarTotals.put(cultivar, existingVal + programDailyTotal);
-                }
-
-                if (cultivarTotals.isEmpty()) {
-                    expensesBarChart.setNoDataText("No daily expenses logged yet");
-                    expensesBarChart.invalidate();
-                    return;
-                }
-
-                renderExpensesBarChart(cultivarTotals);
+            if (programId != null && cultivar != null && startDate != null) {
+                cultivarList.add(new Cultivar(programId, cultivar, startDate,
+                        CultivarImageHelper.getCultivarImageResource(cultivar),
+                        DailyExpenseMath.asInt(child.child("completionRate").getValue())));
             }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {}
-        });
-    }
-
-    private double sumCategoryCosts(DataSnapshot snapshot) {
-        double total = 0;
-        for (DataSnapshot item : snapshot.getChildren()) {
-            Double cost = item.child("totalCost").getValue(Double.class);
-            if (cost == null) cost = item.child("cost").getValue(Double.class);
-            if (cost != null) total += cost;
         }
-        return total;
-    }
-
-    private void renderExpensesBarChart(java.util.TreeMap<String, Double> cultivarTotals) {
-        if (expensesBarChart == null) return;
-
-        List<com.github.mikephil.charting.data.BarEntry> entries = new ArrayList<>();
-        List<String> labels = new ArrayList<>();
-        
-        int index = 0;
-        for (java.util.Map.Entry<String, Double> entry : cultivarTotals.entrySet()) {
-            entries.add(new com.github.mikephil.charting.data.BarEntry(index, entry.getValue().floatValue()));
-            labels.add(entry.getKey());
-            index++;
-        }
-
-        com.github.mikephil.charting.data.BarDataSet dataSet = new com.github.mikephil.charting.data.BarDataSet(entries, "Total Expenses (₱)");
-        
-        // ApexCharts inspired styling
-        dataSet.setColor(ContextCompat.getColor(this, R.color.sidebar_dark_green));
-        dataSet.setDrawValues(false); // No data labels on bars
-
-        com.github.mikephil.charting.data.BarData barData = new com.github.mikephil.charting.data.BarData(dataSet);
-        barData.setBarWidth(0.6f);
-        expensesBarChart.setData(barData);
-
-        expensesBarChart.getDescription().setEnabled(false);
-        expensesBarChart.getLegend().setEnabled(false);
-        expensesBarChart.setDrawGridBackground(false);
-        expensesBarChart.animateY(800, Easing.EaseOutQuart);
-        expensesBarChart.setFitBars(true);
-        expensesBarChart.setTouchEnabled(true);
-        expensesBarChart.setScaleEnabled(false);
-        
-        XAxis xAxis = expensesBarChart.getXAxis();
-        xAxis.setPosition(com.github.mikephil.charting.components.XAxis.XAxisPosition.BOTTOM);
-        xAxis.setDrawGridLines(false);
-        xAxis.setDrawAxisLine(true);
-        xAxis.setValueFormatter(new com.github.mikephil.charting.formatter.IndexAxisValueFormatter(labels));
-        xAxis.setLabelCount(labels.size());
-        xAxis.setTextColor(ContextCompat.getColor(this, R.color.text_primary));
-        xAxis.setTextSize(11f);
-
-        expensesBarChart.getAxisRight().setEnabled(false);
-        expensesBarChart.getAxisLeft().setDrawGridLines(true);
-        expensesBarChart.getAxisLeft().setAxisMinimum(0f);
-        expensesBarChart.getAxisLeft().setTextColor(ContextCompat.getColor(this, R.color.text_secondary));
-        
-        expensesBarChart.invalidate();
     }
 
     private void loadWorkPrograms() {
         if (LocalDataManager.isOnline(this)) {
-            // Try Firebase first if online
             dbRef.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot snapshot) {
-                    cultivarList.clear();
-                    for (DataSnapshot child : snapshot.getChildren()) {
-                        String programId = child.getKey();
-                        String cultivar = child.child("cultivarName").getValue(String.class);
-                        String startDate = child.child("startingDate").getValue(String.class);
-
-                        if (programId != null && cultivar != null && startDate != null) {
-                            cultivarList.add(new Cultivar(programId, cultivar, startDate, CultivarImageHelper.getCultivarImageResource(cultivar),
-                                    DailyExpenseMath.asInt(child.child("completionRate").getValue())));
-                        }
-                    }
+                    readPrograms(snapshot);
                     updateUI();
                 }
 
                 @Override
                 public void onCancelled(@NonNull DatabaseError error) {
-                    // Fallback to local database
                     loadWorkProgramsFromLocal();
                 }
             });
         } else {
-            // Offline - load from local database
             loadWorkProgramsFromLocal();
         }
     }
@@ -296,12 +159,14 @@ public class CostSelection extends BaseBottomNavActivity {
                 cultivarList.clear();
                 for (WorkProgramEntity entity : entities) {
                     if (entity.cultivarName != null && entity.startingDate != null) {
-                        cultivarList.add(new Cultivar(entity.id, entity.cultivarName, entity.startingDate, CultivarImageHelper.getCultivarImageResource(entity.cultivarName),
+                        cultivarList.add(new Cultivar(entity.id, entity.cultivarName, entity.startingDate,
+                                CultivarImageHelper.getCultivarImageResource(entity.cultivarName),
                                 (int) Math.round(entity.completionRate)));
                     }
                 }
                 updateUI();
-                if (!LocalDataManager.isOnline(this) && !cultivarList.isEmpty()) {
+                if (!LocalDataManager.isOnline(this) && !cultivarList.isEmpty() && !offlineToastShown) {
+                    offlineToastShown = true;
                     Toast.makeText(this, "Showing offline data", Toast.LENGTH_SHORT).show();
                 }
             });
@@ -309,7 +174,6 @@ public class CostSelection extends BaseBottomNavActivity {
     }
 
     private void updateUI() {
-        // Update program count
         int count = cultivarList.size();
         if (programCountText != null) {
             if (count == 1) {
@@ -318,8 +182,7 @@ public class CostSelection extends BaseBottomNavActivity {
                 programCountText.setText(String.format(java.util.Locale.getDefault(), "%d programs", count));
             }
         }
-        
-        // Show/hide empty state
+
         if (emptyState != null && recyclerView != null) {
             if (count == 0) {
                 emptyState.setVisibility(View.VISIBLE);
@@ -329,135 +192,52 @@ public class CostSelection extends BaseBottomNavActivity {
                 recyclerView.setVisibility(View.VISIBLE);
             }
         }
-        
-        // Apply current sort order
+
+        // Apply current sort order (silent)
         sortPrograms(currentSortOrder);
-        adapter.notifyDataSetChanged();
     }
 
     private void showSortMenu() {
         String[] sortOptions = {
-            "Newest First",
-            "Oldest First",
-            "Name (A-Z)",
-            "Name (Z-A)"
+                "Newest First",
+                "Oldest First",
+                "Name (A-Z)",
+                "Name (Z-A)"
         };
 
         new AlertDialog.Builder(this)
                 .setTitle("Sort Work Programs")
                 .setItems(sortOptions, (dialog, which) -> {
-                    switch (which) {
-                        case 0: // Newest First
-                            sortPrograms("date_desc");
-                            break;
-                        case 1: // Oldest First
-                            sortPrograms("date_asc");
-                            break;
-                        case 2: // Name A-Z
-                            sortPrograms("name_asc");
-                            break;
-                        case 3: // Name Z-A
-                            sortPrograms("name_desc");
-                            break;
-                    }
+                    String[] orders = {"date_desc", "date_asc", "name_asc", "name_desc"};
+                    sortPrograms(orders[which]);
+                    Toast.makeText(this, "Sorted: " + sortOptions[which], Toast.LENGTH_SHORT).show();
                 })
                 .show();
     }
 
-    private void showAddCalculationDialog() {
-        // Create dialog view
-        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_calculation, null);
-        
-        
-        AutoCompleteTextView cultivarSpinner = dialogView.findViewById(R.id.cultivarSpinner);
-        TextInputEditText hectareEditText = dialogView.findViewById(R.id.hectareEditText);
-        
-        // Cultivar data (same as Workprogram.java)
-        final String[][] cultivarsData = {
-                {"Improved KS Apollo", "Semi-determinate", "85", "105"},
-                {"Diamante Max", "Semi-determinate", "55", "65"},
-                {"Jewel F1", "Determinate", "60", "65"},
-                {"Marimar", "Determinate", "60", "65"}
-        };
-        
-        // Create array of cultivar names for spinner
-        String[] cultivarNames = new String[cultivarsData.length];
-        for (int i = 0; i < cultivarsData.length; i++) {
-            cultivarNames[i] = cultivarsData[i][0]; // cultivar name is column 0
+    private void sortPrograms(String sortOrder) {
+        currentSortOrder = sortOrder;
+
+        switch (sortOrder) {
+            case "date_desc": // Newest first
+                cultivarList.sort((a, b) -> b.date.compareTo(a.date));
+                break;
+            case "date_asc": // Oldest first
+                cultivarList.sort(java.util.Comparator.comparing(a -> a.date));
+                break;
+            case "name_asc": // A-Z
+                cultivarList.sort(java.util.Comparator.comparing(a -> a.name, String.CASE_INSENSITIVE_ORDER));
+                break;
+            case "name_desc": // Z-A
+                cultivarList.sort((a, b) -> b.name.compareToIgnoreCase(a.name));
+                break;
         }
-        
-        // Set up spinner adapter
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_dropdown_item_1line, cultivarNames);
-        cultivarSpinner.setAdapter(adapter);
-        
-        // Set input type for hectare
-        hectareEditText.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("New Calculation")
-                .setView(dialogView)
-                .setPositiveButton("Calculate", null)
-                .setNegativeButton("Cancel", null)
-                .create();
-        
-        // Override positive button to handle validation and prevent auto-close
-        dialog.setOnShowListener(d -> {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                String cultivarName = cultivarSpinner.getText() != null ? 
-                        cultivarSpinner.getText().toString().trim() : "";
-                String hectareStr = hectareEditText.getText() != null ? 
-                        hectareEditText.getText().toString().trim() : "";
-                
-                if (cultivarName.isEmpty()) {
-                    Toast.makeText(this, "Please select a cultivar", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                
-                if (hectareStr.isEmpty()) {
-                    Toast.makeText(this, "Please enter the number of hectares", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                
-                double hectare;
-                try {
-                    hectare = Double.parseDouble(hectareStr);
-                    if (hectare <= 0) {
-                        Toast.makeText(this, "Hectare must be greater than 0", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                } catch (NumberFormatException e) {
-                    Toast.makeText(this, "Please enter a valid number for hectares", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                
-                // All validation passed - close dialog and proceed
-                dialog.dismiss();
-                
-                // Get cultivar data
-                String growthHabit = CultivarNPData.getGrowthHabit(cultivarName);
-                int NP = CultivarNPData.getNP(cultivarName);
-                
-                // Generate current date
-                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault());
-                String currentDate = sdf.format(new java.util.Date());
-                
-                // Navigate to Calculator
-                Intent intent = new Intent(CostSelection.this, Calculator.class);
-                intent.putExtra("cultivar_name", cultivarName);
-                intent.putExtra("growth_habit", growthHabit);
-                intent.putExtra("NP_VALUE", (double) NP);
-                intent.putExtra("date_saved", currentDate);
-                intent.putExtra("hectare_prefilled", hectare);
-                startActivity(intent);
-            });
-        });
-        
-        dialog.show();
+
+        adapter.notifyDataSetChanged();
     }
 
     private void openLinkedProgramFinance(String programId, String cultivarName, String dateSaved,
-                                         String growthHabit, int NP) {
+                                          String growthHabit, int NP) {
         dbRef.child(programId).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot child) {
@@ -474,141 +254,26 @@ public class CostSelection extends BaseBottomNavActivity {
         });
     }
 
-    private void fetchSavedHectare(String cultivarName, String growthHabit, int NP, String dateSaved) {
-        // Fetch saved hectare from the work program
-        // First, find the work program ID for this cultivar
-        dbRef.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                double savedHectare = 0;
-                String programId = null;
-                
-                // Find the work program matching this cultivar and date
-                for (DataSnapshot child : snapshot.getChildren()) {
-                    String programCultivar = child.child("cultivarName").getValue(String.class);
-                    String programDate = child.child("startingDate").getValue(String.class);
-                    
-                    if (cultivarName.equals(programCultivar) && dateSaved.equals(programDate)) {
-                        programId = child.getKey();
-                        // Check if hectare is stored in the work program as "areaSize"
-                        // Try different data types (Double, Long, String)
-                        Object hectareObj = child.child("areaSize").getValue();
-                        if (hectareObj != null) {
-                            if (hectareObj instanceof Double) {
-                                savedHectare = (Double) hectareObj;
-                            } else if (hectareObj instanceof Long) {
-                                savedHectare = ((Long) hectareObj).doubleValue();
-                            } else if (hectareObj instanceof String) {
-                                try {
-                                    savedHectare = Double.parseDouble((String) hectareObj);
-                                } catch (NumberFormatException e) {
-                                    // Ignore
-                                }
-                            }
-                        }
-                        break;
-                    }
-                }
-                
-                // If hectare not found in work program, try to fetch from calculations
-                if (savedHectare <= 0 && programId != null) {
-                    fetchHectareFromCalculations(programId, cultivarName, growthHabit, NP, dateSaved);
-                    return;
-                }
-                
-                // Navigate to Calculator with all data including saved hectare
-                // Even if savedHectare is 0, we still pass programId so Calculator can fetch it
-                navigateToCalculator(cultivarName, growthHabit, NP, dateSaved, savedHectare, programId);
-            }
-            
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                // If fetch fails, proceed without saved hectare
-                navigateToCalculator(cultivarName, growthHabit, NP, dateSaved, 0, null);
-            }
-        });
-    }
-    
-    private void fetchHectareFromCalculations(String programId, String cultivarName, String growthHabit, int NP, String dateSaved) {
-        // Try to fetch hectare from the most recent calculation
-        DatabaseReference calculationsRef = FirebaseDatabase.getInstance()
-                .getReference("users")
-                .child(userId)
-                .child("calculations");
-        
-        calculationsRef.orderByChild("dateCreated")
-                .limitToLast(10) // Check last 10 calculations
-                .addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        double savedHectare = 0;
-                        
-                        // Find the most recent calculation with hectare > 0
-                        if (snapshot.exists()) {
-                            for (DataSnapshot child : snapshot.getChildren()) {
-                                CalculationModel calculation = child.getValue(CalculationModel.class);
-                                if (calculation != null && calculation.hectare > 0) {
-                                    savedHectare = calculation.hectare;
-                                    break; // Use the most recent one
-                                }
-                            }
-                        }
-                        
-                        navigateToCalculator(cultivarName, growthHabit, NP, dateSaved, savedHectare, programId);
-                    }
-                    
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {
-                        navigateToCalculator(cultivarName, growthHabit, NP, dateSaved, 0, programId);
-                    }
-                });
-    }
-    
-    private void navigateToCalculator(String cultivarName, String growthHabit, int NP, String dateSaved, 
-                                     double savedHectare, String programId) {
+    private void navigateToCalculator(String cultivarName, String growthHabit, int NP, String dateSaved,
+                                      double savedHectare, String programId) {
         Intent intent = new Intent(CostSelection.this, Calculator.class);
         intent.putExtra("cultivar_name", cultivarName);
         intent.putExtra("growth_habit", growthHabit);
         intent.putExtra("NP_VALUE", (double) NP);
         intent.putExtra("date_saved", dateSaved);
-        // Always pass hectare if we have it (even if 0, Calculator will fetch from Firebase)
         if (savedHectare > 0) {
             intent.putExtra("hectare_prefilled", savedHectare);
         }
-        // Always pass programId so Calculator can fetch hectare from Firebase if needed
         if (programId != null) {
             intent.putExtra("program_id", programId);
         }
         startActivity(intent);
     }
 
-    private void sortPrograms(String sortOrder) {
-        currentSortOrder = sortOrder;
-        
-        switch (sortOrder) {
-            case "date_desc": // Newest first
-                cultivarList.sort((a, b) -> b.date.compareTo(a.date));
-                break;
-            case "date_asc": // Oldest first
-                cultivarList.sort(java.util.Comparator.comparing(a -> a.date));
-                break;
-            case "name_asc": // A-Z
-                cultivarList.sort(java.util.Comparator.comparing(a -> a.name, String.CASE_INSENSITIVE_ORDER));
-                break;
-            case "name_desc": // Z-A
-                cultivarList.sort((a, b) -> b.name.compareToIgnoreCase(a.name));
-                break;
-        }
-        
-        adapter.notifyDataSetChanged();
-        Toast.makeText(this, "Sorted", Toast.LENGTH_SHORT).show();
-    }
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         return true; // no back button menu
     }
-
 
     // ---- Cultivar Model ----
     static class Cultivar {
@@ -645,14 +310,12 @@ public class CostSelection extends BaseBottomNavActivity {
         public void onBindViewHolder(@NonNull CultivarViewHolder holder, int position) {
             int adapterPosition = holder.getAdapterPosition();
             if (adapterPosition == RecyclerView.NO_POSITION) return;
-            
+
             Cultivar item = items.get(adapterPosition);
             holder.name.setText(item.name);
-            
-            // Format date as "Started: YYYY-MM-DD"
             holder.date.setText(String.format(java.util.Locale.getDefault(), "Started: %s", item.date));
             holder.image.setImageResource(item.imageRes);
-            
+
             // Make image circular
             holder.image.setClipToOutline(true);
             holder.image.setOutlineProvider(new android.view.ViewOutlineProvider() {
@@ -663,7 +326,6 @@ public class CostSelection extends BaseBottomNavActivity {
             });
             holder.image.setBackgroundResource(R.drawable.circular_image_border);
 
-            // 🍅 Rotate through tomato-themed colors with better contrast
             int[] bgColors = {
                     R.color.tomato_red,
                     R.color.fresh_green,
@@ -671,25 +333,21 @@ public class CostSelection extends BaseBottomNavActivity {
                     R.color.sidebar_dark_green,
                     R.color.ripe_orange
             };
-
             int colorIndex = adapterPosition % bgColors.length;
             int bgColor = ContextCompat.getColor(holder.itemView.getContext(), bgColors[colorIndex]);
             holder.card.setCardBackgroundColor(bgColor);
 
-            // All backgrounds are vibrant, so use white text for better contrast
             holder.name.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), android.R.color.white));
             holder.date.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), android.R.color.white));
-            
-            // Update status indicator and text
+
             if (holder.statusIndicator != null) {
-                // Green for active programs
                 holder.statusIndicator.setBackground(ContextCompat.getDrawable(
-                    holder.itemView.getContext(), R.drawable.circle_green));
+                        holder.itemView.getContext(), R.drawable.circle_green));
             }
             if (holder.statusText != null) {
                 holder.statusText.setText("Active");
                 holder.statusText.setTextColor(ContextCompat.getColor(
-                    holder.itemView.getContext(), android.R.color.white));
+                        holder.itemView.getContext(), android.R.color.white));
             }
 
             // Hide delete button for cost selection (not needed here)
@@ -697,7 +355,6 @@ public class CostSelection extends BaseBottomNavActivity {
                 holder.deleteButton.setVisibility(View.GONE);
             }
 
-            // 🎯 Click → open Calculator with cultivar info
             if (holder.cardProgressBar != null) {
                 holder.cardProgressBar.setProgress(item.completionRate);
             }
@@ -705,6 +362,7 @@ public class CostSelection extends BaseBottomNavActivity {
                 holder.cardProgressText.setText(item.completionRate + "% complete");
             }
 
+            // Click -> open Calculator for THIS program
             holder.card.setOnClickListener(v -> {
                 if (item.programId == null || item.name == null) {
                     Toast.makeText(CostSelection.this, "Error loading cultivar details", Toast.LENGTH_SHORT).show();

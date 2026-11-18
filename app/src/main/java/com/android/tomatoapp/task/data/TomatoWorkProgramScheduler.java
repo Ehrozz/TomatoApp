@@ -38,6 +38,9 @@ public final class TomatoWorkProgramScheduler {
         public final double hectaresPerPlowingDay;
         /** Retained for constructor compatibility; missed days never shift biological dates. */
         @Deprecated public final int delayDays;
+        @Nullable public final LocalDate p3;
+        @Nullable public final LocalDate p4;
+        @Nullable public final LocalDate p5;
 
         public Input(LocalDate plantingStartDate, double farmAreaHectares, String variety,
                      @Nullable LocalDate seedsConfirmedDate, @Nullable LocalDate sowingDate,
@@ -58,6 +61,16 @@ public final class TomatoWorkProgramScheduler {
                      @Nullable LocalDate seedsConfirmedDate, @Nullable LocalDate sowingDate,
                      @Nullable LocalDate transplantDate, @Nullable LocalDate stopDate,
                      @Nullable LocalDate today, double hectaresPerPlowingDay, int delayDays) {
+            this(plantingStartDate, farmAreaHectares, variety, seedsConfirmedDate, sowingDate,
+                    transplantDate, stopDate, today, hectaresPerPlowingDay, delayDays,
+                    null, null, null);
+        }
+
+        public Input(LocalDate plantingStartDate, double farmAreaHectares, String variety,
+                     @Nullable LocalDate seedsConfirmedDate, @Nullable LocalDate sowingDate,
+                     @Nullable LocalDate transplantDate, @Nullable LocalDate stopDate,
+                     @Nullable LocalDate today, double hectaresPerPlowingDay, int delayDays,
+                     @Nullable LocalDate p3, @Nullable LocalDate p4, @Nullable LocalDate p5) {
             if (plantingStartDate == null || farmAreaHectares <= 0 || hectaresPerPlowingDay <= 0) {
                 throw new IllegalArgumentException("Planting date, area, and plowing capacity are required");
             }
@@ -71,6 +84,9 @@ public final class TomatoWorkProgramScheduler {
             this.today = today;
             this.hectaresPerPlowingDay = hectaresPerPlowingDay;
             this.delayDays = 0;
+            this.p3 = p3;
+            this.p4 = p4;
+            this.p5 = p5;
         }
 
         public Input(LocalDate plantingStartDate, double farmAreaHectares, String variety,
@@ -122,12 +138,6 @@ public final class TomatoWorkProgramScheduler {
         boolean sowingUnlocked = sowing != null && input.seedsConfirmedDate != null
                 && !sowing.isBefore(input.seedsConfirmedDate);
         if (sowingUnlocked) {
-            add(result, "seed-quantity", 1, TaskTemplate.Type.MAIN, "Prepare seeds", sowing,
-                    sowing, "sow", 0, input.variety,
-                    "Prepare 180-200 g of seeds per hectare. (Maintenance task appears when seeds start sprouting.)");
-            add(result, "medium", 1, TaskTemplate.Type.MAIN, "Prepare growing medium", sowing,
-                    sowing.plusDays(6), "sow", 0, input.variety,
-                    "Prepare on the first day and complete within the first week. Recommended: equal parts vermicompost, coir dust, and soil. Alternatives: 1-2 parts soil, 1 part well-decomposed manure, 1 part sand or carbonized rice hull; or garden soil + compost + rice hull. Sterilize or solarize the medium to reduce pathogens. Sow seeds at 0.5-1 cm depth in trays or seedbeds, one seed per hole.");
             add(result, "sow", 1, TaskTemplate.Type.MAIN, "Sow seeds in seedbed/trays", sowing, sowing,
                     "seeds-confirmed", 0, input.variety,
                     "Sow seeds at 0.5-1 cm depth in trays or seedbeds, one seed per hole.");
@@ -159,7 +169,10 @@ public final class TomatoWorkProgramScheduler {
         }
 
         if (transplant != null) {
-            LocalDate phase2End = transplant.plusDays(27);
+            LocalDate ph3 = input.p3 != null ? input.p3 : transplant.plusDays(28);
+            LocalDate ph4 = input.p4 != null ? input.p4 : transplant.plusDays(56);
+            LocalDate ph5 = input.p5 != null ? input.p5 : transplant.plusDays(84);
+            LocalDate phase2End = ph3.minusDays(1);
             add(result, "mulch", 2, TaskTemplate.Type.MAIN, "Mulching (3 to 5 days)", transplant, transplant.plusDays(4),
                     "transplant", 0, input.variety,
                     "Main: black plastic mulch to conserve moisture, suppress weeds, and prevent soil splash. Optional: rice hull or coconut husk mulch. Lay mulch immediately after transplanting, cut a hole per seedling, and secure edges with soil.");
@@ -179,54 +192,54 @@ public final class TomatoWorkProgramScheduler {
                     phase2End, "transplant", 1, input.variety, "Watering: daily or as needed, adjust based on weather.");
             addRecurring(result, "weed-2", 2, TaskTemplate.Type.MAINTENANCE, "Weeding", transplant.plusDays(6),
                     phase2End, "transplant", 7, input.variety, "Weeding: 1 a week.");
-            addRecurring(result, "monitor-2", 2, TaskTemplate.Type.MAINTENANCE, "Pest/disease monitoring",
-                    transplant.plusDays(6), phase2End, "transplant", 7, input.variety, "Pest/disease monitoring: 1 a week.");
+            addRecurring(result, "monitor-2", 2, TaskTemplate.Type.MAINTENANCE, "Pest/disease scan",
+                    transplant.plusDays(6), phase2End, "transplant", 7, input.variety, "Pest/disease scan: 1 a week.");
             addRecurring(result, "prune-2", 2, TaskTemplate.Type.MAINTENANCE, "Pruning/sucker removal",
                     transplant.plusDays(6), phase2End, "transplant", 7, input.variety, "Pruning/sucker removal: 1 a week (only if overcrowded; remove weak shoots).");
             add(result, "phase2-transition", 2, TaskTemplate.Type.NOTE, "Phase 2 Transition indicator",
                     transplant.plusDays(25), phase2End, "transplant", 0, input.variety,
                     "Plants begin flowering; all one-time activities complete.");
 
-            LocalDate phase3End = transplant.plusDays(55);
-            add(result, "side-dress-2", 3, TaskTemplate.Type.MAIN, "Side-dressing / nutrient management (Second side-dressing)", transplant.plusDays(21),
-                    transplant.plusDays(27), "transplant", 0, input.variety,
+            LocalDate phase3End = ph4.minusDays(1);
+            add(result, "side-dress-2", 3, TaskTemplate.Type.MAIN, "Side-dressing / nutrient management (Second side-dressing)", ph3.plusDays(21 - 28),
+                    ph3.plusDays(27 - 28), "transplant", 0, input.variety,
                     "Second side-dressing 3-4 weeks after transplanting: Urea (46-0-0) 10 g per plant + Muriate of Potash (0-0-60) 10 g per plant. Optional organic: vermicompost or well-decomposed manure, 0.5-1 kg per plant.");
-            add(result, "hilling", 3, TaskTemplate.Type.MAIN, "Weeding / hilling-up", transplant.plusDays(25),
-                    transplant.plusDays(30), "transplant", 0, input.variety,
+            add(result, "hilling", 3, TaskTemplate.Type.MAIN, "Weeding / hilling-up", ph3.plusDays(25 - 28),
+                    ph3.plusDays(30 - 28), "transplant", 0, input.variety,
                     "Remove weeds manually or with shallow cultivation. Hill up soil around the base of plants 25-30 days after transplanting.");
-            add(result, "side-dress-3", 3, TaskTemplate.Type.MAIN, "Side-dressing / nutrient management (Third side-dressing)", transplant.plusDays(35),
-                    transplant.plusDays(42), "transplant", 0, input.variety,
+            add(result, "side-dress-3", 3, TaskTemplate.Type.MAIN, "Side-dressing / nutrient management (Third side-dressing)", ph3.plusDays(35 - 28),
+                    ph3.plusDays(42 - 28), "transplant", 0, input.variety,
                     "Third side-dressing 3-4 weeks after second side-dressing: Urea (46-0-0) 10 g per plant + Muriate of Potash (0-0-60) 10 g per plant. Optional organic: vermicompost or well-decomposed manure, 0.5-1 kg per plant.");
-            addRecurring(result, "water-3", 3, TaskTemplate.Type.MAINTENANCE, "Water plants", transplant.plusDays(28),
+            addRecurring(result, "water-3", 3, TaskTemplate.Type.MAINTENANCE, "Water plants", ph3.plusDays(28 - 28),
                     phase3End, "transplant", 1, input.variety, "Watering: daily or as needed, more if hot/dry.");
-            addRecurring(result, "monitor-3", 3, TaskTemplate.Type.MAINTENANCE, "Pest/disease monitoring",
-                    transplant.plusDays(28), phase3End, "transplant", 7, input.variety, "Pest/disease monitoring: 1 a week; apply biopesticides or chemicals if thresholds are exceeded.");
-            addRecurring(result, "prune-3", 3, TaskTemplate.Type.MAINTENANCE, "Pruning", transplant.plusDays(28),
+            addRecurring(result, "monitor-3", 3, TaskTemplate.Type.MAINTENANCE, "Pest/disease scan",
+                    ph3.plusDays(28 - 28), phase3End, "transplant", 7, input.variety, "Pest/disease scan: 1 a week; apply biopesticides or chemicals if thresholds are exceeded.");
+            addRecurring(result, "prune-3", 3, TaskTemplate.Type.MAINTENANCE, "Pruning", ph3.plusDays(28 - 28),
                     phase3End, "transplant", 7, input.variety, "Pruning: 1 a week; remove lower leaves and side shoots for airflow. Indeterminate varieties continue trellis pruning.");
             add(result, "phase3-transition", 3, TaskTemplate.Type.NOTE, "Phase 3 Transition indicator",
                     transplant.plusDays(50), phase3End, "transplant", 0, input.variety,
                     "Move to Phase 4 when flowers are present and all one-time activities are complete.");
 
-            LocalDate phase4End = transplant.plusDays(83);
-            add(result, "side-dress-4", 4, TaskTemplate.Type.MAIN, "Fertilization / nutrient management (Fourth side-dressing)", transplant.plusDays(56),
-                    transplant.plusDays(62), "transplant", 0, input.variety,
+            LocalDate phase4End = ph5.minusDays(1);
+            add(result, "side-dress-4", 4, TaskTemplate.Type.MAIN, "Fertilization / nutrient management (Fourth side-dressing)", ph4.plusDays(56 - 56),
+                    ph4.plusDays(62 - 56), "transplant", 0, input.variety,
                     "Fourth side-dressing at peak flowering/fruit set, using the same rates: Urea (46-0-0) 10 g per plant + Muriate of Potash (0-0-60) 10 g per plant. Optional organic: vermicompost or well-decomposed manure, 0.5-1 kg per plant.");
-            add(result, "trellis-adjust", 4, TaskTemplate.Type.MAIN, "Trellising adjustment (indeterminate/semi-determinate only)", transplant.plusDays(56),
-                    transplant.plusDays(62), "transplant", 0, input.variety,
+            add(result, "trellis-adjust", 4, TaskTemplate.Type.MAIN, "Trellising adjustment (indeterminate/semi-determinate only)", ph4.plusDays(56 - 56),
+                    ph4.plusDays(62 - 56), "transplant", 0, input.variety,
                     "Replace weak supports and tie plants properly.");
-            addRecurring(result, "water-4", 4, TaskTemplate.Type.MAINTENANCE, "Water plants", transplant.plusDays(56),
+            addRecurring(result, "water-4", 4, TaskTemplate.Type.MAINTENANCE, "Water plants", ph4.plusDays(56 - 56),
                     phase4End, "transplant", 1, input.variety, "Watering: daily or as needed, more frequent if hot/dry.");
-            addRecurring(result, "monitor-4", 4, TaskTemplate.Type.MAINTENANCE, "Pest/disease monitoring",
-                    transplant.plusDays(56), phase4End, "transplant", 3, input.variety, "Pest/disease monitoring: every 3 days.");
+            addRecurring(result, "monitor-4", 4, TaskTemplate.Type.MAINTENANCE, "Pest/disease scan",
+                    ph4.plusDays(56 - 56), phase4End, "transplant", 3, input.variety, "Pest/disease scan: every 3 days.");
             addRecurring(result, "mulch-care-4", 4, TaskTemplate.Type.MAINTENANCE, "Mulching / soil care",
-                    transplant.plusDays(56), phase4End, "transplant", 7, input.variety, "Mulching / soil care: 1 a week; maintain mulch.");
-            addRecurring(result, "prune-4", 4, TaskTemplate.Type.MAINTENANCE, "Pruning", transplant.plusDays(60),
+                    ph4.plusDays(56 - 56), phase4End, "transplant", 7, input.variety, "Mulching / soil care: 1 a week; maintain mulch.");
+            addRecurring(result, "prune-4", 4, TaskTemplate.Type.MAINTENANCE, "Pruning", ph4.plusDays(60 - 56),
                     phase4End, "transplant", 7, input.variety, "Pruning: once a week, on the 5th or 6th day only; remove unnecessary shoots or diseased leaves.");
             add(result, "phase4-transition", 4, TaskTemplate.Type.NOTE, "Phase 4 Transition indicator (week 16)",
                     transplant.plusDays(77), phase4End, "transplant", 0, input.variety,
                     "Flowers continue setting, fruits start maturing; one-time activities completed.");
 
-            LocalDate phase5Start = transplant.plusDays(84);
+            LocalDate phase5Start = ph5;
             add(result, "harvest-guidance", 5, TaskTemplate.Type.NOTE, "Harvesting (weekly according to fruit maturity and market)",
                     phase5Start, throughDate, "transplant", 0, input.variety,
                     "Harvesting, weekly according to fruit maturity and market:\n• Mature green: cream streaks at blossom end; suitable for distant markets.\n• Breaker / pink: blossom end turns pinkish/reddish; suitable for nearby markets.\n• Red ripe: fully red; ideal for home consumption or immediate sale.\nTechnique: Harvest early morning or late afternoon to avoid heat stress. Cut or twist fruit carefully. Use baskets, crates, or padded containers to prevent bruising.");
@@ -237,12 +250,25 @@ public final class TomatoWorkProgramScheduler {
                     throughDate, "transplant", 1, input.variety, "Watering: daily or as needed; avoid excess to prevent fruit splitting.");
             addRecurring(result, "cleanup-5", 5, TaskTemplate.Type.MAINTENANCE, "Pruning / cleanup",
                     phase5Start, throughDate, "transplant", 7, input.variety, "Pruning / cleanup: once a week; remove senescent or diseased leaves.");
-            addRecurring(result, "monitor-5", 5, TaskTemplate.Type.MAINTENANCE, "Pest/disease monitoring",
-                    phase5Start, throughDate, "transplant", 3, input.variety, "Pest/disease monitoring: every 3 days; treat as needed.");
+            addRecurring(result, "monitor-5", 5, TaskTemplate.Type.MAINTENANCE, "Pest/disease scan",
+                    phase5Start, throughDate, "transplant", 3, input.variety, "Pest/disease scan: every 3 days; treat as needed.");
             addRecurring(result, "stop-indicator", 5, TaskTemplate.Type.MILESTONE, "Have you harvested or tomato plants dies?",
                     phase5Start, throughDate, "transplant", 14, input.variety,
                     "Check whether harvesting is completed or the plants have reached the end of their lifecycle.");
         }
+                if (transplant != null) {
+                for (int i = 0; i < result.size(); i++) {
+                        ScheduledTask t = result.get(i);
+                        if (t.phase < 2) continue;
+                        int p = TaskSchedule.getPhaseNumber(
+                                input.plantingStartDate, transplant, input.stopDate, t.startDate,
+                                input.p3, input.p4, input.p5);
+                        if (p >= 2 && p != t.phase) {
+                        result.set(i, new ScheduledTask(t.id, p, t.type, t.title, t.startDate,
+                                t.endDate, t.trigger, t.frequencyDays, t.variety, t.details));
+                        }
+                }
+                }
         filterVariety(result, input.variety);
         result.removeIf(task -> task.startDate.isAfter(scheduleThroughDate));
         Collections.sort(result, Comparator.comparing((ScheduledTask task) -> task.startDate)
@@ -255,7 +281,8 @@ public final class TomatoWorkProgramScheduler {
         Input viewedInput = input.today == null
                 ? new Input(input.plantingStartDate, input.farmAreaHectares, input.variety,
                 input.seedsConfirmedDate, input.sowingDate, input.transplantDate,
-                input.stopDate, date, input.hectaresPerPlowingDay)
+                input.stopDate, date, input.hectaresPerPlowingDay, 0,
+                input.p3, input.p4, input.p5)
                 : input;
         List<TaskModel> result = new ArrayList<>();
         int day = (int) ChronoUnit.DAYS.between(viewedInput.plantingStartDate, date) + 1;

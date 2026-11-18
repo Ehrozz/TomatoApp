@@ -127,7 +127,7 @@ fun IPMScreen(
                 icon = "📖",
                 iconBackgroundColor = GreenLight,
                 title = "Disease Database",
-                description = "Browse 40+ tomato diseases",
+                description = "View detailed information about tomato diseases",
                 onClick = onDiseaseDatabaseClick
             )
 

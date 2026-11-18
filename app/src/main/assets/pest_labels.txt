@@ -1,9 +1,10 @@
-0 Leaf Miner
-1 Leaf Beetles 
-2 Thrips
-3 Whiteflies 
-4 Root weevils
-5 Root grubs
-6 Fruitworm
-7 Aphids
-8 Spidermites
+FRUITES_for_pest
+LEAVES_FOR_PEST
+Lady_beetle
+Whiteflies_ Leaf Curl
+aphids
+flea_beetles
+leaf_miner
+melon_flies
+not pest
+worms

@@ -79,7 +79,7 @@ public class CurrentExpensesActivity extends BaseBottomNavActivity {
         // Check if user is logged in
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser == null || programId == null) {
-            Toast.makeText(this, "Error: Missing required information", Toast.LENGTH_SHORT).show();
+            showSingleToast("Error: Missing required information", Toast.LENGTH_SHORT);
             finish();
             return;
         }
@@ -120,9 +120,6 @@ public class CurrentExpensesActivity extends BaseBottomNavActivity {
                 .child("workPrograms")
                 .child(programId)
                 .child("dailyExpenses");
-
-        // Load expenses data
-        loadExpensesData();
         
         // Setup export buttons
         com.google.android.material.button.MaterialButton btnExportPDF = findViewById(R.id.btnExportPDF);
@@ -769,7 +766,7 @@ public class CurrentExpensesActivity extends BaseBottomNavActivity {
                         // Skip invalid entries
                     }
                 }
-                writer.append("Phase Total,,,,,,,,").append(String.format(Locale.getDefault(), "%.2f", phaseTotal)).append("\n");
+                writer.append("Phase Total,,,,,,,,,").append(String.format(Locale.getDefault(), "%.2f", phaseTotal)).append("\n");
             }
             
             writer.flush();

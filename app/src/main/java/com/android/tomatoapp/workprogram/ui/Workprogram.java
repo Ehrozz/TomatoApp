@@ -76,6 +76,7 @@ import com.android.tomatoapp.workprogram.data.WorkProgramDataHelper;
 import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
 import com.android.tomatoapp.workprogram.data.ProgressCalculator;
 import com.android.tomatoapp.workprogram.data.ProgramHistory;
+import com.android.tomatoapp.financial.data.DailyExpenseMath;
 
 public class Workprogram extends BaseBottomNavActivity {
 
@@ -128,6 +129,7 @@ public class Workprogram extends BaseBottomNavActivity {
     private String sowingDate;
     private String transplantDate;
     private String stopDate;
+    private String phase3Date, phase4Date, phase5Date;
     private String placementDate;
     private double farmAreaHectares = 1.0;
     private boolean calendarPositioned = false;
@@ -537,24 +539,45 @@ public class Workprogram extends BaseBottomNavActivity {
                     transplantDate == null ? null : java.time.LocalDate.parse(transplantDate),
                     parseLocalDate(placementDate), intakeStartPhase);
             java.time.LocalDate stop = stopDate == null ? null : java.time.LocalDate.parse(stopDate);
-            if (transplant == null) {
-                java.time.LocalDate sowing = sowingDate == null
-                        ? null : java.time.LocalDate.parse(sowingDate);
-                java.time.LocalDate projectedStart = sowing == null
-                        ? start : sowing;
-                transplant = projectedStart.plusDays(25);
-            }
+            java.time.LocalDate p3 = parseLocalDate(phase3Date);
+            java.time.LocalDate p4 = parseLocalDate(phase4Date);
+            java.time.LocalDate p5 = parseLocalDate(phase5Date);
+
             HashSet<CalendarDay> phase1 = new HashSet<>();
             HashSet<CalendarDay> phase2 = new HashSet<>();
             HashSet<CalendarDay> phase3 = new HashSet<>();
             HashSet<CalendarDay> phase4 = new HashSet<>();
             HashSet<CalendarDay> phase5 = new HashSet<>();
+
             java.time.LocalDate end = stop != null ? stop : start.plusDays(365);
+            if (transplant == null) {
+                // No transplant yet: color Phase 1 only, up to the expected transplant date
+                java.time.LocalDate base = sowingDate == null
+                        ? start : java.time.LocalDate.parse(sowingDate);
+                java.time.LocalDate expected = base.plusDays(sowingDate == null ? 30 : 25);
+                if (expected.isBefore(end)) end = expected;
+            } else {
+                java.time.LocalDate p5Start = p5 != null ? p5 : transplant.plusDays(84);
+                java.time.LocalDate limit = stop != null ? stop : p5Start.plusDays(28);
+                if (limit.isBefore(end)) end = limit;
+            }
+
+            int maxPhase = 1;
+            if (stop != null) maxPhase = 5;
+            else if (transplant != null) {
+                maxPhase = 2;
+                if (p3 != null) maxPhase = 3;
+                if (p3 != null && p4 != null) maxPhase = 4;
+                if (p3 != null && p4 != null && p5 != null) maxPhase = 5;
+            }
+            maxPhase = Math.max(maxPhase, intakeStartPhase);
+
             for (java.time.LocalDate current = start; !current.isAfter(end); current = current.plusDays(1)) {
                 int phase = com.android.tomatoapp.task.data.TaskSchedule.getPhaseNumber(
-                        start, transplant, stop, current);
+                        start, transplant, stop, current, p3, p4, p5);
                 CalendarDay currentDate = CalendarDay.from(current.getYear(),
                         current.getMonthValue() - 1, current.getDayOfMonth());
+                if (phase > maxPhase) continue;
                 switch (phase) {
                     case 1: phase1.add(currentDate); break;
                     case 2: phase2.add(currentDate); break;
@@ -564,24 +587,23 @@ public class Workprogram extends BaseBottomNavActivity {
                 }
             }
 
-            // Use the new drawables for the 5 stages
-            Drawable p1 = ContextCompat.getDrawable(this, R.drawable.bg_calendar_day_landprep);
-            Drawable p2 = ContextCompat.getDrawable(this, R.drawable.bg_calendar_day_vegetative);
-            Drawable p3 = ContextCompat.getDrawable(this, R.drawable.bg_calendar_day_flowering);
-            Drawable p4 = ContextCompat.getDrawable(this, R.drawable.bg_calendar_day_maturity);
-            Drawable p5 = ContextCompat.getDrawable(this, R.drawable.bg_calendar_day_harvest);
+            Drawable d1 = ContextCompat.getDrawable(this, R.drawable.bg_calendar_day_landprep);
+            Drawable d2 = ContextCompat.getDrawable(this, R.drawable.bg_calendar_day_vegetative);
+            Drawable d3 = ContextCompat.getDrawable(this, R.drawable.bg_calendar_day_flowering);
+            Drawable d4 = ContextCompat.getDrawable(this, R.drawable.bg_calendar_day_maturity);
+            Drawable d5 = ContextCompat.getDrawable(this, R.drawable.bg_calendar_day_harvest);
 
-            calendarView.addDecorator(new PhaseRangeDecorator(phase1, p1));
-            calendarView.addDecorator(new PhaseRangeDecorator(phase2, p2));
-            calendarView.addDecorator(new PhaseRangeDecorator(phase3, p3));
-            calendarView.addDecorator(new PhaseRangeDecorator(phase4, p4));
-            calendarView.addDecorator(new PhaseRangeDecorator(phase5, p5));
+            calendarView.addDecorator(new PhaseRangeDecorator(phase1, d1));
+            calendarView.addDecorator(new PhaseRangeDecorator(phase2, d2));
+            calendarView.addDecorator(new PhaseRangeDecorator(phase3, d3));
+            calendarView.addDecorator(new PhaseRangeDecorator(phase4, d4));
+            calendarView.addDecorator(new PhaseRangeDecorator(phase5, d5));
             addMilestoneDecorators();
-            
+
             // Highlight today without replacing its phase background.
             calendarView.addDecorator(new TodayDecorator(this));
             calendarView.invalidateDecorators();
-            
+
         } catch (java.time.format.DateTimeParseException e) {
             Log.e(TAG, "Error parsing phases for calendar display", e);
         }
@@ -736,31 +758,7 @@ public class Workprogram extends BaseBottomNavActivity {
     private double sumDailyExpenseNode(DataSnapshot dateNode) {
         double total = 0.0;
 
-        // labor[].totalCost
-        DataSnapshot labor = dateNode.child("labor");
-        for (DataSnapshot item : labor.getChildren()) {
-            total += getDouble(item.child("totalCost").getValue());
-        }
-
-        // material[].totalCost
-        DataSnapshot material = dateNode.child("material");
-        for (DataSnapshot item : material.getChildren()) {
-            total += getDouble(item.child("totalCost").getValue());
-        }
-
-        // equipment[].totalCost
-        DataSnapshot equipment = dateNode.child("equipment");
-        for (DataSnapshot item : equipment.getChildren()) {
-            total += getDouble(item.child("totalCost").getValue());
-        }
-
-        // miscellaneous[].cost
-        DataSnapshot misc = dateNode.child("miscellaneous");
-        for (DataSnapshot item : misc.getChildren()) {
-            total += getDouble(item.child("cost").getValue());
-        }
-
-        return total;
+        return DailyExpenseMath.sumDateNode(dateNode);
     }
 
     private double getDouble(Object value) {
@@ -885,7 +883,8 @@ public class Workprogram extends BaseBottomNavActivity {
                 target.getYear(), target.getMonth() + 1, target.getDay());
         int phase = com.android.tomatoapp.task.data.TaskSchedule.getPhaseNumber(
                 parseLocalDate(programStartDate), parseLocalDate(transplantDate),
-                parseLocalDate(stopDate), viewed);
+                parseLocalDate(stopDate), viewed,
+                parseLocalDate(phase3Date), parseLocalDate(phase4Date), parseLocalDate(phase5Date));
         String phaseLabel = getPhaseLabel(phase);
         if (phaseLabel.isEmpty()) {
             return "";
@@ -990,6 +989,9 @@ public class Workprogram extends BaseBottomNavActivity {
         taskIntent.putExtra("sowingDate", sowingDate);
         taskIntent.putExtra("transplantDate", transplantDate);
         taskIntent.putExtra("stopDate", stopDate);
+        taskIntent.putExtra("phase3Date", phase3Date);
+        taskIntent.putExtra("phase4Date", phase4Date);
+        taskIntent.putExtra("phase5Date", phase5Date);
         taskIntent.putExtra("placementDate", placementDate);
         taskIntent.putExtra("intakeStartPhase", intakeStartPhase);
         startActivityForResult(taskIntent, DAILY_TASK_REQUEST);
@@ -1128,6 +1130,9 @@ public class Workprogram extends BaseBottomNavActivity {
                             readNonEmptyString(snapshot, "stopDate"),
                             readNonEmptyString(intake, "stopDate"),
                             readNonEmptyString(placementAnswers, "stopDate"));
+                    phase3Date = readNonEmptyString(snapshot, "phase3Date");
+                    phase4Date = readNonEmptyString(snapshot, "phase4Date");
+                    phase5Date = readNonEmptyString(snapshot, "phase5Date");
                     placementDate = readNonEmptyString(placement, "placementDate");
                     if (placementDate == null) {
                         placementDate = readNonEmptyString(snapshot, "placementDate");
@@ -1341,7 +1346,9 @@ public class Workprogram extends BaseBottomNavActivity {
                             java.time.LocalDate.parse(programStartDate),
                             effectiveTransplant,
                             stopDate == null ? null : java.time.LocalDate.parse(stopDate),
-                            phaseDate);
+                            phaseDate,
+                            parseLocalDate(phase3Date), parseLocalDate(phase4Date),
+                            parseLocalDate(phase5Date));
                 } catch (RuntimeException error) {
                     Log.w(TAG, "Could not determine phase for " + dateKey, error);
                 }
@@ -1373,7 +1380,8 @@ public class Workprogram extends BaseBottomNavActivity {
                         && ("completed".equals(previousStatus) || "skipped".equals(previousStatus));
                 boolean activePhaseThroughToday = ongoing && phase >= intakeStartPhase
                         && !checkCal.getTime().after(today);
-                if ((nextDayAfterCompleted || !future) && ((ongoing && ProgramHistory.isAccessible(
+                boolean isFirstDay = previousDateKey == null;
+                if (isFirstDay || (nextDayAfterCompleted || !future) && ((ongoing && ProgramHistory.isAccessible(
                         phaseDate, placement,
                         appTodayLocal(), true))
                         || previousDateKey == null
@@ -1452,10 +1460,13 @@ public class Workprogram extends BaseBottomNavActivity {
             for (CalendarDay day : completedDates) {
                 completed.add(java.time.LocalDate.of(day.getYear(), day.getMonth() + 1, day.getDay()));
             }
+            java.time.LocalDate p3 = parseLocalDate(phase3Date);
+            java.time.LocalDate p4 = parseLocalDate(phase4Date);
+            java.time.LocalDate p5 = parseLocalDate(phase5Date);
             ProgressCalculator.Result result = ProgressCalculator.calculate(
                     start, seeds, sowing, effectiveTransplant, stop, parseLocalDate(placementDate),
                     intakeStartPhase, getGrowthHabit(selectedCultivar), getSelectedAreaHectares(),
-                    today, completed);
+                    today, completed, p3, p4, p5);
             int overallPct = result.overall;
             int[] phasePct = result.stages;
             int missed = missedDates.size();
@@ -1483,7 +1494,7 @@ public class Workprogram extends BaseBottomNavActivity {
 
             if (programId != null && !programId.isEmpty() && userId != null && dbRef != null) {
                 int currentPhase = com.android.tomatoapp.task.data.TaskSchedule.getPhaseNumber(
-                        start, effectiveTransplant, stop, today);
+                        start, effectiveTransplant, stop, today, p3, p4, p5);
                 currentPhase = Math.max(1, Math.min(5, currentPhase));
                 final int finalCurrentPhase = currentPhase;
                 dbRef.child(programId).get().addOnSuccessListener(snapshot -> {
@@ -1563,7 +1574,8 @@ public class Workprogram extends BaseBottomNavActivity {
             java.time.LocalDate stop = stopDate == null ? null : java.time.LocalDate.parse(stopDate);
             TomatoWorkProgramScheduler.Input input = new TomatoWorkProgramScheduler.Input(
                     planting, getSelectedAreaHectares(), getGrowthHabit(selectedCultivar), seeds, sowing, transplant,
-                    stop, current, TomatoWorkProgramScheduler.DEFAULT_HECTARES_PER_PLOWING_DAY);
+                    stop, current, TomatoWorkProgramScheduler.DEFAULT_HECTARES_PER_PLOWING_DAY, 0,
+                    parseLocalDate(phase3Date), parseLocalDate(phase4Date), parseLocalDate(phase5Date));
             int count = 0;
             for (TaskModel task : TomatoWorkProgramScheduler.getTasksForDate(input, current)) {
                 if ("MAIN".equals(task.type) || "MAINTENANCE".equals(task.type)) count++;

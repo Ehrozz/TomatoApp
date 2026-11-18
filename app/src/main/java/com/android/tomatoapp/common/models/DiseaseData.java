@@ -213,21 +213,121 @@ public class DiseaseData {
                 "Fruit-boring caterpillar → usually hides inside fruit during feeding and may leave dark droppings near entry holes."
         ));
 
-        diseaseMap.put("Black Leaf Mold (Pseudocercospora fuligena)", new DiseaseInfo(
-                "Fungal disease causing yellow patches on leaves and black mold underneath.",
-                "Fungus infects older leaves under humid conditions. Spreads via wind-blown spores.",
-                "• Apply NVSU FD-BIOPEST mycopesticide weekly from 3–14 weeks after transplanting.\n" +
-                        "• Improve airflow\n" +
-                        "• Use resistant lines when available",
-                "- Improve ventilation (avoid humidity).\n" +
-                        "- Spray fungicides (mancozeb, copper, chlorothalonil).\n" +
-                        "- Use organic biopesticides like NVSU FD-BIOPEST.",
-                "Fungus",
-                "Leaves: Yellow patches, underside with black mold growth.\n" +
-                        "Advanced: Premature leaf drop, defoliation, reduced yield.\n" +
-                        "Rarely: Dark lesions on stems/calyx.",
-                "Pseudocercospora fuligena → fungal pathogen surviving in debris, spreads by wind and rain in humid conditions."
+        // TODO verify wording with advisers
+        diseaseMap.put("Lady Beetle", new DiseaseInfo(
+                "Many lady beetles are beneficial predators that eat aphids and other small pests. A few leaf-feeding species (Epilachna / 'peste ng talong') chew tomato leaves and can reduce yield if numbers are high.",
+                "Adults and larvae of lady beetles; predatory species hunt aphids, while Epilachna beetles feed on foliage.",
+                "• Watch plants weekly and identify the species before spraying\n" +
+                        "• Conserve predatory lady beetles; avoid unnecessary insecticide\n" +
+                        "• Hand-pick leaf-feeding beetles and larvae early in the morning\n" +
+                        "• Keep weeds down around the plot",
+                "Do not spray predatory lady beetles. For leaf-feeding Epilachna, hand-pick and destroy beetles and larvae, then use a labeled insecticide only if damage continues.",
+                "Insect",
+                "• Predatory species: round, spotted beetles hunting aphids on leaves\n" +
+                        "• Leaf-feeding Epilachna: skeletonized leaves, holes, and yellowing\n" +
+                        "• Larvae may be spiny and clustered on the underside of leaves",
+                "Lady beetle → most are helpful aphid predators; Epilachna species chew tomato leaves and should be controlled by hand-picking first."
         ));
+
+        diseaseMap.put("Whiteflies (Bemisia tabaci)", new DiseaseInfo(
+                "Tiny white sap-sucking insects that cluster on the underside of tomato leaves. Heavy feeding weakens plants and they spread tomato leaf curl virus (TLCV/TYLCV), a major problem in Philippine tomato farms.",
+                "Bemisia tabaci (silverleaf/whitefly). Populations explode in hot, dry weather and on weedy or crowded plantings.",
+                "• Use yellow sticky traps and reflective mulch from seedling stage\n" +
+                        "• Cover seedlings with insect-proof netting\n" +
+                        "• Remove heavily infested and virus-infected plants\n" +
+                        "• Avoid planting near infested tomato, eggplant, or tobacco",
+                "Knock down adults with a strong water spray or insecticidal soap/neem. Use a labeled insecticide only if needed, covering leaf undersides, and rotate products to slow resistance.",
+                "Insect",
+                "• Clouds of tiny white insects when leaves are shaken\n" +
+                        "• Sticky honeydew and sooty mold on leaves\n" +
+                        "• Upward leaf curl, yellowing, and stunting if virus is present",
+                "Bemisia tabaci → small white-winged fly on leaf undersides; a key vector of tomato leaf curl virus."
+        ));
+
+        diseaseMap.put("Aphids", new DiseaseInfo(
+                "Soft-bodied sap suckers that colonize tender shoots, flower clusters, and the underside of young tomato leaves. They stunt growth and can spread plant viruses.",
+                "Aphid colonies (often green or black) build up quickly in cool, lush growth and on weedy borders.",
+                "• Check shoot tips and leaf undersides twice a week\n" +
+                        "• Conserve lady beetles, hoverflies, and lacewings\n" +
+                        "• Remove heavily infested shoots and nearby weeds\n" +
+                        "• Avoid excess nitrogen that produces very soft growth",
+                "Wash colonies off with water or spray insecticidal soap/neem on leaf undersides. Use a labeled insecticide only if colonies keep returning.",
+                "Insect",
+                "• Clusters of small green, yellow, or black insects on tender parts\n" +
+                        "• Curled, sticky, or yellowing young leaves\n" +
+                        "• Ants often attend the colonies for honeydew",
+                "Aphids → soft-bodied sap feeders that cluster on young growth and may transmit viruses."
+        ));
+
+        diseaseMap.put("Flea Beetles", new DiseaseInfo(
+                "Small jumping beetles that chew many tiny round holes in tomato leaves, especially on seedlings and young transplants. Severe feeding slows establishment in the field.",
+                "Adult flea beetles hide in weeds and crop debris and jump when disturbed; they are most damaging in dry weather on young plants.",
+                "• Use seedling trays or netting until plants are well established\n" +
+                        "• Keep the plot and nearby weeds clean\n" +
+                        "• Water and mulch to help plants outgrow early damage\n" +
+                        "• Scout early in the morning when beetles are less active",
+                "Protect seedlings with covers. If holes keep increasing, apply a labeled insecticide as a foliar spray, focusing on young plants.",
+                "Insect",
+                "• Numerous small round 'shot-hole' feeding marks on leaves\n" +
+                        "• Tiny dark beetles that jump when the plant is touched\n" +
+                        "• Seedlings may look ragged or delayed",
+                "Flea beetle → small jumping leaf beetle; worst on seedlings and newly transplanted tomatoes."
+        ));
+
+        diseaseMap.put("Leaf Miner", new DiseaseInfo(
+                "Tiny fly larvae tunnel inside tomato leaves, leaving winding white or silvery trails. Heavy mining reduces leaf area and can stress plants in the hot season.",
+                "Larvae of leaf-mining flies (Liriomyza spp.) feed between the upper and lower leaf surfaces. Adults are small flies that lay eggs in leaves.",
+                "• Remove and destroy mined leaves while larvae are still inside\n" +
+                        "• Avoid spraying that kills beneficial parasites\n" +
+                        "• Do not plant next to recently infested plots\n" +
+                        "• Keep plants vigorous with balanced fertilizer and water",
+                "Pick off badly mined leaves. If new mines keep appearing, use a labeled insecticide that reaches larvae inside the leaf, following the pre-harvest interval.",
+                "Insect",
+                "• Serpentine white or silvery trails on leaves\n" +
+                        "• Mines later turn brown and leaves may dry\n" +
+                        "• Small maggots inside the leaf if a mine is opened",
+                "Leaf miner → fly larva that tunnels inside the leaf, leaving winding mines."
+        ));
+
+        diseaseMap.put("Melon Fly", new DiseaseInfo(
+                "A fruit fly that stings developing tomato fruit and lays eggs inside. Maggots feed in the flesh, causing rot, premature drop, and unmarketable fruit—common in warm Philippine lowlands.",
+                "Adult melon flies (Bactrocera cucurbitae and related fruit flies) puncture fruit to lay eggs; larvae develop inside.",
+                "• Bag young fruits with paper or fine mesh where practical\n" +
+                        "• Collect and bury or burn fallen and infested fruit daily\n" +
+                        "• Use protein bait traps around the field\n" +
+                        "• Harvest promptly; do not leave ripe fruit on the plant",
+                "There is no cure once maggots are inside the fruit—remove and destroy infested fruit. Protect remaining fruit with bagging and bait traps; use a labeled bait spray only as directed.",
+                "Insect",
+                "• Tiny puncture marks or soft spots on fruit\n" +
+                        "• Fruit that yellows, rots, or drops early\n" +
+                        "• White maggots in the flesh when fruit is cut",
+                "Melon fly → fruit fly that oviposits in tomato fruit; larvae feed inside and spoil the harvest."
+        ));
+
+        diseaseMap.put("Worms (Caterpillars)", new DiseaseInfo(
+                "Moth larvae (fruitworms, armyworms, hornworms, and leaf-feeding caterpillars) chew tomato leaves, flowers, and fruit. Fruit borers hide inside the fruit and cause rotting.",
+                "Eggs are laid on leaves or near flowers; larvae feed at night or inside fruit. Outbreaks often follow flowering and fruit set.",
+                "• Scout leaves, flowers, and fruit at least twice a week\n" +
+                        "• Hand-pick larvae and egg masses in the morning\n" +
+                        "• Remove damaged fruit so larvae cannot finish development\n" +
+                        "• Encourage birds and beneficial wasps; avoid blanket spraying",
+                "Hand-pick visible worms. For fruit borers or heavy leaf feeding, apply Bacillus thuringiensis (Bt) or a labeled insecticide, covering flowers and fruit, and observe the pre-harvest interval.",
+                "Insect",
+                "• Chewed leaves, missing growing tips, or holes in fruit\n" +
+                        "• Dark droppings (frass) on leaves or near fruit openings\n" +
+                        "• Caterpillars on foliage or hidden inside fruit",
+                "Caterpillar → moth larva that chews leaves or bores into tomato fruit; look for frass and entry holes."
+        ));
+    }
+
+    public static String findFullName(String name) {
+        if (name == null) return null;
+        String n = name.trim().toLowerCase();
+        for (String key : diseaseMap.keySet()) {
+            String k = key.toLowerCase();
+            if (k.equals(n) || k.startsWith(n + " (")) return key;
+        }
+        return null;
     }
 
     public static DiseaseInfo getDiseaseInfo(String diseaseName) {

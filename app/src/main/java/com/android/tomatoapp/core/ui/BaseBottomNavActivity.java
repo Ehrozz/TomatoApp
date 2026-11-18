@@ -30,6 +30,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
+
 import java.util.Locale;
 
 /**
@@ -200,6 +201,13 @@ public abstract class BaseBottomNavActivity extends AppCompatActivity {
             return;
         }
         super.onBackPressed();
+    }
+
+    private android.widget.Toast singleToast;
+    protected void showSingleToast(CharSequence msg, int length) {
+        if (singleToast != null) singleToast.cancel();
+        singleToast = android.widget.Toast.makeText(this, msg, length);
+        singleToast.show();
     }
 
     private void updateBottomNavSelection() {

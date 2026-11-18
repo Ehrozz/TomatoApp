@@ -1,5 +1,6 @@
 package com.android.tomatoapp.task.ui;
 
+import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -73,6 +74,7 @@ public class DailyTask extends BaseBottomNavActivity {
     private String sowingDate;
     private String transplantDate;
     private String stopDate;
+    private String phase3Date, phase4Date, phase5Date;
     private String placementDate;
     private int intakeStartPhase = 1;
     private DatabaseReference taskRef;
@@ -109,6 +111,9 @@ public class DailyTask extends BaseBottomNavActivity {
         sowingDate = getIntent().getStringExtra("sowingDate");
         transplantDate = getIntent().getStringExtra("transplantDate");
         stopDate = getIntent().getStringExtra("stopDate");
+        phase3Date = getIntent().getStringExtra("phase3Date");
+        phase4Date = getIntent().getStringExtra("phase4Date");
+        phase5Date = getIntent().getStringExtra("phase5Date");
         placementDate = getIntent().getStringExtra("placementDate");
         intakeStartPhase = getIntent().getIntExtra("intakeStartPhase", 1);
         int adjustedDayNumber = getIntent().getIntExtra("adjustedDayNumber", 0);
@@ -124,6 +129,9 @@ public class DailyTask extends BaseBottomNavActivity {
         if (programId == null || programId.isEmpty()) {
             isNewProgram = true;
         }
+
+        // Ignore a saved transplant date that is impossible (before start / sowing)
+        discardInvalidTransplantDate();
 
         // Update header
         if (cultivar != null) {
@@ -215,6 +223,30 @@ public class DailyTask extends BaseBottomNavActivity {
         loadProgramState(currentUser);
     }
 
+    /**
+     * A transplant date can never be on/before the program start date, or before the
+     * sowing date. Such a value leaves Phase 1 with zero days (Land Prep 0%, phase
+     * colours shifted). Ongoing/intake programs are exempt: their history is derived.
+     */
+    private void discardInvalidTransplantDate() {
+        if (transplantDate == null || placementDate != null || intakeStartPhase > 1) return;
+        try {
+            java.time.LocalDate transplant = java.time.LocalDate.parse(transplantDate);
+            boolean invalid = false;
+            if (startDate != null && !startDate.isEmpty()
+                    && !transplant.isAfter(java.time.LocalDate.parse(startDate))) {
+                invalid = true;
+            }
+            if (sowingDate != null && !sowingDate.isEmpty()
+                    && transplant.isBefore(java.time.LocalDate.parse(sowingDate))) {
+                invalid = true;
+            }
+            if (invalid) transplantDate = null;
+        } catch (RuntimeException ignored) {
+            // Leave the value alone if it cannot be parsed.
+        }
+    }
+
     private void loadProgramState(FirebaseUser currentUser) {
         if (isNewProgram || programId == null) {
             loadPersistedDailyState(currentUser);
@@ -253,6 +285,9 @@ public class DailyTask extends BaseBottomNavActivity {
                             readNonEmptyString(intake, "stopDate"),
                             readNonEmptyString(placementAnswers, "stopDate"),
                             stopDate);
+                    phase3Date = firstNonEmpty(readNonEmptyString(snapshot, "phase3Date"), phase3Date);
+                    phase4Date = firstNonEmpty(readNonEmptyString(snapshot, "phase4Date"), phase4Date);
+                    phase5Date = firstNonEmpty(readNonEmptyString(snapshot, "phase5Date"), phase5Date);
                     placementDate = readNonEmptyString(placement, "placementDate");
                     placementDate = firstNonEmpty(
                             placementDate, readNonEmptyString(snapshot, "placementDate"));
@@ -275,6 +310,7 @@ public class DailyTask extends BaseBottomNavActivity {
                         phase = intake.child("startPhase").getValue();
                     }
                     if (phase instanceof Number) intakeStartPhase = ((Number) phase).intValue();
+                    discardInvalidTransplantDate();
                     growthHabit = findGrowthHabit(cultivar);
                     maturityDays = findMaturityDays(cultivar);
                     loadPersistedDailyState(currentUser);
@@ -499,12 +535,16 @@ public class DailyTask extends BaseBottomNavActivity {
             java.time.LocalDate transplant = transplantDate == null ? null : java.time.LocalDate.parse(transplantDate);
             java.time.LocalDate stop = stopDate == null ? null : java.time.LocalDate.parse(stopDate);
             java.time.LocalDate placement = placementDate == null ? null : java.time.LocalDate.parse(placementDate);
+            java.time.LocalDate phase3 = phase3Date == null ? null : java.time.LocalDate.parse(phase3Date);
+            java.time.LocalDate phase4 = phase4Date == null ? null : java.time.LocalDate.parse(phase4Date);
+            java.time.LocalDate phase5 = phase5Date == null ? null : java.time.LocalDate.parse(phase5Date);
             transplant = com.android.tomatoapp.workprogram.data.ProgramHistory.effectiveTransplantDate(
                     transplant, placement, intakeStartPhase);
             double area = getIntent().getDoubleExtra("farmAreaHectares", 1.0);
             TomatoWorkProgramScheduler.Input input = new TomatoWorkProgramScheduler.Input(
                     planting, area, growthHabit, seeds, sowing, transplant, stop, current,
-                    TomatoWorkProgramScheduler.DEFAULT_HECTARES_PER_PLOWING_DAY);
+                    TomatoWorkProgramScheduler.DEFAULT_HECTARES_PER_PLOWING_DAY, 0,
+                    phase3, phase4, phase5);
             // Ongoing planting uses the same scheduler as a normal program. Earlier
             // work is represented by onboarding completion state, not a second mode.
             return TomatoWorkProgramScheduler.getTasksForDate(input, current);
@@ -527,14 +567,223 @@ public class DailyTask extends BaseBottomNavActivity {
         }
     }
 
-    private void maybeAskAboutSeeds() {
-        if (!isSeedPromptDate() || isNewProgram || programId == null) return;
+    private boolean maybeAskAboutSeeds() {
+        if (!isSeedPromptDate() || isNewProgram || programId == null) return false;
         new AlertDialog.Builder(this)
                 .setTitle("Do you already have seeds?")
                 .setMessage("Need help finding seeds? Ask your local agri-supply or municipal agriculture office.")
                 .setPositiveButton("Yes", (dialog, which) -> saveMilestone("seedsConfirmedDate", date))
                 .setNegativeButton("No, not yet", null)
                 .show();
+        return true;
+    }
+
+    private void maybeAskPhaseSurvey() {
+        if (isNewProgram || isFinishing() || isDestroyed()) return;
+        if (programId == null || programId.isEmpty() || transplantDate == null) return;
+        if (date == null) return;
+        // final java.time.LocalDate today = AppClock.today(this);
+        // final java.time.LocalDate transplant;
+        // try {
+        //     if (!today.equals(java.time.LocalDate.parse(date))) return;
+        //     transplant = java.time.LocalDate.parse(transplantDate);
+        // } catch (RuntimeException error) {
+        //     return;
+        // }
+        final java.time.LocalDate realToday = AppClock.today(this);
+        final java.time.LocalDate today;      // the date being viewed
+        final java.time.LocalDate transplant;
+        try {
+            today = java.time.LocalDate.parse(date);
+            transplant = java.time.LocalDate.parse(transplantDate);
+        } catch (RuntimeException error) {
+            return;
+        }
+
+        final String[] fields = {"phase3Date", "phase4Date", "phase5Date"};
+        final int[] phases = {3, 4, 5};
+        final int[] earliestDays = {25, 50, 77};
+        final int[] estimatedDays = {28, 56, 84};
+        final String[] questions = {
+                "Have plants begun flowering?",
+                "Are flowers present on most plants?",
+                "Are fruits starting to mature?"
+        };
+        final String[] hints = {
+                "Also check that one-time tasks are done.",
+                null,
+                null
+        };
+        final String[] values = {phase3Date, phase4Date, phase5Date};
+        java.util.Map<String, Object> overdue = new java.util.HashMap<>();
+        for (int i = 0; i < fields.length; i++) {
+            if (hasPhaseDate(values[i])) continue;
+            if (i > 0 && !hasPhaseDate(values[i - 1]) && !overdue.containsKey(fields[i - 1])) {
+                break;
+            }
+            java.time.LocalDate estimated = transplant.plusDays(estimatedDays[i]);
+            if (realToday.isAfter(estimated.plusDays(14))) {
+                overdue.put(fields[i], estimated.toString());
+                continue;
+            }
+            if (!overdue.isEmpty()) {
+                savePhaseDate(overdue);
+                return;
+            }
+            java.time.LocalDate earliest = transplant.plusDays(earliestDays[i]);
+            if (!today.isBefore(earliest) && !isPhaseSurveySnoozed(phases[i])) {
+                final String field = fields[i];
+                final int phase = phases[i];
+                showSurveyDialog("Field status check", questions[i], hints[i], false, null, null,
+                        ignored -> {
+                            java.util.Map<String, Object> update = new java.util.HashMap<>();
+                            update.put(field, date);
+                            savePhaseDate(update);
+                        },
+                        () -> snoozePhaseSurvey(phase));
+            }
+            return;
+        }
+        if (!overdue.isEmpty()) {
+            savePhaseDate(overdue);
+        }
+    }
+
+    private boolean hasPhaseDate(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
+    private boolean isPhaseSurveySnoozed(int phase) {
+        String stored = getSharedPreferences("phase_survey", MODE_PRIVATE)
+                .getString(programId + "_p" + phase, null);
+        return date.equals(stored);
+    }
+
+    private void snoozePhaseSurvey(int phase) {
+        getSharedPreferences("phase_survey", MODE_PRIVATE)
+                .edit()
+                .putString(programId + "_p" + phase, AppClock.today(this).toString())
+                .apply();
+    }
+
+    private void savePhaseDate(java.util.Map<String, Object> update) {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null || programId == null || programId.isEmpty()
+                || update == null || update.isEmpty()) {
+            return;
+        }
+        DatabaseReference programRef = FirebaseDatabase.getInstance().getReference("users")
+                .child(currentUser.getUid()).child("workPrograms").child(programId);
+        programRef.updateChildren(update).addOnSuccessListener(unused -> {
+            if (update.containsKey("phase3Date")) phase3Date = String.valueOf(update.get("phase3Date"));
+            if (update.containsKey("phase4Date")) phase4Date = String.valueOf(update.get("phase4Date"));
+            if (update.containsKey("phase5Date")) phase5Date = String.valueOf(update.get("phase5Date"));
+            Intent result = new Intent();
+            result.putExtra("milestoneChanged", true);
+            setResult(RESULT_OK, result);
+            if (isFinishing() || isDestroyed()) return;
+            refreshTaskList();
+            maybeAskPhaseSurvey();
+        }).addOnFailureListener(error -> Toast.makeText(this,
+                "Could not record phase date: " + error.getMessage(), Toast.LENGTH_LONG).show());
+    }
+
+    private interface SurveyAnswer {
+        void onAnswered(String chosenDate);
+    }
+
+    private void showSurveyDialog(String title, String question, String hint, boolean pickDate,
+            java.time.LocalDate minDate, java.time.LocalDate maxDate,
+            SurveyAnswer onYes, Runnable onNotYet) {
+        if (isFinishing() || isDestroyed()) return;
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_phase_survey, null);
+        TextView titleView = view.findViewById(R.id.surveyTitle);
+        TextView questionView = view.findViewById(R.id.surveyQuestion);
+        TextView hintView = view.findViewById(R.id.surveyHint);
+        TextView dateView = view.findViewById(R.id.surveyDate);
+        MaterialButton btnNotYet = view.findViewById(R.id.btnSurveyNotYet);
+        MaterialButton btnYes = view.findViewById(R.id.btnSurveyYes);
+        titleView.setText(title);
+        questionView.setText(question);
+        if (hint != null && !hint.isEmpty()) {
+            hintView.setText(hint);
+            hintView.setVisibility(View.VISIBLE);
+        }
+        final String[] chosen = {maxDate == null ? null : maxDate.toString()};
+        if (pickDate && maxDate != null) {
+            dateView.setVisibility(View.VISIBLE);
+            dateView.setText("Transplant date\n" + chosen[0]);
+            dateView.setOnClickListener(v -> {
+                DatePickerDialog picker = new DatePickerDialog(this, (pickerView, year, month, day) -> {
+                    chosen[0] = java.time.LocalDate.of(year, month + 1, day).toString();
+                    dateView.setText("Transplant date\n" + chosen[0]);
+                }, maxDate.getYear(), maxDate.getMonthValue() - 1, maxDate.getDayOfMonth());
+                Calendar max = Calendar.getInstance();
+                max.set(maxDate.getYear(), maxDate.getMonthValue() - 1, maxDate.getDayOfMonth(), 23, 59, 59);
+                max.set(Calendar.MILLISECOND, 999);
+                try {
+                    picker.getDatePicker().setMaxDate(max.getTimeInMillis());
+                    if (minDate != null && !minDate.isAfter(maxDate)) {
+                        Calendar min = Calendar.getInstance();
+                        min.set(minDate.getYear(), minDate.getMonthValue() - 1, minDate.getDayOfMonth(), 0, 0, 0);
+                        min.set(Calendar.MILLISECOND, 0);
+                        picker.getDatePicker().setMinDate(min.getTimeInMillis());
+                    }
+                } catch (RuntimeException ignored) {
+                    // Keep the picker usable if a bound is rejected.
+                }
+                picker.show();
+            });
+        }
+        AlertDialog dialog = new AlertDialog.Builder(this, R.style.CustomAlertDialog)
+                .setView(view)
+                .setCancelable(true)
+                .create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+        btnNotYet.setOnClickListener(v -> {
+            dialog.dismiss();
+            if (onNotYet != null) onNotYet.run();
+        });
+        btnYes.setOnClickListener(v -> {
+            dialog.dismiss();
+            if (onYes != null) onYes.onAnswered(chosen[0]);
+        });
+        dialog.show();
+    }
+
+    private void showTransplantLeafDialog() {
+        java.time.LocalDate today;
+        try {
+            today = date != null ? java.time.LocalDate.parse(date) : AppClock.today(this);
+        } catch (RuntimeException e) {
+            today = AppClock.today(this);
+        }
+
+        // Earliest allowed transplant date: the day after the program start, and never
+        // before the sowing date. This keeps Phase 1 (Land Prep) from ending up empty.
+        java.time.LocalDate min = null;
+        try {
+            if (startDate != null) min = java.time.LocalDate.parse(startDate).plusDays(1);
+            if (sowingDate != null) {
+                java.time.LocalDate sow = java.time.LocalDate.parse(sowingDate);
+                if (min == null || sow.isAfter(min)) min = sow;
+            }
+        } catch (RuntimeException ignored) {
+            // Fall back to whatever bound was computed so far.
+        }
+
+        if (min != null && min.isAfter(today)) {
+            Toast.makeText(this, "Transplant can only be recorded after the sowing date.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        showSurveyDialog("Work Program Milestone", "Do seedlings have 3-5 true leaves?",
+                null, true, min, today,
+                chosen -> saveMilestone("transplantDate", chosen),
+                null);
     }
 
     private void loadPersistedDailyState(FirebaseUser currentUser) {
@@ -557,7 +806,9 @@ public class DailyTask extends BaseBottomNavActivity {
                 updateTaskCount();
                 updateEmptyTaskState();
             }
-            maybeAskAboutSeeds();
+            if (!maybeAskAboutSeeds()) {
+                maybeAskPhaseSurvey();
+            }
         }).addOnFailureListener(error -> {
             Toast.makeText(this, "Could not restore saved task state: "
                     + error.getMessage(), Toast.LENGTH_LONG).show();
@@ -582,7 +833,10 @@ public class DailyTask extends BaseBottomNavActivity {
                             placementDate == null ? null : java.time.LocalDate.parse(placementDate),
                             intakeStartPhase),
                     stopDate == null ? null : java.time.LocalDate.parse(stopDate),
-                    viewedDate);
+                    viewedDate,
+                    phase3Date == null ? null : java.time.LocalDate.parse(phase3Date),
+                    phase4Date == null ? null : java.time.LocalDate.parse(phase4Date),
+                    phase5Date == null ? null : java.time.LocalDate.parse(phase5Date));
             return phase > 0 && phase <= intakeStartPhase
                     && (placement == null || viewedDate.isBefore(placement));
         } catch (RuntimeException error) {
@@ -595,12 +849,14 @@ public class DailyTask extends BaseBottomNavActivity {
         boolean wasCompleted = dayCompleted;
         checkedTasks = new boolean[taskList.size()];
         if (wasCompleted) {
-        for (int i = 0; i < taskList.size(); i++) {
-            checkedTasks[i] = isCountedTask(taskList.get(i));
-        }
+            for (int i = 0; i < taskList.size(); i++) {
+                checkedTasks[i] = isCountedTask(taskList.get(i));
+            }
         }
         taskAdapter = new TaskAdapter(taskList);
+        taskRecyclerView.setItemAnimator(null);
         taskRecyclerView.setAdapter(taskAdapter);
+        taskRecyclerView.post(() -> taskRecyclerView.requestLayout());
         updateTaskCount();
         updateEmptyTaskState();
         applyIntakeSkipNotice();
@@ -625,7 +881,10 @@ public class DailyTask extends BaseBottomNavActivity {
                     java.time.LocalDate.parse(startDate),
                     transplantDate == null ? null : java.time.LocalDate.parse(transplantDate),
                     stopDate == null ? null : java.time.LocalDate.parse(stopDate),
-                    java.time.LocalDate.parse(date));
+                    java.time.LocalDate.parse(date),
+                    phase3Date == null ? null : java.time.LocalDate.parse(phase3Date),
+                    phase4Date == null ? null : java.time.LocalDate.parse(phase4Date),
+                    phase5Date == null ? null : java.time.LocalDate.parse(phase5Date));
         } catch (RuntimeException error) {
             return;
         }
@@ -652,7 +911,10 @@ public class DailyTask extends BaseBottomNavActivity {
             phaseNumber = TaskSchedule.getPhaseNumber(java.time.LocalDate.parse(startDate),
                     transplantDate == null ? null : java.time.LocalDate.parse(transplantDate),
                     stopDate == null ? null : java.time.LocalDate.parse(stopDate),
-                    java.time.LocalDate.parse(date));
+                    java.time.LocalDate.parse(date),
+                    phase3Date == null ? null : java.time.LocalDate.parse(phase3Date),
+                    phase4Date == null ? null : java.time.LocalDate.parse(phase4Date),
+                    phase5Date == null ? null : java.time.LocalDate.parse(phase5Date));
         } catch (RuntimeException error) {
             Toast.makeText(this, "Monitoring unavailable for this date.", Toast.LENGTH_SHORT).show();
             return;
@@ -685,7 +947,8 @@ public class DailyTask extends BaseBottomNavActivity {
 
     private boolean isMilestoneHistory(TaskModel task) {
         if (task.details != null && (task.details.contains("confirmed on this date")
-                || task.details.contains("recorded on this date"))) {
+                || task.details.contains("recorded on this date")
+                || task.details.contains("sown on this date"))) {
             return true;
         }
         return "stop-indicator".equals(task.id) && date != null && date.equals(stopDate);
@@ -711,7 +974,8 @@ public class DailyTask extends BaseBottomNavActivity {
         } else if ("milestone-sowing".equals(task.id)) {
             field = "sowingDate";
         } else if ("milestone-transplant".equals(task.id)) {
-            field = "transplantDate";
+            showTransplantLeafDialog();
+            return;
         } else {
             Toast.makeText(this, "Unknown milestone.", Toast.LENGTH_SHORT).show();
             return;
@@ -783,11 +1047,21 @@ public class DailyTask extends BaseBottomNavActivity {
             if (rows.get(position) instanceof String) {
                 String title = (String) rows.get(position);
                 holder.sectionTitle.setText(title);
-                boolean isMainSection = title.startsWith("Main tasks");
-                holder.sectionCount.setVisibility(isMainSection ? View.VISIBLE : View.GONE);
-                if (isMainSection) {
-                    holder.sectionCount.setText(getCheckedCount() + "/"
-                            + getActionTaskCount() + " completed");
+                boolean isAction = title.startsWith("Main tasks")
+                        || title.startsWith("Maintenance tasks");
+                holder.sectionCount.setVisibility(isAction ? View.VISIBLE : View.GONE);
+                if (isAction) {
+                    // FIX: "Maintenance tasks" also starts with "Main", so match the full prefix.
+                    String sectionType = title.startsWith("Main tasks") ? "MAIN" : "MAINTENANCE";
+                    int done = 0;
+                    int all = 0;
+                    for (int i = 0; i < tasks.size(); i++) {
+                        if (sectionType.equals(tasks.get(i).type)) {
+                            all++;
+                            if (checkedTasks[i]) done++;
+                        }
+                    }
+                    holder.sectionCount.setText(done + "/" + all + " completed");
                 }
                 return;
             }

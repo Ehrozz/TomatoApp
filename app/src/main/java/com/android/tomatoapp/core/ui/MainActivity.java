@@ -140,8 +140,7 @@ public class MainActivity extends BaseBottomNavActivity {
 
         NotificationChannels.ensureCreated(this);
         NotificationPermissionHelper.ensurePermission(this);
-        GeneralUpdateScheduler.ensureDailyTipScheduled(this);
-        com.android.tomatoapp.notifications.TaskNotificationScheduler.ensureTaskNotificationsScheduled(this);
+        com.android.tomatoapp.notifications.NotificationScheduleManager.rescheduleAll(this);
 
         mAuth = FirebaseAuth.getInstance();
         user = mAuth.getCurrentUser();

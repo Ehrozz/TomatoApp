@@ -34,13 +34,22 @@ public final class ProgressCalculator {
                                    LocalDate transplant, LocalDate stop, LocalDate placement,
                                    int startPhase, String variety, double area,
                                    LocalDate today, Set<LocalDate> completedDays) {
+        return calculate(planting, seeds, sowing, transplant, stop, placement, startPhase,
+                variety, area, today, completedDays, null, null, null);
+    }
+
+    public static Result calculate(LocalDate planting, LocalDate seeds, LocalDate sowing,
+                                   LocalDate transplant, LocalDate stop, LocalDate placement,
+                                   int startPhase, String variety, double area,
+                                   LocalDate today, Set<LocalDate> completedDays,
+                                   LocalDate p3, LocalDate p4, LocalDate p5) {
         if (planting == null || today == null) return new Result(0, new int[5], 0, 0);
         LocalDate templateTransplant = transplant == null ? planting.plusDays(30) : transplant;
         LocalDate through = stop == null ? planting.plusDays(365) : stop;
         TomatoWorkProgramScheduler.Input input = new TomatoWorkProgramScheduler.Input(
                 planting, Math.max(0.01, area), variety, seeds, sowing,
                 templateTransplant, stop, today,
-                TomatoWorkProgramScheduler.DEFAULT_HECTARES_PER_PLOWING_DAY);
+                TomatoWorkProgramScheduler.DEFAULT_HECTARES_PER_PLOWING_DAY, 0, p3, p4, p5);
         List<ScheduledTask> tasks = TomatoWorkProgramScheduler.generate(input, through);
                 Set<LocalDate> completed = completedDays == null
                         ? new HashSet<>() : completedDays;
@@ -57,7 +66,7 @@ public final class ProgressCalculator {
                         }
                     }
                     if (!working) continue;
-                    int phase = TaskSchedule.getPhaseNumber(planting, templateTransplant, stop, date);
+                    int phase = TaskSchedule.getPhaseNumber(planting, templateTransplant, stop, date, p3, p4, p5);
                     if (phase >= 1 && phase <= 5) phaseDates.get(phase - 1).add(date);
                 }
                 if (stop == null && phaseDates.get(4).size() > 28) {
@@ -73,6 +82,7 @@ public final class ProgressCalculator {
                 int total = 0;
                 double[] percentages = new double[5];
                 int[] stages = new int[5];
+                boolean[] confirmed = { transplant != null, p3 != null, p4 != null, p5 != null, stop != null };
                 for (int i = 0; i < phaseDates.size(); i++) {
                     int totalDays = phaseDates.get(i).size();
                     int doneDays = 0;
@@ -80,14 +90,16 @@ public final class ProgressCalculator {
                     if (phase < startPhase
                             || (transplant != null && phase == 5 && stop != null && !stop.isAfter(today))) {
                         doneDays = totalDays;
-                    } else if (transplant != null) {
+                    } else {
                         for (LocalDate date : phaseDates.get(i)) {
                             if (completed.contains(date)) doneDays++;
                         }
                     }
+                    if (phase > startPhase && !confirmed[i - 1]) doneDays = 0;
                     total += totalDays;
                     completedTotal += doneDays;
                     percentages[i] = totalDays == 0 ? 0 : doneDays * 100.0 / totalDays;
+                    if (!confirmed[i] && phase >= startPhase) percentages[i] = Math.min(percentages[i], 99);
                     stages[i] = (int) Math.round(percentages[i]);
                 }
                 double average = 0;

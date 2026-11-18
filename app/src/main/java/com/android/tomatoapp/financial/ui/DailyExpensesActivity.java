@@ -173,7 +173,7 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         // Check if user is logged in
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser == null) {
-            Toast.makeText(this, "Please log in to continue", Toast.LENGTH_SHORT).show();
+            showSingleToast("Please log in to continue", Toast.LENGTH_SHORT);
             startActivity(new Intent(this, Login.class));
             finish();
             return;
@@ -233,7 +233,7 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
 
         // Initialize Firebase reference
         if (programId == null || date == null || date.trim().isEmpty()) {
-            Toast.makeText(this, "Missing work program or date for daily expenses", Toast.LENGTH_SHORT).show();
+            showSingleToast("Missing work program or date for daily expenses", Toast.LENGTH_SHORT);
             finish();
             return;
         }
@@ -606,11 +606,8 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         });
         
         deleteIcon.setOnClickListener(v -> {
-            laborItems.remove(index);
-            laborItemsContainer.removeView(cardView);
-            laborItemViews.remove(cardView);
-            recalculateLaborItemIndices();
-            calculateLaborTotal();
+            laborItems.remove(item);
+            rebuildLaborViews();
         });
         
         // Text watchers for auto-calculation
@@ -850,11 +847,8 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         });
         
         deleteIcon.setOnClickListener(v -> {
-            materialItems.remove(index);
-            materialItemsContainer.removeView(cardView);
-            materialItemViews.remove(cardView);
-            recalculateMaterialItemIndices();
-            calculateMaterialTotal();
+            materialItems.remove(item);
+            rebuildMaterialViews();
         });
         
         // Text watchers for auto-calculation (quantity and unit cost only)
@@ -1047,11 +1041,8 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         });
         
         deleteIcon.setOnClickListener(v -> {
-            equipmentItems.remove(index);
-            equipmentItemsContainer.removeView(cardView);
-            equipmentItemViews.remove(cardView);
-            recalculateEquipmentItemIndices();
-            calculateEquipmentTotal();
+            equipmentItems.remove(item);
+            rebuildEquipmentViews();
         });
         
         // Ownership checkbox listener - show/hide cost field
@@ -1275,11 +1266,8 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         });
         
         deleteIcon.setOnClickListener(v -> {
-            miscItems.remove(index);
-            miscItemsContainer.removeView(cardView);
-            miscItemViews.remove(cardView);
-            recalculateMiscItemIndices();
-            calculateMiscTotal();
+            miscItems.remove(item);
+            rebuildMiscViews();
         });
         
         // Text watcher for cost updates only
@@ -1358,17 +1346,59 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         tvTotalExpenses.setText("Total: ₱" + String.format("%,.2f", total));
     }
 
-    private void recalculateLaborItemIndices() {
-        // Recalculate indices after deletion
-        for (int i = 0; i < laborItemViews.size(); i++) {
-            View view = laborItemViews.get(i);
-            // Update title if needed
+    private void rebuildLaborViews() {
+        laborItemsContainer.removeAllViews();
+        laborItemViews.clear();
+        for (int i = 0; i < laborItems.size(); i++) {
+            View itemView = createLaborItemView(laborItems.get(i), i);
+            laborItemViews.add(itemView);
+            laborItemsContainer.addView(itemView);
         }
+        calculateLaborTotal();
+        setEditMode(isEditMode);
+    }
+
+    private void rebuildMaterialViews() {
+        materialItemsContainer.removeAllViews();
+        materialItemViews.clear();
+        for (int i = 0; i < materialItems.size(); i++) {
+            View itemView = createMaterialItemView(materialItems.get(i), i);
+            materialItemViews.add(itemView);
+            materialItemsContainer.addView(itemView);
+        }
+        calculateMaterialTotal();
+        setEditMode(isEditMode);
+    }
+
+    private void rebuildEquipmentViews() {
+        equipmentItemsContainer.removeAllViews();
+        equipmentItemViews.clear();
+        for (int i = 0; i < equipmentItems.size(); i++) {
+            View itemView = createEquipmentItemView(equipmentItems.get(i), i);
+            equipmentItemViews.add(itemView);
+            equipmentItemsContainer.addView(itemView);
+        }
+        calculateEquipmentTotal();
+        setEditMode(isEditMode);
+    }
+
+    private void rebuildMiscViews() {
+        miscItemsContainer.removeAllViews();
+        miscItemViews.clear();
+        for (int i = 0; i < miscItems.size(); i++) {
+            View itemView = createMiscItemView(miscItems.get(i), i);
+            miscItemViews.add(itemView);
+            miscItemsContainer.addView(itemView);
+        }
+        calculateMiscTotal();
+        setEditMode(isEditMode);
     }
 
     // Save and Load Methods
     private void saveExpenses() {
+        btnSave.setEnabled(false);
         if (expensesRef == null) {
+            btnSave.setEnabled(true);
             Toast.makeText(this, "Error: Program ID not found", Toast.LENGTH_SHORT).show();
             return;
         }
@@ -1463,6 +1493,7 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
                     checkAndPromptNextCatchUpPhase();
                     })
                     .addOnFailureListener(e -> {
+                        btnSave.setEnabled(true);
                         Toast.makeText(this, "Error saving expenses: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     });
     }
@@ -1776,14 +1807,6 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         calculateMaterialTotal();
     }
     
-    private void recalculateMaterialItemIndices() {
-        // Recalculate indices after deletion
-        for (int i = 0; i < materialItemViews.size(); i++) {
-            View view = materialItemViews.get(i);
-            // Update title if needed
-        }
-    }
-    
     private void updateEquipmentItemFromView(int index) {
         if (index < 0 || index >= equipmentItems.size() || index >= equipmentItemViews.size()) {
             return;
@@ -1855,14 +1878,6 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         calculateEquipmentTotal();
     }
     
-    private void recalculateEquipmentItemIndices() {
-        // Recalculate indices after deletion
-        for (int i = 0; i < equipmentItemViews.size(); i++) {
-            View view = equipmentItemViews.get(i);
-            // Update title if needed
-        }
-    }
-    
     private void updateMiscItemFromView(int index) {
         if (index < 0 || index >= miscItems.size() || index >= miscItemViews.size()) {
             return;
@@ -1873,7 +1888,7 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         
         // Find the Spinner and EditText fields
         Spinner expenseNameSpinner = itemView.findViewWithTag("expenseName_" + index);
-        EditText etCost = itemView.findViewWithTag("cost_" + index);
+        EditText etCost = itemView.findViewWithTag("miscCost_" + index);
         
         // Get expense name from Spinner or custom input
         if (expenseNameSpinner != null) {
@@ -1926,13 +1941,5 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         
         // Recalculate totals
         calculateMiscTotal();
-    }
-    
-    private void recalculateMiscItemIndices() {
-        // Recalculate indices after deletion
-        for (int i = 0; i < miscItemViews.size(); i++) {
-            View view = miscItemViews.get(i);
-            // Update title if needed
-        }
     }
 }

@@ -76,7 +76,7 @@ public class IntakeAnswers {
 
         if (NOT_YET.equals(landReady) && NOT_YET.equals(seedlingReady)) {
             result.canCreate = false;
-            result.blockReason = "Land and seedlings are both not ready yet. Finish at least one before starting a work program.";
+            result.blockReason = "Land and seedlings are both not ready yet. switch to sStart new workprogram";
             return result;
         }
 

@@ -85,7 +85,6 @@ public class TutorialDialog extends Dialog {
         steps.add(new TutorialStep(
             "Navigation Menu",
             "Access all app features from the drawer menu:\n\n" +
-            "• Tap the ☰ icon (top left) to open the menu\n" +
             "• View your profile picture and name at the top\n" +
             "• Tap your profile to edit your information\n" +
             "• Navigate to: Home, Profile, History, Financial, Analytics, Settings, and more\n" +
@@ -128,7 +127,7 @@ public class TutorialDialog extends Dialog {
         
         // Step 6: Disease Detection
         steps.add(new TutorialStep(
-            "Disease &amp; Pest Detection",
+            "Disease & Pest Detection",
             "Use AI-powered detection to identify plant issues:\n\n" +
             "1. Go to IPM section from home or drawer\n" +
             "2. Tap 'Scan for Diseases'\n" +
@@ -189,7 +188,7 @@ public class TutorialDialog extends Dialog {
         
         // Step 10: Analytics & Reports
         steps.add(new TutorialStep(
-            "Analytics &amp; Reports",
+            "Analytics & Reports",
             "Analyze your farming performance:\n\n" +
             "• View cultivar performance metrics\n" +
             "• Compare profit per hectare across cultivars\n" +

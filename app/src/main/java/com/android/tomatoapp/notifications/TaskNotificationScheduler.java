@@ -3,13 +3,12 @@ package com.android.tomatoapp.notifications;
 import android.content.Context;
 import android.os.Bundle;
 
-import com.android.tomatoapp.R;
 import com.android.tomatoapp.core.ui.MainActivity;
 
 import java.util.Calendar;
 
 /**
- * Handles task reminder notifications at 6:00 AM, 6:30 AM, 7:00 AM, 7:30 AM, 8:00 AM.
+ * Task reminders at 6:00, 6:30, 7:00, 7:30, 8:00 AM. Request codes 9200-9204.
  */
 public final class TaskNotificationScheduler {
 
@@ -34,11 +33,7 @@ public final class TaskNotificationScheduler {
             cancelTaskNotifications(context);
             return;
         }
-        if (NotificationPreferences.areTaskRemindersScheduled(context)) {
-            return;
-        }
 
-        // Schedule 5 notifications at different times
         for (int i = 0; i < TASK_REQUEST_CODES.length; i++) {
             Calendar calendar = Calendar.getInstance();
             calendar.set(Calendar.HOUR_OF_DAY, TASK_HOURS[i]);
@@ -50,8 +45,6 @@ public final class TaskNotificationScheduler {
                 calendar.add(Calendar.DAY_OF_YEAR, 1);
             }
 
-            Bundle extras = new Bundle();
-
             NotificationScheduler.scheduleRepeating(
                     context,
                     NotificationReceiver.TYPE_TASK,
@@ -59,7 +52,7 @@ public final class TaskNotificationScheduler {
                     "Task Reminder",
                     TASK_MESSAGES[i],
                     MainActivity.class,
-                    extras,
+                    new Bundle(),
                     calendar.getTimeInMillis(),
                     INTERVAL_DAY,
                     TASK_REQUEST_CODES[i],

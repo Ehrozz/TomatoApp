@@ -45,8 +45,8 @@ public class ResearchExporter {
         }
         
         try {
-            String timestamp = exportSdf.format(new Date());
-            String fileName = "Tomato_Research_Data_" + timestamp + ".csv";
+             String fileName = "Analytics Report for "
+            + ExportFileHelper.safeFileName(ExportFileHelper.cultivarLabel(programs, null)) + ".csv";
             
             File csvFile = ExportFileHelper.createExportFile(context, fileName);
             FileWriter writer = new FileWriter(csvFile);
@@ -186,7 +186,7 @@ public class ResearchExporter {
             return null;
         }
         try {
-            String fileName = "Tomato_Disease_Records_" + exportSdf.format(new Date()) + ".csv";
+            String fileName = "analytics_disease_reports.csv";
             File csvFile = ExportFileHelper.createExportFile(context, fileName);
             FileWriter writer = new FileWriter(csvFile);
             writer.append("Program/Cultivar,Start Date,Area (ha),Scan Date,Phase,Disease,Status,Confidence\n");

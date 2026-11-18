@@ -2,15 +2,20 @@ package com.android.tomatoapp.common.managers;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+
+import com.android.tomatoapp.notifications.NotificationPreferences;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class AppNotificationManager {
     private static final String PREF_NAME = "notifications";
     private static final String KEY_NOTIFICATIONS = "notifications";
+    private static final int MAX_NOTIFICATIONS = 100;
     
     public static class AppNotification {
         public String id;
@@ -22,7 +27,7 @@ public class AppNotificationManager {
         public String extraData; // JSON string with extra data for navigation
         
         public AppNotification() {
-            this.id = String.valueOf(System.currentTimeMillis());
+            this.id = java.util.UUID.randomUUID().toString();
             this.timestamp = System.currentTimeMillis();
         }
         
@@ -70,6 +75,12 @@ public class AppNotificationManager {
         try {
             JSONArray notificationsArray = new JSONArray(notificationsJson);
             notificationsArray.put(notification.toJson());
+
+            // Keep only the latest 100 notifications
+            while (notificationsArray.length() > MAX_NOTIFICATIONS) {
+                notificationsArray.remove(0);
+            }
+
             prefs.edit().putString(KEY_NOTIFICATIONS, notificationsArray.toString()).apply();
         } catch (JSONException e) {
             e.printStackTrace();
@@ -88,6 +99,8 @@ public class AppNotificationManager {
      * Create notification for disease detection
      */
     public static void addDetectionNotification(Context context, String diseaseName, String programId) {
+        if (!NotificationPreferences.areMonitoringNotificationsEnabled(context)) return;
+        
         String title = "Disease Detected";
         String message = "Found " + diseaseName + " in your plants. Tap to view details.";
         String extraData = "{\"programId\":\"" + programId + "\"}";
@@ -99,6 +112,8 @@ public class AppNotificationManager {
      * Create notification for work program tasks
      */
     public static void addTaskNotification(Context context, String cultivar, String date, String programId) {
+        if (!NotificationPreferences.areTaskNotificationsEnabled(context)) return;
+
         String title = "Daily Tasks Ready";
         String message = "Tasks for " + cultivar + " on " + formatDate(date) + ". Tap to view.";
         String extraData = "{\"programId\":\"" + programId + "\",\"date\":\"" + date + "\",\"cultivar\":\"" + cultivar + "\"}";
@@ -110,6 +125,8 @@ public class AppNotificationManager {
      * Create notification for expense reminders
      */
     public static void addExpenseNotification(Context context, String programId, String cultivar) {
+        if (!NotificationPreferences.areTaskNotificationsEnabled(context)) return;
+
         String title = "Expense Reminder";
         String message = "Don't forget to log expenses for " + cultivar + ". Tap to add.";
         String extraData = "{\"programId\":\"" + programId + "\",\"cultivar\":\"" + cultivar + "\"}";

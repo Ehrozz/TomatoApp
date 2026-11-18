@@ -8,17 +8,12 @@ import com.android.tomatoapp.core.ui.MainActivity;
 import java.util.Calendar;
 
 /**
- * Handles morning reminder notifications scheduled from 6:00 AM to 8:00 AM every 30 minutes.
- * Helps farmers stay on top of daily tasks and monitoring.
+ * Morning reminders 6:00-8:00 AM every 30 min. Request codes 9300-9304.
  */
 public final class MorningRemindersScheduler {
 
     private static final int[] MORNING_TIMES = {
-            6 * 60,    // 6:00 AM
-            6 * 60 + 30,  // 6:30 AM
-            7 * 60,    // 7:00 AM
-            7 * 60 + 30,  // 7:30 AM
-            8 * 60     // 8:00 AM
+            6 * 60, 6 * 60 + 30, 7 * 60, 7 * 60 + 30, 8 * 60
     };
 
     private static final String[] MORNING_MESSAGES = {
@@ -29,41 +24,28 @@ public final class MorningRemindersScheduler {
             "Check weather forecast and plan your day ahead."
     };
 
-    private static final int BASE_REQUEST_CODE = 9200;
+    private static final int BASE_REQUEST_CODE = 9300; // was 9200 (collided with tasks)
     private static final long INTERVAL_DAY = 24 * 60 * 60 * 1000L;
 
     private MorningRemindersScheduler() {
     }
 
-    /**
-     * Schedule morning reminders (6:00 AM to 8:00 AM every 30 minutes)
-     * @param context The application context
-     */
     public static void ensureMorningRemindersScheduled(Context context) {
         if (!NotificationPreferences.areGeneralNotificationsEnabled(context)) {
             cancelMorningReminders(context);
             return;
         }
 
-        // Schedule each morning reminder time
         for (int i = 0; i < MORNING_TIMES.length; i++) {
-            int minutesFromMidnight = MORNING_TIMES[i];
-            int hour = minutesFromMidnight / 60;
-            int minute = minutesFromMidnight % 60;
-
             Calendar calendar = Calendar.getInstance();
-            calendar.set(Calendar.HOUR_OF_DAY, hour);
-            calendar.set(Calendar.MINUTE, minute);
+            calendar.set(Calendar.HOUR_OF_DAY, MORNING_TIMES[i] / 60);
+            calendar.set(Calendar.MINUTE, MORNING_TIMES[i] % 60);
             calendar.set(Calendar.SECOND, 0);
             calendar.set(Calendar.MILLISECOND, 0);
 
-            // If time has already passed today, schedule for tomorrow
             if (calendar.getTimeInMillis() <= System.currentTimeMillis()) {
                 calendar.add(Calendar.DAY_OF_YEAR, 1);
             }
-
-            Bundle extras = new Bundle();
-            int requestCode = BASE_REQUEST_CODE + i;
 
             NotificationScheduler.scheduleRepeating(
                     context,
@@ -72,19 +54,15 @@ public final class MorningRemindersScheduler {
                     "Daily farming reminder",
                     MORNING_MESSAGES[i],
                     MainActivity.class,
-                    extras,
+                    new Bundle(),
                     calendar.getTimeInMillis(),
                     INTERVAL_DAY,
-                    requestCode,
+                    BASE_REQUEST_CODE + i,
                     false
             );
         }
     }
 
-    /**
-     * Cancel all morning reminder notifications
-     * @param context The application context
-     */
     public static void cancelMorningReminders(Context context) {
         for (int i = 0; i < MORNING_TIMES.length; i++) {
             NotificationScheduler.cancel(context, BASE_REQUEST_CODE + i);

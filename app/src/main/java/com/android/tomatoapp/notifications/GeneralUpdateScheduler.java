@@ -5,6 +5,7 @@ import android.os.Bundle;
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.core.ui.MainActivity;
+import com.android.tomatoapp.settings.data.SettingsPreferences;
 
 import java.util.Calendar;
 import java.util.Random;
@@ -34,19 +35,14 @@ public final class GeneralUpdateScheduler {
             cancelDailyTip(context);
             return;
         }
-        if (NotificationPreferences.isGeneralReminderScheduled(context)) {
-            return;
-        }
         Calendar calendar = Calendar.getInstance();
-        calendar.set(Calendar.HOUR_OF_DAY, 11);
-        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.HOUR_OF_DAY, SettingsPreferences.getNotificationHour(context));
+        calendar.set(Calendar.MINUTE, SettingsPreferences.getNotificationMinute(context));
         calendar.set(Calendar.SECOND, 0);
         calendar.set(Calendar.MILLISECOND, 0);
         if (calendar.getTimeInMillis() <= System.currentTimeMillis()) {
             calendar.add(Calendar.DAY_OF_YEAR, 1);
         }
-
-        Bundle extras = new Bundle();
 
         NotificationScheduler.scheduleRepeating(
                 context,
@@ -55,7 +51,7 @@ public final class GeneralUpdateScheduler {
                 "TomatoApp tip",
                 "Tap to view today's tip",
                 MainActivity.class,
-                extras,
+                new Bundle(),
                 calendar.getTimeInMillis(),
                 INTERVAL_DAY,
                 GENERAL_REQUEST_CODE,

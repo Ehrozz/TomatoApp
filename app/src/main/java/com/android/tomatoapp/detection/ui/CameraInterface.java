@@ -86,6 +86,9 @@ public class CameraInterface extends BaseBottomNavActivity {
     private static final float FRUIT_MIN_CONFIDENCE = 0.70f;
     private static final float FRUIT_MIN_MARGIN = 0.15f;
     private static final float FRUIT_NON_TOMATO_P = 0.40f;
+    private static final float PEST_MIN_CONFIDENCE = 0.70f;
+    private static final float PEST_MIN_MARGIN = 0.15f;
+    private static final float PEST_NOT_PEST_P = 0.40f;
     private static final String DETECTION_DISCLAIMER =
             "AI-assisted screening only. Results are estimates and should be verified by observing the plant or consulting an agricultural specialist.";
     public static final String EXTRA_LINKED_PROGRAM_ID = "extra_linked_program_id";
@@ -693,7 +696,7 @@ public class CameraInterface extends BaseBottomNavActivity {
 
     private String normalizeLabel(String raw) {
         return raw == null ? "" : raw.toLowerCase(Locale.ROOT)
-                .replace('_', ' ').replace('-', ' ').trim();
+                .replace('_', ' ').replace('-', ' ').replaceAll("\\s+", " ").trim();
     }
 
     private String friendlyLabel(String rawLabel, HashMap<String, String> labelMapping) {
@@ -770,7 +773,7 @@ public class CameraInterface extends BaseBottomNavActivity {
                 if (cropped != bitmap) {
                     cropped.recycle();
                 }
-            } else if (currentModelType == ModelType.FRUITS) {
+            } else if (currentModelType == ModelType.FRUITS || currentModelType == ModelType.PEST) {
                 resized = Bitmap.createScaledBitmap(bitmap, 224, 224, true);
             } else {
                 resized = preprocessImage(bitmap, 224, 224);
@@ -782,10 +785,12 @@ public class CameraInterface extends BaseBottomNavActivity {
             }
 
             ByteBuffer input = bitmapToInput(resized,
-                    currentModelType == ModelType.LEAVES || currentModelType == ModelType.FRUITS);
+                    currentModelType == ModelType.LEAVES || currentModelType == ModelType.FRUITS
+                            || currentModelType == ModelType.PEST);
             Bitmap flipped = null;
             ByteBuffer flippedInput = null;
-            if (currentModelType == ModelType.LEAVES || currentModelType == ModelType.FRUITS) {
+            if (currentModelType == ModelType.LEAVES || currentModelType == ModelType.FRUITS
+                    || currentModelType == ModelType.PEST) {
                 Matrix matrix = new Matrix();
                 matrix.setScale(-1f, 1f);
                 flipped = Bitmap.createBitmap(resized, 0, 0, resized.getWidth(),
@@ -850,7 +855,8 @@ public class CameraInterface extends BaseBottomNavActivity {
             float[] probabilities;
             try {
                 probabilities = infer(input);
-                if (currentModelType == ModelType.LEAVES || currentModelType == ModelType.FRUITS) {
+                if (currentModelType == ModelType.LEAVES || currentModelType == ModelType.FRUITS
+                        || currentModelType == ModelType.PEST) {
                     float[] flippedProbabilities = infer(flippedInput);
                     for (int i = 0; i < probabilities.length; i++) {
                         probabilities[i] = (probabilities[i] + flippedProbabilities[i]) / 2f;
@@ -934,15 +940,16 @@ public class CameraInterface extends BaseBottomNavActivity {
                 labelMapping.put("Tomato___Tomato_mosaic_virus", "Tomato Mosaic Virus (ToMV)");
                 labelMapping.put("Tomato___healthy", "Healthy Tomato");
             } else {
-                labelMapping.put("bacterial spot", "Bacterial Spot");
-                labelMapping.put("early blight", "Early Blight (Alternaria solani)");
-                labelMapping.put("healty", "Healthy Tomato");
-                labelMapping.put("healthy", "Healthy Tomato");
-                labelMapping.put("late blight", "Late Blight (Phytophthora infestans)");
-                labelMapping.put("leaf mold", "Leaf Mold (Passalora fulva)");
-                labelMapping.put("leaf curl", "Tomato Leaf Curl Virus (TLCV)");
-                labelMapping.put("tylc", "Tomato Leaf Curl Virus (TLCV)");
-                labelMapping.put("mosaic virus", "Mosaic Virus");
+                labelMapping.put("fruites for pest", "No Pest (Fruit)");
+                labelMapping.put("leaves for pest", "No Pest (Leaf)");
+                labelMapping.put("lady beetle", "Lady Beetle");
+                labelMapping.put("whiteflies leaf curl", "Whiteflies (Bemisia tabaci)");
+                labelMapping.put("aphids", "Aphids");
+                labelMapping.put("flea beetles", "Flea Beetles");
+                labelMapping.put("leaf miner", "Leaf Miner");
+                labelMapping.put("melon flies", "Melon Fly");
+                labelMapping.put("not pest", "Not Pest");
+                labelMapping.put("worms", "Worms (Caterpillars)");
             }
 
             String mappingKey = currentModelType == ModelType.LEAVES
@@ -1008,16 +1015,56 @@ public class CameraInterface extends BaseBottomNavActivity {
                                 + ". Take a closer photo of the affected area.");
                     }
                 }
-            } else {
-                accepted = maxProb >= MIN_ACCEPTED_CONFIDENCE
-                        && (maxProb - secondProb) >= MIN_PREDICTION_MARGIN;
-                if (!accepted) {
+            } else if (currentModelType == ModelType.PEST) {
+                int notPestIndex = -1;
+                for (int i = 0; i < labels.size(); i++) {
+                    if ("not pest".equals(normalizeLabel(labels.get(i)))) {
+                        notPestIndex = i;
+                        break;
+                    }
+                }
+                String pestTopLabel = normalizeLabel(rawLabel);
+                float notPestProbability = notPestIndex >= 0
+                        ? probabilities[notPestIndex] : 0f;
+                accepted = true;
+                if ("not pest".equals(pestTopLabel) || notPestProbability >= PEST_NOT_PEST_P) {
+                    accepted = false;
+                    results.put("rejectionReason",
+                            "No pest detected. Please frame a close-up of the pest on a tomato plant.");
+                } else if ("fruites for pest".equals(pestTopLabel)
+                        || "leaves for pest".equals(pestTopLabel)) {
+                    accepted = false;
+                    results.put("rejectionReason",
+                            "No pest found on this fruit/leaf. If you can see a pest, move closer and retake the photo.");
+                } else if (maxProb < PEST_MIN_CONFIDENCE) {
+                    accepted = false;
                     results.put("rejectionReason", String.format(Locale.getDefault(),
-                            "Confidence must be at least %.0f%% and lead the next prediction by at least %.0f%%. Current result: %.1f%% confidence and %.1f%% lead.",
-                            MIN_ACCEPTED_CONFIDENCE * 100f,
-                            MIN_PREDICTION_MARGIN * 100f,
-                            maxProb * 100f,
-                            (maxProb - secondProb) * 100f));
+                            "Confidence too low (%.1f%%, needs %.0f%%). Move closer, keep the pest in focus, avoid glare and shadows.",
+                            maxProb * 100f, PEST_MIN_CONFIDENCE * 100f));
+                } else if (maxProb - secondProb < PEST_MIN_MARGIN) {
+                    accepted = false;
+                    results.put("rejectionReason", "Unsure between "
+                            + friendlyLabel(labels.get(topIndices[0]), labelMapping) + " and "
+                            + friendlyLabel(labels.get(topIndices[1]), labelMapping)
+                            + ". Take a closer photo of the pest.");
+                }
+            } else {
+                boolean nonTomatoLeaf = "non-tomato".equals(rawLabel);
+                if (nonTomatoLeaf) {
+                    accepted = false;
+                    results.put("rejectionReason",
+                            "This doesn't look like a tomato leaf. Please frame a single tomato leaf.");
+                } else {
+                    accepted = maxProb >= MIN_ACCEPTED_CONFIDENCE
+                            && (maxProb - secondProb) >= MIN_PREDICTION_MARGIN;
+                    if (!accepted) {
+                        results.put("rejectionReason", String.format(Locale.getDefault(),
+                                "Confidence must be at least %.0f%% and lead the next prediction by at least %.0f%%. Current result: %.1f%% confidence and %.1f%% lead.",
+                                MIN_ACCEPTED_CONFIDENCE * 100f,
+                                MIN_PREDICTION_MARGIN * 100f,
+                                maxProb * 100f,
+                                (maxProb - secondProb) * 100f));
+                    }
                 }
             }
             results.put("accepted", String.valueOf(accepted));
@@ -1577,7 +1624,7 @@ public class CameraInterface extends BaseBottomNavActivity {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 startCamera();
             } else {
-                Toast.makeText(this, "Camera permission denied", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Camera permission denied. Please open Phone Settings and allow camera permission to continue.", Toast.LENGTH_LONG).show();
             }
         }
     }

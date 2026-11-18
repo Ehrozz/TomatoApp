@@ -65,10 +65,10 @@
     </string-array>
     
     <!-- Login/Register Error Messages -->
-    <string name="error_enter_identifier">Enter email, username, or phone number</string>
+    <string name="error_enter_identifier">Enter Email &amp; Password</string>
     <string name="error_enter_password">Enter password</string>
     <string name="error_account_not_found">Account not found for provided identifier</string>
-    <string name="error_login_failed">Login failed. Please check your credentials.</string>
+    <string name="error_login_failed">Login failed. Please check your Email &amp; Password.</string>
     <string name="error_authentication_failed">Authentication failed. Please try again.</string>
     <string name="error_google_signin_failed">Google sign in failed. Please try again.</string>
     <string name="error_network">Network error. Please check your connection.</string>
