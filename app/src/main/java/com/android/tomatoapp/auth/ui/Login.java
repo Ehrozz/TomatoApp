@@ -235,7 +235,8 @@ public class Login extends AppCompatActivity {
                     Toast.makeText(this, getString(R.string.error_google_signin_failed), Toast.LENGTH_SHORT).show();
                 }
             } catch (ApiException e) {
-                Log.e("GoogleSignIn", "Google sign in failed with status code " + e.getStatusCode(), e);
+                //Log.e("GoogleSignIn", "Google sign in failed with status code " + e.getStatusCode(), e);
+                Log.e("GoogleSignIn", "code=" + e.getStatusCode() + " msg=" + e.getStatusMessage(), e);
                 if (progressBar != null) {
                     progressBar.setVisibility(View.GONE);
                 }

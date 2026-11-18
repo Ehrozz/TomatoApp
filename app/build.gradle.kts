@@ -13,7 +13,7 @@ plugins {
  * - environment variable: BUILD_NUMBER
  * - Gradle property: -PbuildNumber=123
  */
-val versionMajor = 1
+val versionMajor = 2
 val versionMinor = 0
 val versionPatch = 1
 

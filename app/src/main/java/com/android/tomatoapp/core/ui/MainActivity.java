@@ -303,13 +303,6 @@ public class MainActivity extends BaseBottomNavActivity {
                 return insets;
             });
         }
-
-        // Show User Agreement if not accepted yet
-        SharedPreferences prefs = getSharedPreferences("AppPrefs", MODE_PRIVATE);
-        boolean accepted = prefs.getBoolean("UserAgreementAccepted", false);
-        if (!accepted) {
-            showUserAgreementDialog(prefs);
-        }
     }
 
     @Override
@@ -1017,28 +1010,6 @@ public class MainActivity extends BaseBottomNavActivity {
                 fetchAndDisplayWeather(fallback, "Manila, Philippines");
             }
         }
-    }
-
-    private void showUserAgreementDialog(SharedPreferences prefs) {
-        View dialogView = getLayoutInflater().inflate(R.layout.dialog_user_agreement, null);
-        com.google.android.material.checkbox.MaterialCheckBox chkAgree = dialogView.findViewById(R.id.chkAgree);
-        com.google.android.material.button.MaterialButton btnAccept = dialogView.findViewById(R.id.btnAccept);
-
-        if (chkAgree == null || btnAccept == null) return;
-
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setView(dialogView)
-                .setCancelable(false)
-                .create();
-
-        chkAgree.setOnCheckedChangeListener((buttonView, isChecked) -> btnAccept.setEnabled(isChecked));
-        btnAccept.setOnClickListener(v -> {
-            if (chkAgree.isChecked()) {
-                prefs.edit().putBoolean("UserAgreementAccepted", true).apply();
-                dialog.dismiss();
-            }
-        });
-        dialog.show();
     }
 
     @Override
