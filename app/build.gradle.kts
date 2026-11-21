@@ -15,7 +15,7 @@ plugins {
  */
 val versionMajor = 2
 val versionMinor = 0
-val versionPatch = 1
+val versionPatch = 2
 
 fun Project.buildNumberOrNull(): Int? {
     val fromEnv = System.getenv("BUILD_NUMBER")?.trim()?.takeIf { it.isNotEmpty() }
@@ -136,6 +136,7 @@ dependencies {
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
     implementation("com.prolificinteractive:material-calendarview:1.4.3")
+    implementation("androidx.viewpager2:viewpager2:1.1.0")
 
     val camerax_version = "1.3.3"
 

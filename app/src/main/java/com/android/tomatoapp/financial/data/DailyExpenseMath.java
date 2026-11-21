@@ -88,4 +88,47 @@ public final class DailyExpenseMath {
         }
         return total;
     }
+
+    /** Cost of one material line. Returns -1 when the quantity unit and price unit can't be converted. */
+    public static double materialTotal(double qty, String qtyUnit, double price, String priceUnit) {
+        double raw = rawMaterialTotal(qty, qtyUnit, price, priceUnit);
+        return raw < 0 ? -1 : Math.round(raw * 100.0) / 100.0;
+    }
+
+    private static double rawMaterialTotal(double qty, String qtyUnit, double price, String priceUnit) {
+        String p = normUnit(priceUnit);
+        if (p.isEmpty() || p.equals("total paid")) return price;   // price is the whole purchase
+        String q = normUnit(qtyUnit);
+        if (q.equals(p)) return qty * price;                       // e.g. 3 sack x price per sack
+        double qf = toBase(q), pf = toBase(p);
+        if (qf <= 0 || pf <= 0 || family(q) != family(p)) return -1;
+        return (qty * qf) * (price / pf);                          // both converted to g or mL
+    }
+
+    private static String normUnit(String u) {
+        if (u == null) return "";
+        switch (u.trim().toLowerCase(java.util.Locale.ROOT)) {
+            case "g": case "gram": case "grams": return "g";
+            case "kg": case "kilogram": case "kilograms": return "kg";
+            case "ml": case "milliliter": case "milliliters": return "ml";
+            case "l": case "liter": case "liters": case "litre": case "litres": return "l";
+            default: return u.trim().toLowerCase(java.util.Locale.ROOT);
+        }
+    }
+
+    private static double toBase(String u) {
+        switch (u) {
+            case "g": case "ml": return 1;
+            case "kg": case "l": return 1000;
+            default: return -1;   // pack, sack, bottle, pieces have no conversion
+        }
+    }
+
+    private static int family(String u) {
+        switch (u) {
+            case "g": case "kg": return 1;    // weight
+            case "ml": case "l": return 2;    // volume
+            default: return 0;                // count / package
+        }
+    }
 }

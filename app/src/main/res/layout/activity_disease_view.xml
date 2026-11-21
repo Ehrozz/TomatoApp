@@ -8,20 +8,17 @@
     android:background="@color/sidebar_dark_green"
     tools:context=".DiseaseView">
 
-    <!-- ===== HEADER IMAGE ===== -->
+    <!-- ===== HEADER IMAGE GALLERY ===== -->
     <FrameLayout
         android:id="@+id/headerImageContainer"
         android:layout_width="match_parent"
         android:layout_height="300dp"
         android:layout_alignParentTop="true">
 
-        <ImageView
-            android:id="@+id/diseaseImage"
+        <androidx.viewpager2.widget.ViewPager2
+            android:id="@+id/diseasePager"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:src="@drawable/disease_early_blight"
-            android:scaleType="centerCrop"
-            android:contentDescription="Disease illustration" />
+            android:layout_height="match_parent" />
 
         <!-- Bottom dark gradient -->
         <View
@@ -30,11 +27,12 @@
             android:layout_gravity="bottom"
             android:background="@drawable/bg_bottom_gradient_dark" />
 
-        <!-- "Tap to enlarge" hint -->
+        <!-- Caption: angle name, slide count, hint -->
         <TextView
+            android:id="@+id/galleryCaption"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Tap to enlarge"
+            android:text="Overview"
             android:textColor="@color/white"
             android:textSize="10sp"
             android:paddingHorizontal="10dp"
@@ -244,14 +242,58 @@
                     </LinearLayout>
                 </LinearLayout>
 
-                <!-- ===== SYMPTOMS SECTION ===== -->
+                <!-- ===== SYMPTOMS TAB: Overview + Symptoms + Cause ===== -->
                 <LinearLayout
                     android:id="@+id/sectionSymptoms"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
 
-                    <!-- Section header -->
+                    <!-- Overview header -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="10dp">
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:layout_marginEnd="10dp"
+                            app:cardCornerRadius="8dp"
+                            app:cardElevation="0dp"
+                            app:cardBackgroundColor="@color/green_light"
+                            app:strokeWidth="0dp">
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:text="📋"
+                                android:textSize="15sp"
+                                android:gravity="center" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Overview"
+                            android:textColor="@color/text"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/diseaseDescription"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Description"
+                        android:textColor="@color/muted"
+                        android:textSize="13sp"
+                        android:lineSpacingExtra="6dp"
+                        android:layout_marginBottom="20dp"
+                        android:paddingStart="42dp" />
+
+                    <!-- Symptoms sub-section -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -285,10 +327,10 @@
                     </LinearLayout>
 
                     <TextView
-                        android:id="@+id/diseaseDescription"
+                        android:id="@+id/diseaseSymptoms"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Dark brown to black lesions with concentric rings appear on older, lower leaves first. Lesions are surrounded by yellow halos."
+                        android:text="Symptoms"
                         android:textColor="@color/muted"
                         android:textSize="13sp"
                         android:lineSpacingExtra="6dp"
@@ -332,7 +374,7 @@
                         android:id="@+id/diseaseCause"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Caused by the fungus Alternaria solani. Spreads rapidly in warm, humid conditions between 24–29°C."
+                        android:text="Cause"
                         android:textColor="@color/muted"
                         android:textSize="13sp"
                         android:lineSpacingExtra="6dp"
@@ -340,7 +382,7 @@
                         android:paddingStart="42dp" />
                 </LinearLayout>
 
-                <!-- ===== TREATMENT SECTION ===== -->
+                <!-- ===== TREATMENT TAB ===== -->
                 <LinearLayout
                     android:id="@+id/sectionTreatment"
                     android:layout_width="match_parent"
@@ -384,15 +426,65 @@
                         android:id="@+id/diseaseCure"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Apply copper-based or chlorothalonil fungicides at first sign. Remove infected leaves promptly. Repeat every 7–10 days."
+                        android:text="Treatment"
                         android:textColor="@color/muted"
                         android:textSize="13sp"
                         android:lineSpacingExtra="6dp"
                         android:layout_marginBottom="8dp"
                         android:paddingStart="42dp" />
+
+                    <!-- Shown instead of diseaseCure when there is no known treatment -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/noTreatmentBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="42dp"
+                        android:layout_marginBottom="12dp"
+                        android:visibility="gone"
+                        app:cardBackgroundColor="#FEF3E2"
+                        app:cardCornerRadius="12dp"
+                        app:cardElevation="0dp"
+                        app:strokeWidth="0dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="14dp">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="This disease has no known treatment, but prevention is another option. Please switch to the Prevention tab."
+                                android:textColor="@color/text"
+                                android:textSize="13sp"
+                                android:lineSpacingExtra="4dp" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnGoPrevention"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp"
+                                android:text="Go to Prevention"
+                                android:textColor="@android:color/black"
+                                android:backgroundTint="@color/fresh_green" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <TextView
+                        android:id="@+id/tvDisclaimer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/muted"
+                        android:textSize="11sp"
+                        android:textStyle="italic"
+                        android:lineSpacingExtra="3dp"
+                        android:layout_marginStart="42dp"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="8dp" />
                 </LinearLayout>
 
-                <!-- ===== PREVENTION SECTION ===== -->
+                <!-- ===== PREVENTION TAB ===== -->
                 <LinearLayout
                     android:id="@+id/sectionPrevention"
                     android:layout_width="match_parent"
@@ -436,7 +528,7 @@
                         android:id="@+id/diseasePrevention"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Ensure crop rotation, proper spacing for air circulation, and use disease-free seeds. Avoid overhead irrigation."
+                        android:text="Prevention"
                         android:textColor="@color/muted"
                         android:textSize="13sp"
                         android:lineSpacingExtra="6dp"
@@ -444,14 +536,10 @@
                         android:paddingStart="42dp" />
                 </LinearLayout>
 
-                <!-- ===== HIDDEN LEGACY COMPATIBILITY VIEWS ===== -->
-                <LinearLayout android:id="@+id/symptomsButton"   android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
-                <LinearLayout android:id="@+id/treatmentButton"  android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
-                <LinearLayout android:id="@+id/preventionButton" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
+                <!-- ===== HIDDEN LEGACY VIEWS (still used by DiseaseView.java for the pest card) ===== -->
                 <TextView android:id="@+id/pestCommonName"       android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
                 <TextView android:id="@+id/pestScientificName"   android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
                 <TextView android:id="@+id/pestDescription"      android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
-                <TextView android:id="@+id/diseaseSymptoms"      android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
                 <com.google.android.material.card.MaterialCardView android:id="@+id/pestImageCard" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone">
                     <ImageView android:id="@+id/pestImage" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
                 </com.google.android.material.card.MaterialCardView>

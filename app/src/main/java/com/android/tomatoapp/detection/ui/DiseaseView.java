@@ -1,18 +1,26 @@
 package com.android.tomatoapp.detection.ui;
 
 import java.util.HashMap;
-import androidx.annotation.NonNull;
 import java.util.List;
+import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.viewpager2.widget.ViewPager2;
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.common.models.DiseaseData;
+import com.android.tomatoapp.common.models.DiseaseImages;
 import com.android.tomatoapp.common.models.DiseaseInfo;
 
+import android.app.Dialog;
 import android.content.Intent;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.os.Bundle;
 import androidx.activity.EdgeToEdge;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -24,10 +32,16 @@ import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 public class DiseaseView extends BaseBottomNavActivity {
 
     TextView diseaseTitle, diseaseDescription, diseaseSymptoms, diseaseCause, diseaseCure, diseasePrevention, pestDescription, pestCommonName, pestScientificName, scientificName;
-    ImageView diseaseImage, pestImage;
+    ImageView pestImage;
+    ViewPager2 diseasePager;
+    TextView galleryCaption, tvDisclaimer;
+    View noTreatmentBox;
+    com.google.android.material.button.MaterialButton btnGoPrevention;
+    LinearLayout[] tabViews;
+    View[] sections;
     com.google.android.material.card.MaterialCardView pestImageCard;
     ScrollView scrollView;
-    
+
     // Map short names to full names in DiseaseData
     private static final HashMap<String, String> diseaseNameMap = new HashMap<>();
     static {
@@ -38,41 +52,28 @@ public class DiseaseView extends BaseBottomNavActivity {
         diseaseNameMap.put("Black Leaf Mold", "Black Leaf Mold (Pseudocercospora fuligena)");
         diseaseNameMap.put("Yellow Leaf Curl", "Tomato Leaf Curl Virus (TLCV)"); // Yellow Leaf Curl is a variant
     }
-    
-    // Map disease names to image resources
-    private static final HashMap<String, Integer> diseaseImageMap = new HashMap<>();
-    static {
-        diseaseImageMap.put("Anthracnose", R.drawable.disease_anthracnose);
-        diseaseImageMap.put("Anthracnose ", R.drawable.disease_anthracnose);
-        diseaseImageMap.put("Black Leaf Mold", R.drawable.disease_black_leaf_mold);
-        diseaseImageMap.put("Early Blight", R.drawable.disease_early_blight);
-        diseaseImageMap.put("Late Blight", R.drawable.disease_late_blight);
-        diseaseImageMap.put("Yellow Leaf Curl", R.drawable.disease_yellow_leaf_curl);
-        diseaseImageMap.put("Tomato Leaf Curl Virus", R.drawable.disease_yellow_leaf_curl);
-    }
-    
+
     // Map disease names to pest image resources
     private static final HashMap<String, Integer> pestImageMap = new HashMap<>();
     static {
         // Tomato Leaf Curl Virus - Whitefly
         pestImageMap.put("Tomato Leaf Curl Virus", R.drawable.pest_whitefly);
         pestImageMap.put("Yellow Leaf Curl", R.drawable.pest_whitefly);
-        
+
         // Early Blight - Spider Mite (common pest)
         pestImageMap.put("Early Blight", R.drawable.pest_spider_mite);
-        
+
         // Late Blight - Leaf Beetle (common pest)
         pestImageMap.put("Late Blight", R.drawable.pest_leaf_beetle);
-        
-        
+
         // Anthracnose - Generic pest image
         pestImageMap.put("Anthracnose", R.drawable.pest_1);
         pestImageMap.put("Anthracnose ", R.drawable.pest_1);
-        
+
         // Black Leaf Mold - Generic pest image
         pestImageMap.put("Black Leaf Mold", R.drawable.pest_2);
     }
-    
+
     // Map disease names to common pest names
     private static final HashMap<String, String> pestCommonNameMap = new HashMap<>();
     static {
@@ -93,7 +94,11 @@ public class DiseaseView extends BaseBottomNavActivity {
         }
 
         diseaseTitle = findViewById(R.id.diseaseTitle);
-        diseaseImage = findViewById(R.id.diseaseImage);
+        diseasePager = findViewById(R.id.diseasePager);
+        galleryCaption = findViewById(R.id.galleryCaption);
+        tvDisclaimer = findViewById(R.id.tvDisclaimer);
+        noTreatmentBox = findViewById(R.id.noTreatmentBox);
+        btnGoPrevention = findViewById(R.id.btnGoPrevention);
         diseaseDescription = findViewById(R.id.diseaseDescription);
         diseaseSymptoms = findViewById(R.id.diseaseSymptoms);
         diseaseCause = findViewById(R.id.diseaseCause);
@@ -107,24 +112,29 @@ public class DiseaseView extends BaseBottomNavActivity {
         scientificName = findViewById(R.id.scientificName);
         scrollView = findViewById(R.id.scrollView);
 
+        // The severity badge is hardcoded in the layout and is not real data yet, so hide it
+        View severityBadge = findViewById(R.id.diseaseSeverityBadge);
+        if (severityBadge != null) severityBadge.setVisibility(View.GONE);
+
         // Back button
         ImageButton backButton = findViewById(R.id.backButton);
         backButton.setOnClickListener(v -> finish());
 
-        // Action tabs/buttons - support both new visible tabs and hidden fallback IDs
-        LinearLayout symptomsButton = findViewById(R.id.symptomsButton);
-        LinearLayout treatmentButton = findViewById(R.id.treatmentButton);
-        LinearLayout preventionButton = findViewById(R.id.preventionButton);
-        LinearLayout tabSymptoms = findViewById(R.id.tabSymptoms);
-        LinearLayout tabTreatment = findViewById(R.id.tabTreatment);
-        LinearLayout tabPrevention = findViewById(R.id.tabPrevention);
-
-        if (symptomsButton != null) symptomsButton.setOnClickListener(v -> scrollToView(diseaseSymptoms));
-        if (treatmentButton != null) treatmentButton.setOnClickListener(v -> scrollToView(diseaseCure));
-        if (preventionButton != null) preventionButton.setOnClickListener(v -> scrollToView(diseasePrevention));
-        if (tabSymptoms != null) tabSymptoms.setOnClickListener(v -> scrollToView(diseaseSymptoms));
-        if (tabTreatment != null) tabTreatment.setOnClickListener(v -> scrollToView(diseaseCure));
-        if (tabPrevention != null) tabPrevention.setOnClickListener(v -> scrollToView(diseasePrevention));
+        // Tabs: Symptoms / Treatment / Prevention
+        tabViews = new LinearLayout[]{
+                findViewById(R.id.tabSymptoms),
+                findViewById(R.id.tabTreatment),
+                findViewById(R.id.tabPrevention)};
+        sections = new View[]{
+                findViewById(R.id.sectionSymptoms),
+                findViewById(R.id.sectionTreatment),
+                findViewById(R.id.sectionPrevention)};
+        for (int i = 0; i < tabViews.length; i++) {
+            final int position = i;
+            tabViews[i].setOnClickListener(v -> showTab(position));
+        }
+        btnGoPrevention.setOnClickListener(v -> showTab(2));
+        showTab(0);
 
         // Load disease data
         Intent intent = getIntent();
@@ -139,6 +149,9 @@ public class DiseaseView extends BaseBottomNavActivity {
     }
 
     private void loadDiseaseData(String shortName) {
+        // Photo gallery (never fails: shows a placeholder when no photo exists yet)
+        setupGallery(shortName);
+
         // Get full name from map
         String fullName = diseaseNameMap.get(shortName);
         if (fullName == null) {
@@ -148,11 +161,11 @@ public class DiseaseView extends BaseBottomNavActivity {
 
         // Get disease info from DiseaseData
         DiseaseInfo info = DiseaseData.getDiseaseInfo(fullName);
-        
+
         if (info != null) {
             // Set title (use short name for display)
             diseaseTitle.setText(shortName.trim());
-            
+
             // Extract scientific name from full name (text in parentheses)
             String sciName = extractScientificName(fullName);
             if (sciName != null && !sciName.isEmpty()) {
@@ -161,22 +174,27 @@ public class DiseaseView extends BaseBottomNavActivity {
             } else {
                 scientificName.setVisibility(View.GONE);
             }
-            
+
             // Set description
             diseaseDescription.setText(info.getDescription());
-            
+
             // Set symptoms
             diseaseSymptoms.setText(info.getSymptoms());
-            
+
             // Set cause
             diseaseCause.setText(info.getCause());
-            
-            // Set treatment/cure
+
+            // Set treatment, or the "no known treatment" message
             diseaseCure.setText(info.getCure());
-            
+            boolean noTreatment = info.hasNoTreatment();
+            noTreatmentBox.setVisibility(noTreatment ? View.VISIBLE : View.GONE);
+            diseaseCure.setVisibility(noTreatment ? View.GONE : View.VISIBLE);
+            tvDisclaimer.setText(DiseaseData.TREATMENT_DISCLAIMER);
+            tvDisclaimer.setVisibility("Healthy Tomato".equals(fullName) ? View.GONE : View.VISIBLE);
+
             // Set prevention
             diseasePrevention.setText(info.getPrevention());
-            
+
             // Set pest description
             String pestDesc = info.getPestDescription();
             if (pestDesc != null && !pestDesc.isEmpty() && !pestDesc.equals("No pests present.")) {
@@ -185,25 +203,20 @@ public class DiseaseView extends BaseBottomNavActivity {
                 if (pestCommon == null) {
                     pestCommon = pestCommonNameMap.get(fullName);
                 }
-                
+
                 // Parse pest information to extract scientific name and description
                 String[] pestInfo = parsePestInfo(pestDesc);
-                String parsedCommon = pestInfo[0]; // Parsed common name from description
                 String pestScientific = pestInfo[1]; // Scientific name
                 String pestDescText = pestInfo[2]; // Description text
-                
+
                 // Check if we have a mapped common name (indicating it's a pest, not a pathogen)
-                // The mapping contains user-provided common names like "Whiteflies", "Spider mites", etc.
                 boolean hasMappedCommonName = pestCommonNameMap.containsKey(shortName.trim()) || pestCommonNameMap.containsKey(fullName);
-                
+
                 if (hasMappedCommonName && pestCommon != null && !pestCommon.isEmpty()) {
-                    // Set common name and scientific name
                     if (pestCommonName != null && pestScientificName != null) {
-                        // Show user-provided common name from mapping
                         pestCommonName.setText(pestCommon);
                         pestCommonName.setVisibility(View.VISIBLE);
-                        
-                        // Show scientific name in parentheses if available and different from common name
+
                         if (pestScientific != null && !pestScientific.isEmpty() && !pestScientific.equalsIgnoreCase(pestCommon)) {
                             pestScientificName.setText("(" + pestScientific + ")");
                             pestScientificName.setVisibility(View.VISIBLE);
@@ -211,12 +224,10 @@ public class DiseaseView extends BaseBottomNavActivity {
                             pestScientificName.setVisibility(View.GONE);
                         }
                     }
-                    
-                    // Set description (without the name part)
+
                     if (pestDescText != null && !pestDescText.isEmpty()) {
                         pestDescription.setText(pestDescText);
                     } else {
-                        // Fallback to full description if parsing fails
                         pestDescription.setText(pestDesc);
                     }
                     pestDescription.setVisibility(View.VISIBLE);
@@ -233,25 +244,21 @@ public class DiseaseView extends BaseBottomNavActivity {
                         pestImageCard.setVisibility(View.GONE);
                     }
                 }
-                
+
                 // Show pest image only if we have a mapped common name (indicating it's a pest)
                 if (hasMappedCommonName && pestImageCard != null && pestImage != null) {
                     pestImageCard.setVisibility(View.VISIBLE);
-                    // Get pest image based on disease name
                     Integer pestImageResId = pestImageMap.get(shortName.trim());
                     if (pestImageResId == null) {
-                        // Try with full name if short name not found
                         pestImageResId = pestImageMap.get(fullName);
                     }
                     if (pestImageResId != null) {
                         try {
                             pestImage.setImageResource(pestImageResId);
                         } catch (Exception e) {
-                            // Fallback to logo if image resource not found
                             pestImage.setImageResource(R.mipmap.ic_logo);
                         }
                     } else {
-                        // Default to logo if no pest image mapping found
                         pestImage.setImageResource(R.mipmap.ic_logo);
                     }
                 } else if (pestImageCard != null) {
@@ -269,24 +276,6 @@ public class DiseaseView extends BaseBottomNavActivity {
                     pestImageCard.setVisibility(View.GONE);
                 }
             }
-            
-            // Set image based on disease name
-            Integer imageResId = diseaseImageMap.get(shortName.trim());
-            if (imageResId == null) {
-                // Try with full name if short name not found
-                imageResId = diseaseImageMap.get(fullName);
-            }
-            if (imageResId != null) {
-                try {
-                    diseaseImage.setImageResource(imageResId);
-                } catch (Exception e) {
-                    // Fallback to logo if image resource not found
-                    diseaseImage.setImageResource(R.mipmap.ic_logo);
-                }
-            } else {
-                // Default to logo if no image mapping found
-                diseaseImage.setImageResource(R.mipmap.ic_logo);
-            }
         } else {
             // Fallback if disease not found
             diseaseTitle.setText(shortName);
@@ -295,6 +284,8 @@ public class DiseaseView extends BaseBottomNavActivity {
             diseaseCause.setText("Cause information not available.");
             diseaseCure.setText("Treatment information not available.");
             diseasePrevention.setText("Prevention information not available.");
+            noTreatmentBox.setVisibility(View.GONE);
+            tvDisclaimer.setVisibility(View.GONE);
             pestDescription.setVisibility(View.GONE);
         }
     }
@@ -308,7 +299,7 @@ public class DiseaseView extends BaseBottomNavActivity {
         }
         return null;
     }
-    
+
     /**
      * Parses pest information string to extract common name, scientific name, and description.
      * Format: "Common Name (Scientific Name) → Description"
@@ -319,61 +310,137 @@ public class DiseaseView extends BaseBottomNavActivity {
         String commonName = "";
         String scientificName = "";
         String description = "";
-        
+
         if (pestInfo == null || pestInfo.isEmpty()) {
             return new String[]{"", "", ""};
         }
-        
+
         // Look for pattern: "Common Name (Scientific Name) → Description"
         int arrowIndex = pestInfo.indexOf("→");
         if (arrowIndex != -1) {
-            // Split at arrow
             String namePart = pestInfo.substring(0, arrowIndex).trim();
             description = pestInfo.substring(arrowIndex + 1).trim();
-            
-            // Extract common name and scientific name from name part
+
             int parenStart = namePart.indexOf('(');
             int parenEnd = namePart.indexOf(')');
-            
+
             if (parenStart != -1 && parenEnd != -1 && parenEnd > parenStart) {
                 commonName = namePart.substring(0, parenStart).trim();
                 scientificName = namePart.substring(parenStart + 1, parenEnd).trim();
-                // If common name is empty, use scientific name as common name
                 if (commonName.isEmpty()) {
                     commonName = scientificName;
-                    scientificName = ""; // Don't show scientific name twice
+                    scientificName = "";
                 }
             } else {
-                // No parentheses, check if it looks like a scientific name (has spaces or is capitalized)
-                // If it's just a scientific name, use it as common name
                 commonName = namePart;
             }
         } else {
-            // No arrow found, try to extract from parentheses
             int parenStart = pestInfo.indexOf('(');
             int parenEnd = pestInfo.indexOf(')');
-            
+
             if (parenStart != -1 && parenEnd != -1 && parenEnd > parenStart) {
                 commonName = pestInfo.substring(0, parenStart).trim();
                 scientificName = pestInfo.substring(parenStart + 1, parenEnd).trim();
-                // Rest is description
                 if (parenEnd + 1 < pestInfo.length()) {
                     description = pestInfo.substring(parenEnd + 1).trim();
                 }
             } else {
-                // No structure found, use entire string as description
                 description = pestInfo;
             }
         }
-        
+
         return new String[]{commonName, scientificName, description};
     }
 
-    private void scrollToView(View view) {
-        scrollView.post(() -> {
-            int scrollTo = view.getTop();
-            scrollView.smoothScrollTo(0, scrollTo - 100); // Offset for better visibility
+    // ===== Tabs =====
+    private void showTab(int position) {
+        for (int i = 0; i < tabViews.length; i++) {
+            boolean selected = i == position;
+            sections[i].setVisibility(selected ? View.VISIBLE : View.GONE);
+            tabViews[i].setBackgroundTintList(ColorStateList.valueOf(
+                    selected ? ContextCompat.getColor(this, R.color.green_light) : Color.TRANSPARENT));
+            TextView label = (TextView) tabViews[i].getChildAt(1);
+            label.setTextColor(ContextCompat.getColor(this, selected ? R.color.green : R.color.muted));
+        }
+        if (scrollView != null) scrollView.post(() -> scrollView.smoothScrollTo(0, 0));
+    }
+
+    // ===== Photo gallery =====
+    private void setupGallery(String shortName) {
+        List<DiseaseImages.Slide> slides = DiseaseImages.slidesFor(this, shortName);
+        diseasePager.setAdapter(new GalleryAdapter(slides));
+        diseasePager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+            @Override
+            public void onPageSelected(int position) {
+                updateCaption(slides, position);
+            }
         });
+        updateCaption(slides, 0);
+    }
+
+    private void updateCaption(List<DiseaseImages.Slide> slides, int pos) {
+        DiseaseImages.Slide s = slides.get(pos);
+        if (s.placeholder) {
+            galleryCaption.setText(s.label);
+            return;
+        }
+        String count = slides.size() > 1 ? "  ·  " + (pos + 1) + "/" + slides.size() + "  ·  swipe" : "";
+        galleryCaption.setText(s.label + count + "  ·  tap to enlarge");
+    }
+
+    private void showFullImage(int res) {
+        Dialog d = new Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        ImageView iv = new ImageView(this);
+        iv.setImageResource(res);
+        iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        iv.setBackgroundColor(Color.BLACK);
+        iv.setOnClickListener(v -> d.dismiss());
+        d.setContentView(iv);
+        d.show();
+    }
+
+    private class GalleryAdapter extends RecyclerView.Adapter<GalleryAdapter.Holder> {
+        private final List<DiseaseImages.Slide> slides;
+
+        GalleryAdapter(List<DiseaseImages.Slide> slides) {
+            this.slides = slides;
+        }
+
+        class Holder extends RecyclerView.ViewHolder {
+            final ImageView image;
+            Holder(ImageView v) {
+                super(v);
+                image = v;
+            }
+        }
+
+        @NonNull
+        @Override
+        public Holder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            ImageView iv = new ImageView(parent.getContext());
+            iv.setLayoutParams(new ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            return new Holder(iv);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull Holder h, int position) {
+            DiseaseImages.Slide s = slides.get(position);
+            h.image.setImageResource(s.res);
+            h.image.setContentDescription(s.label);
+            h.image.setScaleType(s.placeholder ? ImageView.ScaleType.FIT_CENTER : ImageView.ScaleType.CENTER_CROP);
+            if (s.placeholder) {
+                h.image.setOnClickListener(null);
+                h.image.setClickable(false);
+            } else {
+                h.image.setOnClickListener(v -> showFullImage(s.res));
+            }
+        }
+
+        @Override
+        public int getItemCount() {
+            return slides.size();
+        }
     }
 
     @Override

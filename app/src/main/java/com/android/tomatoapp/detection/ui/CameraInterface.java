@@ -38,6 +38,9 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 
+import com.android.tomatoapp.detection.utils.DetectionStatus;
+import com.android.tomatoapp.detection.utils.DetectionTestLog;
+
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.common.models.DiseaseData;
 import com.android.tomatoapp.common.models.DiseaseInfo;
@@ -89,6 +92,7 @@ public class CameraInterface extends BaseBottomNavActivity {
     private static final float PEST_MIN_CONFIDENCE = 0.70f;
     private static final float PEST_MIN_MARGIN = 0.15f;
     private static final float PEST_NOT_PEST_P = 0.40f;
+    private static final boolean TEST_LOGGING = true;
     private static final String DETECTION_DISCLAIMER =
             "AI-assisted screening only. Results are estimates and should be verified by observing the plant or consulting an agricultural specialist.";
     public static final String EXTRA_LINKED_PROGRAM_ID = "extra_linked_program_id";
@@ -261,6 +265,43 @@ public class CameraInterface extends BaseBottomNavActivity {
             return Math.max(1, (int) (diff / (1000 * 60 * 60 * 24)) + 1);
         } catch (ParseException e) {
             return 1;
+        }
+    }
+
+    private String displayName(String rawLabel, HashMap<String, String> labelMapping) {
+        String key = currentModelType == ModelType.LEAVES ? rawLabel.trim() : normalizeLabel(rawLabel);
+        String mapped = labelMapping.get(key);
+        return mapped != null ? mapped : friendlyLabel(rawLabel, labelMapping);
+    }
+
+    private int indexOfLabel(String normalizedTarget) {
+        for (int i = 0; i < labels.size(); i++) {
+            if (normalizedTarget.equals(normalizeLabel(labels.get(i)))) return i;
+        }
+        return -1;
+    }
+
+    private String gateMessage(DetectionStatus status, String name1, float p1,
+                            String name2, float p2, float minConf, float minLead) {
+        Locale loc = Locale.getDefault();
+        float lead = p1 - p2;
+        switch (status) {
+            case LOW_CONFIDENCE:
+                return String.format(loc,
+                        "Possibly %s (%.1f%%), but at least %.0f%% is needed to confirm.\n"
+                                + "Next closest: %s (%.1f%%). The lead is %.1f%%, so the model leans one way but is not sure enough.\n"
+                                + "Move closer, keep the subject in focus, and avoid glare and shadows.",
+                        name1, p1 * 100f, minConf * 100f, name2, p2 * 100f, lead * 100f);
+            case AMBIGUOUS:
+                return String.format(loc,
+                        "Unsure between %s (%.1f%%) and %s (%.1f%%). They are only %.1f%% apart; at least %.0f%% is needed.\n"
+                                + "Take a closer photo of the affected area.",
+                        name1, p1 * 100f, name2, p2 * 100f, lead * 100f, minLead * 100f);
+            default:
+                return String.format(loc,
+                        "Too uncertain: %s (%.1f%%) versus %s (%.1f%%).\n"
+                                + "This scan needs at least %.0f%% confidence and a %.0f%% lead (current lead: %.1f%%).",
+                        name1, p1 * 100f, name2, p2 * 100f, minConf * 100f, minLead * 100f, lead * 100f);
         }
     }
 
@@ -949,7 +990,7 @@ public class CameraInterface extends BaseBottomNavActivity {
                 labelMapping.put("leaf miner", "Leaf Miner");
                 labelMapping.put("melon flies", "Melon Fly");
                 labelMapping.put("not pest", "Not Pest");
-                labelMapping.put("worms", "Worms (Caterpillars)");
+                labelMapping.put("worms", "Worms");
             }
 
             String mappingKey = currentModelType == ModelType.LEAVES
@@ -973,101 +1014,74 @@ public class CameraInterface extends BaseBottomNavActivity {
                 mappedLabel = sb.toString();
             }
 
-            boolean accepted;
+            String top1Name = displayName(labels.get(topIndices[0]), labelMapping);
+            String top2Name = displayName(labels.get(topIndices[1]), labelMapping);
+            DetectionStatus status;
+            float minConfUsed = 0f;
+            float minLeadUsed = 0f;
+
             if (currentModelType == ModelType.FRUITS) {
-                int nonTomatoIndex = -1;
-                for (int i = 0; i < labels.size(); i++) {
-                    if ("non tomato".equals(normalizeLabel(labels.get(i)))) {
-                        nonTomatoIndex = i;
-                        break;
-                    }
-                }
                 String topLabel = normalizeLabel(rawLabel);
-                float nonTomatoProbability = nonTomatoIndex >= 0
-                        ? probabilities[nonTomatoIndex] : 0f;
-                accepted = true;
+                int nonTomatoIndex = indexOfLabel("non tomato");
+                float nonTomatoProbability = nonTomatoIndex >= 0 ? probabilities[nonTomatoIndex] : 0f;
                 if ("non tomato".equals(topLabel) || nonTomatoProbability >= FRUIT_NON_TOMATO_P) {
-                    accepted = false;
-                    results.put("rejectionReason",
-                            "No tomato fruit detected. Please frame a single tomato fruit.");
+                    status = DetectionStatus.NOT_TOMATO;
+                    results.put("rejectionReason", "No tomato fruit detected. Please frame a single tomato fruit.");
                 } else if ("tomato leaf".equals(topLabel)) {
-                    accepted = false;
-                    results.put("rejectionReason",
-                            "This looks like a leaf, not a fruit. Switch to the Leaves scan or frame a tomato fruit.");
+                    status = DetectionStatus.WRONG_SCAN;
+                    results.put("rejectionReason", "This looks like a leaf, not a fruit. Switch to the Leaves scan or frame a tomato fruit.");
                 } else if (imageLuminance < 40f || imageLuminance > 220f) {
-                    accepted = false;
-                    results.put("rejectionReason",
-                            "Image is too dark / overexposed. Retake in even daylight.");
+                    status = DetectionStatus.POOR_IMAGE;
+                    results.put("rejectionReason", "Image is too dark / overexposed. Retake in even daylight.");
                 } else {
-                    float minConfidence = "worm".equals(topLabel) ? 0.60f
-                            : ("anthracnose".equals(topLabel) || "cracks".equals(topLabel)
-                            ? 0.65f : FRUIT_MIN_CONFIDENCE);
-                    if (maxProb < minConfidence) {
-                        accepted = false;
-                        results.put("rejectionReason", String.format(Locale.getDefault(),
-                                "Confidence too low (%.1f%%, needs %.0f%%). Move closer, keep the fruit in focus, avoid glare and shadows.",
-                                maxProb * 100f, minConfidence * 100f));
-                    } else if (maxProb - secondProb < FRUIT_MIN_MARGIN) {
-                        accepted = false;
-                        results.put("rejectionReason", "Unsure between "
-                                + friendlyLabel(labels.get(topIndices[0]), labelMapping) + " and "
-                                + friendlyLabel(labels.get(topIndices[1]), labelMapping)
-                                + ". Take a closer photo of the affected area.");
-                    }
+                    minConfUsed = "worm".equals(topLabel) ? 0.60f
+                            : ("anthracnose".equals(topLabel) || "cracks".equals(topLabel) ? 0.65f : FRUIT_MIN_CONFIDENCE);
+                    minLeadUsed = FRUIT_MIN_MARGIN;
+                    status = DetectionStatus.fromScores(maxProb, secondProb, minConfUsed, minLeadUsed);
                 }
             } else if (currentModelType == ModelType.PEST) {
-                int notPestIndex = -1;
-                for (int i = 0; i < labels.size(); i++) {
-                    if ("not pest".equals(normalizeLabel(labels.get(i)))) {
-                        notPestIndex = i;
-                        break;
-                    }
-                }
                 String pestTopLabel = normalizeLabel(rawLabel);
-                float notPestProbability = notPestIndex >= 0
-                        ? probabilities[notPestIndex] : 0f;
-                accepted = true;
+                int notPestIndex = indexOfLabel("not pest");
+                float notPestProbability = notPestIndex >= 0 ? probabilities[notPestIndex] : 0f;
                 if ("not pest".equals(pestTopLabel) || notPestProbability >= PEST_NOT_PEST_P) {
-                    accepted = false;
-                    results.put("rejectionReason",
-                            "No pest detected. Please frame a close-up of the pest on a tomato plant.");
-                } else if ("fruites for pest".equals(pestTopLabel)
-                        || "leaves for pest".equals(pestTopLabel)) {
-                    accepted = false;
-                    results.put("rejectionReason",
-                            "No pest found on this fruit/leaf. If you can see a pest, move closer and retake the photo.");
-                } else if (maxProb < PEST_MIN_CONFIDENCE) {
-                    accepted = false;
-                    results.put("rejectionReason", String.format(Locale.getDefault(),
-                            "Confidence too low (%.1f%%, needs %.0f%%). Move closer, keep the pest in focus, avoid glare and shadows.",
-                            maxProb * 100f, PEST_MIN_CONFIDENCE * 100f));
-                } else if (maxProb - secondProb < PEST_MIN_MARGIN) {
-                    accepted = false;
-                    results.put("rejectionReason", "Unsure between "
-                            + friendlyLabel(labels.get(topIndices[0]), labelMapping) + " and "
-                            + friendlyLabel(labels.get(topIndices[1]), labelMapping)
-                            + ". Take a closer photo of the pest.");
+                    status = DetectionStatus.NO_PEST;
+                    results.put("rejectionReason", "No pest detected. Please frame a close-up of the pest on a tomato plant.");
+                } else if ("fruites for pest".equals(pestTopLabel) || "leaves for pest".equals(pestTopLabel)) {
+                    status = DetectionStatus.NO_PEST;
+                    results.put("rejectionReason", "No pest found on this fruit/leaf. If you can see a pest, move closer and retake the photo.");
+                } else {
+                    minConfUsed = PEST_MIN_CONFIDENCE;
+                    minLeadUsed = PEST_MIN_MARGIN;
+                    status = DetectionStatus.fromScores(maxProb, secondProb, minConfUsed, minLeadUsed);
                 }
             } else {
-                boolean nonTomatoLeaf = "non-tomato".equals(rawLabel);
-                if (nonTomatoLeaf) {
-                    accepted = false;
-                    results.put("rejectionReason",
-                            "This doesn't look like a tomato leaf. Please frame a single tomato leaf.");
+                if ("non-tomato".equals(rawLabel)) {
+                    status = DetectionStatus.NOT_TOMATO;
+                    results.put("rejectionReason", "This doesn't look like a tomato leaf. Please frame a single tomato leaf.");
                 } else {
-                    accepted = maxProb >= MIN_ACCEPTED_CONFIDENCE
-                            && (maxProb - secondProb) >= MIN_PREDICTION_MARGIN;
-                    if (!accepted) {
-                        results.put("rejectionReason", String.format(Locale.getDefault(),
-                                "Confidence must be at least %.0f%% and lead the next prediction by at least %.0f%%. Current result: %.1f%% confidence and %.1f%% lead.",
-                                MIN_ACCEPTED_CONFIDENCE * 100f,
-                                MIN_PREDICTION_MARGIN * 100f,
-                                maxProb * 100f,
-                                (maxProb - secondProb) * 100f));
-                    }
+                    minConfUsed = MIN_ACCEPTED_CONFIDENCE;
+                    minLeadUsed = MIN_PREDICTION_MARGIN;
+                    status = DetectionStatus.fromScores(maxProb, secondProb, minConfUsed, minLeadUsed);
                 }
             }
+
+            // Confidence/lead failures get the detailed message; gate failures keep their own.
+            if (minConfUsed > 0f && !status.accepted) {
+                results.put("rejectionReason",
+                        gateMessage(status, top1Name, maxProb, top2Name, secondProb, minConfUsed, minLeadUsed));
+            }
+
+            boolean accepted = status.accepted;
             results.put("accepted", String.valueOf(accepted));
+            results.put("status", status.name());
+            results.put("statusTitle", status.title);
+            results.put("top1Name", top1Name);
+            results.put("top1Prob", String.format(Locale.US, "%.4f", maxProb));
+            results.put("top2Name", top2Name);
+            results.put("top2Prob", String.format(Locale.US, "%.4f", secondProb));
+            results.put("lead", String.format(Locale.US, "%.4f", maxProb - secondProb));
+            results.put("minConfidence", String.format(Locale.US, "%.2f", minConfUsed));
+            results.put("minLead", String.format(Locale.US, "%.2f", minLeadUsed));
 
             // Generate dynamic results based on actual model predictions
             // Build comprehensive prediction analysis
@@ -1211,6 +1225,12 @@ public class CameraInterface extends BaseBottomNavActivity {
             Toast.makeText(this, "Detection failed. Please try again.", Toast.LENGTH_SHORT).show();
             return;
         }
+
+        if (TEST_LOGGING) {
+            DetectionTestLog.append(this, currentModelType.name(),
+                    imageUri.getLastPathSegment(), detectionResults);
+        }
+
         if (!isAcceptedDetection(detectionResults)) {
             showRetakeMessage(detectionResults);
             return;
@@ -1263,12 +1283,14 @@ public class CameraInterface extends BaseBottomNavActivity {
         if (TextUtils.isEmpty(message)) {
             message = "The image could not be analyzed reliably.";
         }
-        message += "\n\n" + (currentModelType == ModelType.FRUITS
-                ? "Please retake a clear photo of one tomato fruit."
-                : "Please retake a clear photo of one tomato leaf, fruit, or pest.");
+        String title = detectionResults != null ? detectionResults.get("statusTitle") : null;
+        if (TextUtils.isEmpty(title)) title = "Retake Photo";
+        String retake = currentModelType == ModelType.FRUITS ? "one tomato fruit"
+                : currentModelType == ModelType.LEAVES ? "one tomato leaf" : "the pest up close";
+        message += "\n\nPlease retake a clear photo of " + retake + ".";
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Retake Photo")
+                .setTitle(title)
                 .setMessage(message)
                 .setPositiveButton("Try Again", null)
                 .create();

@@ -207,7 +207,7 @@ class IPMViewModel : ViewModel() {
         val actions = listOf(
             IPMAction("📸", "Scan Leaf", "Real-time disease detection", "blue"),
             IPMAction("🕐", "Scan History", "View past detections", "orange"),
-            IPMAction("📖", "Disease Database", "Browse 40+ tomato diseases", "green")
+            IPMAction("📖", "Disease Database", "Browse 20+ tomato diseases", "green")
         )
         _state.value = _state.value.copy(actions = actions)
     }

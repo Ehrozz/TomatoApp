@@ -60,16 +60,20 @@ class LaborItem {
 class MaterialItem {
     String materialName;
     double quantity;
-    String quantityUnit; // kg, grams, liters, pieces
-    double unitCost;
+    String quantityUnit;
+    double unitCost;       // now means "Price" as typed by the user
+    String priceUnit;      // "Total paid", "kg", "grams", "liters", "mL", "pieces", "pack", "sack", "bottle"
     double totalCost;
-    
+    boolean invalid;       // true when units can't be converted
+
     MaterialItem() {
         materialName = "";
         quantity = 0.0;
         quantityUnit = "";
         unitCost = 0.0;
+        priceUnit = "Total paid";
         totalCost = 0.0;
+        invalid = false;
     }
 }
 
@@ -790,8 +794,7 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         quantityUnitLayout.setPadding(dpToPx(8), 0, 0, 0);
         Spinner quantityUnitSpinner = new Spinner(this);
         quantityUnitSpinner.setTag("quantityUnit_" + index);
-        String[] unitOptions = {"kg", "grams", "liters", "pieces"};
-        ArrayAdapter<String> unitAdapter = createBlackSpinnerAdapter(unitOptions);
+        String[] unitOptions = {"kg", "grams", "liters", "mL", "pieces", "pack", "sack", "bottle"};        ArrayAdapter<String> unitAdapter = createBlackSpinnerAdapter(unitOptions);
         quantityUnitSpinner.setAdapter(unitAdapter);
         if (item.quantityUnit != null && !item.quantityUnit.isEmpty()) {
             for (int i = 0; i < unitOptions.length; i++) {
@@ -820,7 +823,7 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         
         // Unit Cost
         TextInputLayout unitCostLayout = new TextInputLayout(this);
-        unitCostLayout.setHint("Unit Cost (₱)");
+        unitCostLayout.setHint("Price (₱)");
         unitCostLayout.setPadding(0, 0, 0, dpToPx(8));
         EditText etUnitCost = new EditText(this);
         etUnitCost.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
@@ -829,11 +832,48 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
             etUnitCost.setText(String.valueOf(item.unitCost));
         }
         unitCostLayout.addView(etUnitCost);
-        
+        // Price per (unit the price refers to)
+        String[] priceUnitOptions = {"Total paid", "kg", "grams", "liters", "mL", "pieces", "pack", "sack", "bottle"};
+        TextInputLayout priceUnitLayout = new TextInputLayout(this);
+        priceUnitLayout.setHint("Price per");
+        priceUnitLayout.setPadding(0, 0, 0, dpToPx(8));
+        Spinner priceUnitSpinner = new Spinner(this);
+        priceUnitSpinner.setTag("priceUnit_" + index);
+        priceUnitSpinner.setAdapter(createBlackSpinnerAdapter(priceUnitOptions));
+        String savedPriceUnit = item.priceUnit == null || item.priceUnit.isEmpty() ? "Total paid" : item.priceUnit;
+        for (int i = 0; i < priceUnitOptions.length; i++) {
+            if (priceUnitOptions[i].equals(savedPriceUnit)) {
+                priceUnitSpinner.setSelection(i);
+                break;
+            }
+        }
+        priceUnitSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (index < materialItems.size()) {
+                    materialItems.get(index).priceUnit = priceUnitOptions[position];
+                    updateMaterialItemFromView(index);
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+        priceUnitLayout.addView(priceUnitSpinner);
+
+        TextView tvItemSubtotal = new TextView(this);
+        tvItemSubtotal.setTag("materialSubtotal_" + index);
+        tvItemSubtotal.setTextSize(14);
+        tvItemSubtotal.setTypeface(null, android.graphics.Typeface.BOLD);
+        tvItemSubtotal.setTextColor(android.graphics.Color.BLACK);
+        tvItemSubtotal.setPadding(0, dpToPx(4), 0, dpToPx(4));
+                
         contentLayout.addView(materialNameLayout);
         contentLayout.addView(customMaterialLayout);
         contentLayout.addView(quantityRow);
         contentLayout.addView(unitCostLayout);
+        contentLayout.addView(priceUnitLayout);
+        contentLayout.addView(tvItemSubtotal);
         
         mainLayout.addView(headerLayout);
         mainLayout.addView(contentLayout);
@@ -1161,8 +1201,7 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
             "Utilities",
             "Repair/Maintenance",
             "Foods for Labor",
-            "Miscellaneous Supplies",
-            "Others"
+            "Miscellaneous Supplies"
         };
         ArrayAdapter<String> expenseAdapter = createBlackSpinnerAdapter(expenseOptions);
         expenseNameSpinner.setAdapter(expenseAdapter);
@@ -1244,7 +1283,7 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         costLayout.setPadding(0, 0, 0, dpToPx(8));
         EditText etCost = new EditText(this);
         etCost.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        etCost.setTag("cost_" + index);
+        etCost.setTag("miscCost_" + index);
         if (item.cost > 0) {
             etCost.setText(String.valueOf(item.cost));
         }
@@ -1325,7 +1364,7 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         for (MiscellaneousItem item : miscItems) {
             total += item.cost;
         }
-        tvMiscTotal.setText("Miscellaneous Total: ₱" + String.format("%,.2f", total));
+        tvMiscTotal.setText("Miscellaneous Sub-total: ₱" + String.format("%,.2f", total));
         calculateGrandTotal();
     }
 
@@ -1406,6 +1445,14 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
         // Collect data from views
         collectDataFromViews();
 
+        for (MaterialItem m : materialItems) {
+            if (m.invalid) {
+                btnSave.setEnabled(true);
+                Toast.makeText(this, "Fix the material \"Price per\" unit before saving", Toast.LENGTH_LONG).show();
+                return;
+            }
+        }
+
         Map<String, Object> expenses = new HashMap<>();
             expenses.put("date", date);
             expenses.put("timestamp", System.currentTimeMillis());
@@ -1440,6 +1487,7 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
             materialMap.put("quantity", item.quantity);
             materialMap.put("quantityUnit", item.quantityUnit);
             materialMap.put("unitCost", item.unitCost);
+            materialMap.put("priceUnit", item.priceUnit);
             materialMap.put("totalCost", item.totalCost);
             materialList.add(materialMap);
         }
@@ -1592,6 +1640,9 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
                             item.quantity = DailyExpenseMath.asDouble(materialSnapshot.child("quantity").getValue());
                             item.quantityUnit = DailyExpenseMath.asString(materialSnapshot.child("quantityUnit").getValue());
                             item.unitCost = DailyExpenseMath.asDouble(materialSnapshot.child("unitCost").getValue());
+                            String savedPriceUnit = DailyExpenseMath.asString(materialSnapshot.child("priceUnit").getValue());
+                            // Old logs have no priceUnit. They were computed as quantity x unitCost, which equals "price per the same unit".
+                            item.priceUnit = savedPriceUnit.isEmpty() ? item.quantityUnit : savedPriceUnit;
                             item.totalCost = DailyExpenseMath.asDouble(materialSnapshot.child("totalCost").getValue());
                             materialItems.add(item);
                             View itemView = createMaterialItemView(item, materialItems.size() - 1);
@@ -1799,9 +1850,31 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
                 item.unitCost = 0.0;
             }
         }
+
+        Spinner priceUnitSpinner = itemView.findViewWithTag("priceUnit_" + index);
+        if (priceUnitSpinner != null) {
+            String selectedPriceUnit = (String) priceUnitSpinner.getSelectedItem();
+            if (selectedPriceUnit != null) {
+                item.priceUnit = selectedPriceUnit;
+            }
+        }
         
         // Auto-calculate total cost
-        item.totalCost = item.quantity * item.unitCost;
+        double computed = DailyExpenseMath.materialTotal(
+        item.quantity, item.quantityUnit, item.unitCost, item.priceUnit);
+        item.invalid = computed < 0;
+        item.totalCost = item.invalid ? 0.0 : computed;
+
+        TextView tvItemSubtotal = itemView.findViewWithTag("materialSubtotal_" + index);
+        if (tvItemSubtotal != null) {
+            if (item.invalid) {
+                tvItemSubtotal.setText("Choose a matching \"Price per\" unit, or pick Total paid");
+                tvItemSubtotal.setTextColor(android.graphics.Color.RED);
+            } else {
+                tvItemSubtotal.setText("Item sub-total: ₱" + String.format("%,.2f", item.totalCost));
+                tvItemSubtotal.setTextColor(android.graphics.Color.BLACK);
+            }
+        }
         
         // Recalculate totals
         calculateMaterialTotal();
@@ -1896,21 +1969,17 @@ public class DailyExpensesActivity extends BaseBottomNavActivity {
             String[] expenseOptions = {
                 "Fuel",
                 "Electricity",
-                "Land Permit",
-                "Contingency",
                 "Irrigation Water",
                 "Transportation",
-                "Packaging Materials",
                 "Marketing Expenses",
-                "Insurance",
-                "Loan Interest",
-                "Taxes",
-                "Storage Fees",
                 "Utilities",
                 "Repair/Maintenance",
                 "Foods for Labor",
                 "Miscellaneous Supplies",
-                "Others"
+                "Plastic Mulch",
+                "Seedling Trays",
+                "Loan Interest",
+                "Crop Insurance"
             };
             if (selectedPosition == expenseOptions.length - 1) {
                 // "Others" selected - get from custom input

@@ -238,7 +238,7 @@ fun CalculatorScreen(
 
                 // Expenses Section Title
                 Text(
-                    text = "EXPENSES BREAKDOWN",
+                    text = "Daily Expenses Logs",
                     style = TextStyle(
                         fontFamily = DmSansFamily,
                         fontSize = 12.sp,

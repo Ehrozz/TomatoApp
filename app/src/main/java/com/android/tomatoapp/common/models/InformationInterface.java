@@ -1,9 +1,7 @@
 package com.android.tomatoapp.common.models;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Arrays;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -22,12 +20,9 @@ import android.widget.TextView;
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import com.android.tomatoapp.detection.ui.DiseaseView;
-import com.android.tomatoapp.common.models.DiseaseData;
-import com.android.tomatoapp.common.models.DiseaseInfo;
 import com.google.android.material.card.MaterialCardView;
 
 public class InformationInterface extends BaseBottomNavActivity {
-
 
     private RecyclerView diseaseRecyclerView;
     private DiseaseAdapter adapter;
@@ -38,16 +33,6 @@ public class InformationInterface extends BaseBottomNavActivity {
     private MaterialCardView catAll, catFungal, catBacterial, catPest, catViral;
     private String activeCategory = null; // null = all
     private String searchQuery = "";
-    
-   // Map disease names to image resources
-    private static final HashMap<String, Integer> diseaseImageMap = new HashMap<>();
-    static {
-        diseaseImageMap.put("Anthracnose", R.drawable.disease_anthracnose);
-        diseaseImageMap.put("Early Blight", R.drawable.disease_early_blight);
-        diseaseImageMap.put("Late Blight", R.drawable.disease_late_blight);
-        diseaseImageMap.put("Tomato Yellow Leaf Curl Virus", R.drawable.disease_yellow_leaf_curl);
-    }
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -97,7 +82,7 @@ public class InformationInterface extends BaseBottomNavActivity {
             setCatActive(catBacterial, false);
             setCatActive(catPest,      false);
             setCatActive(catViral,     false);
-            if      (v == catAll)       { activeCategory = null;       setCatActive(catAll,       true); }
+            if      (v == catAll)       { activeCategory = null;        setCatActive(catAll,       true); }
             else if (v == catFungal)    { activeCategory = "fungal";    setCatActive(catFungal,    true); }
             else if (v == catBacterial) { activeCategory = "bacterial"; setCatActive(catBacterial, true); }
             else if (v == catPest)      { activeCategory = "pest";      setCatActive(catPest,      true); }
@@ -136,7 +121,7 @@ public class InformationInterface extends BaseBottomNavActivity {
         adapter.updateItems(filtered);
     }
 
-        private void prepareDiseaseList() {
+    private void prepareDiseaseList() {
         // { displayName, category }  (displayName is also the lookup key in DiseaseData)
         String[][] entries = {
                 // Leaves
@@ -218,21 +203,13 @@ public class InformationInterface extends BaseBottomNavActivity {
             DiseaseItem item = items.get(position);
             holder.title.setText(item.title);
             holder.description.setText(item.description);
-            
-            // Set image based on disease type
-            Integer imageResId = diseaseImageMap.get(item.originalName.trim());
-            if (imageResId != null) {
-                try {
-                    holder.image.setImageResource(imageResId);
-                } catch (Exception e) {
-                    // Fallback to logo if image resource not found
-                    holder.image.setImageResource(R.mipmap.ic_logo);
-                }
-            } else {
-                // Default to logo if no image mapping found
-                holder.image.setImageResource(R.mipmap.ic_logo);
-            }
-            
+
+            // Photo by file name; falls back to the logo until the photo exists
+            int resId = DiseaseImages.resFor(InformationInterface.this, item.originalName);
+            holder.image.setImageResource(resId);
+            holder.image.setScaleType(resId == R.mipmap.ic_logo
+                    ? ImageView.ScaleType.FIT_CENTER
+                    : ImageView.ScaleType.CENTER_CROP);
             // Make image circular
             holder.image.setClipToOutline(true);
             holder.image.setOutlineProvider(new android.view.ViewOutlineProvider() {
@@ -241,7 +218,7 @@ public class InformationInterface extends BaseBottomNavActivity {
                     outline.setOval(0, 0, view.getWidth(), view.getHeight());
                 }
             });
-            
+
             // Click listener
             holder.itemView.setOnClickListener(v -> {
                 Intent intent = new Intent(InformationInterface.this, DiseaseView.class);
@@ -268,4 +245,3 @@ public class InformationInterface extends BaseBottomNavActivity {
         }
     }
 }
-

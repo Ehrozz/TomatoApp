@@ -8,6 +8,7 @@ public class DiseaseInfo {
     private String pest;
     private String symptoms;
     private String pestDescription;
+    private boolean noTreatment = false;
 
     public DiseaseInfo(String description, String cause, String prevention, String cure,
                        String pest, String symptoms, String pestDescription) {
@@ -20,6 +21,10 @@ public class DiseaseInfo {
         this.pestDescription = pestDescription;
     }
 
+    /** Marks a disease with no proven treatment. Chain it onto the constructor call. */
+    public DiseaseInfo withNoTreatment() { this.noTreatment = true; return this; }
+    public boolean hasNoTreatment() { return noTreatment; }
+
     public String getDescription() { return description; }
     public String getCause() { return cause; }
     public String getPrevention() { return prevention; }
@@ -28,4 +33,3 @@ public class DiseaseInfo {
     public String getSymptoms() { return symptoms; }
     public String getPestDescription() { return pestDescription; }
 }
-

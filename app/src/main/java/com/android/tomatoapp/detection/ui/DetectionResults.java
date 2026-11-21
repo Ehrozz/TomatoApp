@@ -167,7 +167,7 @@ public class DetectionResults extends BaseBottomNavActivity {
                 finding2.setText("Ripeness: Not detected");
             }
 
-            // Finding 3 = growth stage context
+            // Finding 3 = growth stage context - for future improvements
             String detectionPhaseStr = String.valueOf(intent.getIntExtra("detectionPhase", 0));
             int dPhase = intent.getIntExtra("detectionPhase", 0);
             if (dPhase > 0) {

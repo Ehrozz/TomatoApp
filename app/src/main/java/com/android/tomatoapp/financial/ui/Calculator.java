@@ -121,6 +121,7 @@ public class Calculator extends BaseBottomNavActivity {
         double quantity;
         String quantityUnit;
         double unitCost;
+        String priceUnit = "";
         double totalCost;
     }
     
@@ -556,6 +557,7 @@ public class Calculator extends BaseBottomNavActivity {
                             double quantity = DailyExpenseMath.asDouble(materialSnapshot.child("quantity").getValue());
                             String quantityUnit = DailyExpenseMath.asString(materialSnapshot.child("quantityUnit").getValue());
                             double unitCost = DailyExpenseMath.asDouble(materialSnapshot.child("unitCost").getValue());
+                            String priceUnit = DailyExpenseMath.asString(materialSnapshot.child("priceUnit").getValue());
                             
                             if (totalCost > 0) {
                                 aggregatedMaterialCost += totalCost;
@@ -566,6 +568,7 @@ public class Calculator extends BaseBottomNavActivity {
                                 item.quantity = quantity;
                                 item.quantityUnit = quantityUnit;
                                 item.unitCost = unitCost;
+                                item.priceUnit = priceUnit;
                                 item.totalCost = totalCost;
                                 materialItems.add(item);
                                 dayLog.materialItems.add(item);
@@ -957,12 +960,12 @@ public class Calculator extends BaseBottomNavActivity {
         }
         if (!log.materialItems.isEmpty()) {
             TableLayout table = createBreakdownTable(body, "Material");
-            addBreakdownRow(table, true, "Material item #", "Material", "Quantity", "Unit cost (₱)", "Sub-total");
+            addBreakdownRow(table, true, "Material item #", "Material", "Quantity", "Price", "Sub-total");
             double subtotal = 0;
             int index = 1;
             for (MaterialItem item : log.materialItems) {
                 addBreakdownRow(table, false, String.valueOf(index++), item.materialName,
-                        df2.format(item.quantity) + " " + item.quantityUnit, money(item.unitCost), money(item.totalCost));
+                        df2.format(item.quantity) + " " + item.quantityUnit, materialPriceLabel(item), money(item.totalCost));
                 subtotal += item.totalCost;
             }
             addBreakdownRow(table, false, "Sub-total", "", "", "", money(subtotal));
@@ -1031,6 +1034,12 @@ public class Calculator extends BaseBottomNavActivity {
 
     private String money(double value) {
         return String.format(Locale.getDefault(), "₱%,.2f", value);
+    }
+
+    private String materialPriceLabel(MaterialItem item) {
+        if (item.priceUnit == null || item.priceUnit.isEmpty()) return money(item.unitCost); // old logs
+        if (item.priceUnit.equalsIgnoreCase("Total paid")) return money(item.unitCost) + " total";
+        return money(item.unitCost) + "/" + item.priceUnit;
     }
 
     private int dp(int value) {
@@ -1304,9 +1313,9 @@ public class Calculator extends BaseBottomNavActivity {
             // 🔹 Update NP immediately when hectare changes
             currentNP = baseNP * hectare;
             if (hectare > 0) {
-                tvNP.setText(String.format(Locale.getDefault(), "Number of Plants (NP): ₱%s", df.format(currentNP)));
+                tvNP.setText(String.format(Locale.getDefault(), "Number of Plants (NP): %s", df.format(currentNP)));
             } else {
-                tvNP.setText(String.format(Locale.getDefault(), "Number of Plants (NP): ₱%s", df.format(baseNP)));
+                tvNP.setText(String.format(Locale.getDefault(), "Number of Plants (NP): %s", df.format(baseNP)));
             }
 
             // 🔹 Compute totals only when all fields are filled
