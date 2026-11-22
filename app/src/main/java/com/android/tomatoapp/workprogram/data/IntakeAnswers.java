@@ -27,6 +27,7 @@ public class IntakeAnswers {
     public String transplanted = "";
     public String flowers = "";
     public String fruitsMaturing = "";
+    public String plantCount = "";
 
     public String plowCount = "";
     public String harrowLastPlowing = "";
@@ -233,6 +234,7 @@ public class IntakeAnswers {
         map.put("seedsConfirmedDateSource", seedsConfirmedDate.isEmpty() ? "" : "survey");
         map.put("sowingDateSource", sowingDate.isEmpty() ? "" : "survey");
         map.put("transplantDateSource", transplantDate.isEmpty() ? "" : "survey");
+        map.put("plantCount", plantCount);
         map.put("startPhase", startPhase);
         return map;
     }

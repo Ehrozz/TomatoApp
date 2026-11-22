@@ -64,6 +64,7 @@ public class DailyTask extends BaseBottomNavActivity {
     private TaskAdapter taskAdapter;
     private List<TaskModel> taskList = new ArrayList<>();
     private boolean[] checkedTasks; // Track which tasks are checked
+    private TextView programInsights;
 
     private boolean isNewProgram = false;
     private String cultivar, date, programId, startDate;
@@ -79,6 +80,7 @@ public class DailyTask extends BaseBottomNavActivity {
     private int intakeStartPhase = 1;
     private DatabaseReference taskRef;
     private boolean dayCompleted;
+    private boolean previewMode;
 
 
     private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
@@ -90,10 +92,11 @@ public class DailyTask extends BaseBottomNavActivity {
 
         // Initialize views
         cultivarNameHeader = findViewById(R.id.cultivarNameHeader);
+        programInsights = findViewById(R.id.programInsights);
         dateHeader = findViewById(R.id.dateHeader);
         cultivarImageHeader = findViewById(R.id.cultivarImageHeader);
         taskSectionTitle = findViewById(R.id.taskSectionTitle);
-        taskCountText = findViewById(R.id.taskCountText);
+        //taskCountText = findViewById(R.id.taskCountText);
         btnComplete = findViewById(R.id.btnComplete);
         btnSkip = findViewById(R.id.btnSkipTasks);
         btnMonitor = findViewById(R.id.btnMonitorPlant);
@@ -117,6 +120,7 @@ public class DailyTask extends BaseBottomNavActivity {
         placementDate = getIntent().getStringExtra("placementDate");
         intakeStartPhase = getIntent().getIntExtra("intakeStartPhase", 1);
         int adjustedDayNumber = getIntent().getIntExtra("adjustedDayNumber", 0);
+        previewMode = getIntent().getBooleanExtra("previewMode", false);
 
         // A new program has no persisted state yet. Existing programs must wait
         // for Firebase state instead of using today's date as their schedule anchor.
@@ -219,8 +223,56 @@ public class DailyTask extends BaseBottomNavActivity {
             btnDailyExpenses.setEnabled(!isNewProgram);
         }
 
+        applyPreviewLock();
+        showProgramInsights();
         setupBottomNavigation();
         loadProgramState(currentUser);
+    }
+
+    //Allow preview tasks
+    private void applyPreviewLock() {
+        if (!previewMode) return;
+        if (taskSectionTitle != null) taskSectionTitle.setText(
+                "Preview only. Complete the previous day's tasks to unlock this date.");
+        View[] actions = {btnComplete, btnSkip, btnMonitor, btnDailyExpenses};
+        for (View b : actions) if (b != null) b.setVisibility(View.GONE);
+    }
+
+    private void showProgramInsights() {
+        if (isNewProgram || programId == null || programId.isEmpty() || dateHeader == null || programInsights == null) return;
+        final android.content.Context app = getApplicationContext();
+        final String pid = programId;
+        final String viewed = date;
+        new Thread(() -> {
+            java.util.List<String> lines = new ArrayList<>();
+            try {
+                com.android.tomatoapp.weather.data.WeatherData w =
+                        com.android.tomatoapp.core.database.AppDatabase.getInstance(app)
+                                .weatherDataDao().getByProgramId(pid);
+                if (w != null && w.daysTracked > 0) {
+                    lines.add(String.format(Locale.US, "Weather (%d days): avg %.1f°C, rain %.1f mm",
+                            w.daysTracked, w.avgTemperature, w.totalPrecipitation));
+                }
+            } catch (Exception ignored) { }
+            try {
+                SimpleDateFormat day = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+                int total = 0, onDay = 0;
+                for (org.json.JSONObject e : com.android.tomatoapp.detection.data
+                        .DetectionHistoryManager.getHistory(app)) {
+                    if (!pid.equals(e.optString("programId", ""))) continue;
+                    total++;
+                    if (viewed != null && viewed.equals(day.format(new Date(e.optLong("timestamp", 0))))) onDay++;
+                }
+                if (total > 0) lines.add(String.format(Locale.US,
+                        "Disease scans: %d total (%d on this date)", total, onDay));
+            } catch (Exception ignored) { }
+            if (lines.isEmpty()) return;
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                programInsights.setText(android.text.TextUtils.join("\n", lines));
+                programInsights.setVisibility(View.VISIBLE);
+            });
+        }).start();
     }
 
     /**
@@ -406,6 +458,7 @@ public class DailyTask extends BaseBottomNavActivity {
     }
 
     private void markAllTasksComplete() {
+        if (previewMode) return;
         if (isNewProgram) {
             Intent resultIntent = new Intent();
             resultIntent.putExtra("date", date);
@@ -450,6 +503,7 @@ public class DailyTask extends BaseBottomNavActivity {
     }
 
     private void markTasksSkipped() {
+        if (previewMode) return;
         if (isNewProgram) {
             Toast.makeText(this, "Skipping is available after saving the work program.", Toast.LENGTH_SHORT).show();
             return;
@@ -488,6 +542,7 @@ public class DailyTask extends BaseBottomNavActivity {
     }
 
     private void saveMilestone(String field, String value) {
+        if (previewMode) return;
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser == null || programId == null || programId.isEmpty()) return;
         DatabaseReference programRef = FirebaseDatabase.getInstance().getReference("users")
@@ -568,7 +623,7 @@ public class DailyTask extends BaseBottomNavActivity {
     }
 
     private boolean maybeAskAboutSeeds() {
-        if (!isSeedPromptDate() || isNewProgram || programId == null) return false;
+        if (previewMode || !isSeedPromptDate() || isNewProgram || programId == null) return false;
         new AlertDialog.Builder(this)
                 .setTitle("Do you already have seeds?")
                 .setMessage("Need help finding seeds? Ask your local agri-supply or municipal agriculture office.")
@@ -579,6 +634,7 @@ public class DailyTask extends BaseBottomNavActivity {
     }
 
     private void maybeAskPhaseSurvey() {
+        if (previewMode) return;
         if (isNewProgram || isFinishing() || isDestroyed()) return;
         if (programId == null || programId.isEmpty() || transplantDate == null) return;
         if (date == null) return;
@@ -667,6 +723,7 @@ public class DailyTask extends BaseBottomNavActivity {
     }
 
     private void savePhaseDate(java.util.Map<String, Object> update) {
+        if (previewMode) return;
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser == null || programId == null || programId.isEmpty()
                 || update == null || update.isEmpty()) {
@@ -871,6 +928,8 @@ public class DailyTask extends BaseBottomNavActivity {
         }
         if (btnComplete != null) btnComplete.setEnabled(!empty && getActionTaskCount() > 0);
         if (btnSkip != null) btnSkip.setEnabled(!empty && getActionTaskCount() > 0);
+
+        applyPreviewLock();
     }
 
     private void applyIntakeSkipNotice() {
@@ -945,6 +1004,11 @@ public class DailyTask extends BaseBottomNavActivity {
         startActivity(intent);
     }
 
+    private java.time.LocalDate parseDateOrNull(String v) {
+        try { return v == null || v.isEmpty() ? null : java.time.LocalDate.parse(v); }
+        catch (RuntimeException e) { return null; }
+    }
+
     private boolean isMilestoneHistory(TaskModel task) {
         if (task.details != null && (task.details.contains("confirmed on this date")
                 || task.details.contains("recorded on this date")
@@ -955,6 +1019,7 @@ public class DailyTask extends BaseBottomNavActivity {
     }
 
     private void confirmMilestone(TaskModel task) {
+        if (previewMode) return;
         if (date == null) {
             Toast.makeText(this, "No date selected.", Toast.LENGTH_SHORT).show();
             return;
@@ -1002,6 +1067,7 @@ public class DailyTask extends BaseBottomNavActivity {
     private class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder> {
         private final List<TaskModel> tasks;
         private final List<Object> rows = new ArrayList<>();
+        private final java.util.Set<Integer> expandedTasks = new java.util.HashSet<>();
 
         TaskAdapter(List<TaskModel> tasks) {
             this.tasks = tasks;
@@ -1076,7 +1142,26 @@ public class DailyTask extends BaseBottomNavActivity {
             if (task.details != null && !task.details.isEmpty()) {
                 subtext += "\n" + task.details;
             }
-            holder.taskSubtext.setText(subtext);
+            final boolean hasGuide = com.android.tomatoapp.task.data.TaskKnowledgeBase.has(task.id);
+        if (hasGuide) {
+            if (expandedTasks.contains(taskIndex)) {
+                String guide = com.android.tomatoapp.task.data.TaskKnowledgeBase.guide(task.id,
+                        getIntent().getDoubleExtra("farmAreaHectares", 1.0), growthHabit,
+                        parseDateOrNull(date), parseDateOrNull(transplantDate), parseDateOrNull(sowingDate));
+                if (guide != null) subtext += "\n\n" + guide;
+            } else {
+                subtext += "\n▸ Tap for guide";
+            }
+        }
+        holder.taskSubtext.setText(subtext);
+        if (hasGuide) {
+            holder.itemView.setOnClickListener(v -> {
+                if (!expandedTasks.remove(taskIndex)) expandedTasks.add(taskIndex);
+                notifyItemChanged(holder.getAdapterPosition());
+            });
+        } else {
+            holder.itemView.setOnClickListener(null);
+        }
             
             // Set icon based on task type
             int iconDrawable = getIconDrawable(task.iconType);
@@ -1084,17 +1169,17 @@ public class DailyTask extends BaseBottomNavActivity {
             
             boolean isNote = "NOTE".equals(task.type);
             boolean isMilestone = "MILESTONE".equals(task.type);
-            holder.milestoneAction.setVisibility(isMilestone && !isMilestoneHistory(task)
+            holder.milestoneAction.setVisibility(isMilestone && !previewMode && !isMilestoneHistory(task)
                     ? View.VISIBLE : View.GONE);
             holder.milestoneAction.setOnClickListener(v -> confirmMilestone(task));
-            holder.taskCheckbox.setEnabled(!isNote && !isMilestone && !dayCompleted);
+            holder.taskCheckbox.setEnabled(!isNote && !isMilestone && !dayCompleted && !previewMode);
             holder.taskCheckbox.setVisibility(isNote || isMilestone ? View.GONE : View.VISIBLE);
             holder.taskCheckbox.setChecked(!isNote && !isMilestone && checkedTasks[taskIndex]);
             
             // Set checkbox listener
             holder.taskCheckbox.setOnCheckedChangeListener(null); // Prevent triggering during binding
             holder.taskCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                if (isNote || isMilestone || dayCompleted) return;
+                if (isNote || isMilestone || dayCompleted || previewMode) return;
                 checkedTasks[taskIndex] = isChecked;
                 updateTaskCount();
                 

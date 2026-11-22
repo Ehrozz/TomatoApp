@@ -3,6 +3,7 @@ package com.android.tomatoapp.workprogram.ui;
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
@@ -167,6 +168,36 @@ public class WorkProgramIntakeDialog {
                 stepLabel.setText("Step 3 of 5 · Transplant");
                 questionText.setText("Have you transplanted?");
                 bindMain(new String[]{IntakeAnswers.YES, IntakeAnswers.ONGOING}, answers.transplanted);
+                if (IntakeAnswers.YES.equals(answers.transplanted)
+                        || IntakeAnswers.ONGOING.equals(answers.transplanted)) {
+                    TextView plantCountLabel = new TextView(context);
+                    plantCountLabel.setText("How many plants have you transplanted? (optional)");
+                    plantCountLabel.setTextColor(android.graphics.Color.BLACK);
+                    plantCountLabel.setTextSize(13);
+                    plantCountLabel.setPadding(0, 16, 0, 4);
+                    subQuestions.addView(plantCountLabel);
+
+                    EditText plantCountInput = new EditText(context);
+                    plantCountInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+                    plantCountInput.setTextColor(android.graphics.Color.BLACK);
+                    plantCountInput.setText(answers.plantCount);
+                    plantCountInput.addTextChangedListener(new android.text.TextWatcher() {
+                        @Override
+                        public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+
+                        @Override
+                        public void onTextChanged(CharSequence s, int start, int before, int count) {
+                            answers.plantCount = s.toString().trim();
+                        }
+
+                        @Override
+                        public void afterTextChanged(android.text.Editable s) { }
+                    });
+                    subQuestions.addView(plantCountInput);
+                    subQuestionsCard.setVisibility(View.VISIBLE);
+                    subQuestions.setVisibility(View.VISIBLE);
+                    subQuestionsChevron.setImageResource(android.R.drawable.arrow_down_float);
+                }
                 addSub("Have you transplanted all your seedlings?",
                         new String[]{IntakeAnswers.YES, IntakeAnswers.ONGOING, IntakeAnswers.NOT_YET},
                         answers.transplantedAll, value -> answers.transplantedAll = value);
@@ -323,8 +354,9 @@ public class WorkProgramIntakeDialog {
             }, today.get(Calendar.YEAR), today.get(Calendar.MONTH), today.get(Calendar.DAY_OF_MONTH));
             Calendar lower = Calendar.getInstance();
             lower.set(2020, Calendar.JANUARY, 1, 0, 0, 0);
-            Calendar upper = Calendar.getInstance();
-            upper.set(2100, Calendar.DECEMBER, 31, 23, 59, 59);
+            Calendar upper = Calendar.getInstance();        
+            java.time.LocalDate t = AppClock.today(context);
+            upper.set(t.getYear(), t.getMonthValue() - 1, t.getDayOfMonth(), 23, 59, 59);
             picker.getDatePicker().setMinDate(lower.getTimeInMillis());
             picker.getDatePicker().setMaxDate(upper.getTimeInMillis());
             picker.show();
@@ -478,6 +510,18 @@ public class WorkProgramIntakeDialog {
         }
 
         if (currentStep == Step.TRANSPLANT) {
+            if (!answers.plantCount.isEmpty()) {
+                try {
+                    long plantCount = Long.parseLong(answers.plantCount);
+                    if (plantCount <= 0) {
+                        showError("Enter a whole number greater than 0, or leave it blank.");
+                        return;
+                    }
+                } catch (NumberFormatException error) {
+                    showError("Enter a whole number greater than 0, or leave it blank.");
+                    return;
+                }
+            }
             if (IntakeAnswers.ONGOING.equals(answers.transplanted)) {
                 finishIntake();
                 return;

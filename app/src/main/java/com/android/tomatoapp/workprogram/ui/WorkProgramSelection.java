@@ -211,10 +211,12 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
         // Cultivar data from centralized WorkProgramDataHelper
         final String[][] cultivarsData = com.android.tomatoapp.workprogram.data.WorkProgramDataHelper.cultivarsData;
 
-        String[] cultivarNames = new String[cultivarsData.length];
-        for (int i = 0; i < cultivarsData.length; i++) {
-            cultivarNames[i] = cultivarsData[i][0];
-        }
+        String[] cultivarNames = com.android.tomatoapp.workprogram.data.WorkProgramDataHelper.SELECTABLE_CULTIVARS;
+
+        // String[] cultivarNames = new String[cultivarsData.length];
+        // for (int i = 0; i < cultivarsData.length; i++) {
+        //     cultivarNames[i] = cultivarsData[i][0];
+        // }
 
         android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<String>(this,
                 android.R.layout.simple_dropdown_item_1line, cultivarNames) {
@@ -237,23 +239,35 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
             }
         };
         cultivarSpinner.setAdapter(adapter);
-
+        cultivarSpinner.setText(cultivarNames[0], false);
+     
         // Date Picker logic
+        final java.time.LocalDate appToday = AppClock.today(this);
+        final long todayStart = appToday.atStartOfDay(java.time.ZoneId.systemDefault())
+                .toInstant().toEpochMilli();
+        final long todayEnd = todayStart + 86_399_000L;
+
         final java.util.Calendar calendar = java.util.Calendar.getInstance();
+        calendar.setTimeInMillis(todayStart);
+
         final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-        try {
-            calendar.setTime(sdf.parse(java.time.LocalDate.now().toString()));
-        } catch (Exception ignored) {
-            Log.w("WorkProgramSelection", "Using device date because app date is invalid");
-        }
         startDateInput.setText(sdf.format(calendar.getTime()));
 
         startDateInput.setOnClickListener(v -> {
-            android.app.DatePickerDialog picker = new android.app.DatePickerDialog(this, (view, year, month, dayOfMonth) -> {
-                calendar.set(year, month, dayOfMonth);
-                startDateInput.setText(sdf.format(calendar.getTime()));
-            }, calendar.get(java.util.Calendar.YEAR), calendar.get(java.util.Calendar.MONTH), calendar.get(java.util.Calendar.DAY_OF_MONTH));
-            picker.getDatePicker().setMaxDate(calendar.getTimeInMillis());
+            android.app.DatePickerDialog picker = new android.app.DatePickerDialog(this,
+                    (view, year, month, dayOfMonth) -> {
+                        calendar.set(year, month, dayOfMonth);
+                        startDateInput.setText(sdf.format(calendar.getTime()));
+                    }, calendar.get(java.util.Calendar.YEAR),
+                    calendar.get(java.util.Calendar.MONTH),
+                    calendar.get(java.util.Calendar.DAY_OF_MONTH));
+
+            if (ongoing) {
+                picker.getDatePicker().setMaxDate(todayEnd); // Enh 5: today or past
+            } else {
+                picker.getDatePicker().setMinDate(todayStart); // Enh 4: today or future
+            }
+
             picker.show();
         });
 
@@ -431,6 +445,7 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
                     startPhase, answers == null ? null : answers.toMap(startPhase),
                     cultivar, area, AppClock.today(this));
             Toast.makeText(this, "Program starts at Phase " + startPhase, Toast.LENGTH_SHORT).show();
+            com.android.tomatoapp.weather.data.WeatherDataCollector.collectWeatherForProgram(this, id, plantingStartDate);
             dialog.dismiss();
             Intent openProgram = new Intent(this, Workprogram.class);
             openProgram.putExtra("programId", id);
@@ -529,6 +544,12 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
             LocalDataManager.getInstance(this).processSyncQueue(this, userId);
             // Also sync from Firebase to local (to get any updates)
             LocalDataManager.getInstance(this).syncWorkProgramsFromFirebase(userId);
+            android.content.SharedPreferences sp = getSharedPreferences("weather_sync", MODE_PRIVATE);
+            String todayKey = AppClock.today(this).toString();
+            if (!todayKey.equals(sp.getString("last", null))) {
+                sp.edit().putString("last", todayKey).apply();
+                com.android.tomatoapp.weather.data.WeatherDataCollector.updateWeatherForAllActivePrograms(getApplicationContext());
+            }
         }
         // Reload to show latest progress rates and data
         loadWorkPrograms();

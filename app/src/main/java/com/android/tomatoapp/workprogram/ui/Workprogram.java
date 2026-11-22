@@ -949,18 +949,15 @@ public class Workprogram extends BaseBottomNavActivity {
             }
 
             CalendarDay selectedDay = CalendarDay.from(date.getYear(), date.getMonth(), date.getDay());
-            if (!accessibleDates.contains(selectedDay)) {
-                Toast.makeText(this, "Complete the previous day before opening this date.",
-                        Toast.LENGTH_SHORT).show();
-                widget.setDateSelected(date, false);
-                return;
-            }
-
-            openDailyTask(clickedDate);
-        });
+            boolean preview = !accessibleDates.contains(selectedDay);
+            try { // a date after today can never be worked on early
+                if (java.time.LocalDate.parse(clickedDate).isAfter(appTodayLocal())) preview = true;
+            } catch (RuntimeException ignored) { }
+            openDailyTask(clickedDate, preview);
+                    });
     }
 
-    private void openDailyTask(String clickedDate) {
+    private void openDailyTask(String clickedDate, boolean preview) {
         // 🔹 Get cultivar details (growth habit & maturity days)
         String growthHabit = "";
         int maturityDays = 0;
@@ -994,6 +991,7 @@ public class Workprogram extends BaseBottomNavActivity {
         taskIntent.putExtra("phase5Date", phase5Date);
         taskIntent.putExtra("placementDate", placementDate);
         taskIntent.putExtra("intakeStartPhase", intakeStartPhase);
+        taskIntent.putExtra("previewMode", preview);
         startActivityForResult(taskIntent, DAILY_TASK_REQUEST);
     }
 

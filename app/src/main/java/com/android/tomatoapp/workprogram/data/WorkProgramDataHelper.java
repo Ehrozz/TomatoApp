@@ -45,6 +45,8 @@ public class WorkProgramDataHelper {
             {"Marimar", "Determinate", "60", "65"}
     };
 
+    public static final String[] SELECTABLE_CULTIVARS = { "Diamante Max" };
+
     /**
      * Calculate phase information for a work program based on cultivar and start date.
      * Returns a JSON string with phase ranges.

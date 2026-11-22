@@ -3,9 +3,13 @@ package com.android.tomatoapp.workprogram.ui;
 import android.app.DatePickerDialog;
 import android.os.Bundle;
 import android.content.Intent;
+import android.view.ViewGroup;
+import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AlertDialog;
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.common.utils.AppClock;
@@ -23,8 +27,10 @@ import java.util.Map;
 public class MilestonesActivity extends AppCompatActivity {
     private String programId;
     private String seeds, sowing, transplant, stop;
+    private String plantCount;
     private DatabaseReference reference;
     private MaterialButton seedsButton, sowingButton, transplantButton, stopButton;
+    private MaterialButton plantingDetailsButton;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -47,11 +53,18 @@ public class MilestonesActivity extends AppCompatActivity {
         sowingButton = findViewById(R.id.btnSowingDate);
         transplantButton = findViewById(R.id.btnTransplantDate);
         stopButton = findViewById(R.id.btnStopDate);
+        plantingDetailsButton = new MaterialButton(this);
+        plantingDetailsButton.setText("Plants: not recorded");
+        LinearLayout.LayoutParams plantingDetailsParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        plantingDetailsButton.setLayoutParams(plantingDetailsParams);
+        ((ViewGroup) stopButton.getParent()).addView(plantingDetailsButton);
         reference.get().addOnSuccessListener(snapshot -> {
             seeds = read(snapshot, "seedsConfirmedDate");
             sowing = read(snapshot, "sowingDate");
             transplant = read(snapshot, "transplantDate");
             stop = read(snapshot, "stopDate");
+            plantCount = read(snapshot, "plantCount");
             refreshLabels();
         }).addOnFailureListener(error -> Toast.makeText(this,
                 "Could not load milestones: " + error.getMessage(), Toast.LENGTH_LONG).show());
@@ -59,6 +72,7 @@ public class MilestonesActivity extends AppCompatActivity {
         sowingButton.setOnClickListener(v -> pick("sowingDate", sowing));
         transplantButton.setOnClickListener(v -> pick("transplantDate", transplant));
         stopButton.setOnClickListener(v -> pick("stopDate", stop));
+        plantingDetailsButton.setOnClickListener(v -> editPlantCount());
     }
 
     private void refreshLabels() {
@@ -66,6 +80,46 @@ public class MilestonesActivity extends AppCompatActivity {
         sowingButton.setText("Sowing: " + label(sowing));
         transplantButton.setText("Transplanting: " + label(transplant));
         stopButton.setText("Stop: " + label(stop));
+        plantingDetailsButton.setText(plantCount == null || plantCount.isEmpty()
+                ? "Plants: not recorded" : "Plants: " + plantCount);
+    }
+
+    private void editPlantCount() {
+        EditText input = new EditText(this);
+        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        input.setTextColor(android.graphics.Color.BLACK);
+        if (plantCount != null && !plantCount.isEmpty()) {
+            input.setText(plantCount);
+            input.setSelection(plantCount.length());
+        }
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Planting details")
+                .setView(input)
+                .setPositiveButton("Save", null)
+                .setNegativeButton("Cancel", null)
+                .create();
+        dialog.show();
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String value = input.getText().toString().trim();
+            try {
+                long count = Long.parseLong(value);
+                if (count <= 0) throw new NumberFormatException();
+                Map<String, Object> update = new HashMap<>();
+                update.put("plantCount", count);
+                reference.updateChildren(update).addOnSuccessListener(unused -> {
+                    plantCount = String.valueOf(count);
+                    refreshLabels();
+                    dialog.dismiss();
+                }).addOnFailureListener(error -> Toast.makeText(this,
+                        "Could not save planting details: " + error.getMessage(),
+                        Toast.LENGTH_LONG).show());
+            } catch (NumberFormatException error) {
+                Toast.makeText(this,
+                        "Enter a whole number greater than 0.",
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private String label(String value) {
