@@ -52,6 +52,7 @@ import com.android.tomatoapp.settings.data.SettingsPreferences;
 import com.android.tomatoapp.settings.ui.SettingsActivity;
 import com.android.tomatoapp.weather.data.WeatherDataCollector;
 import com.android.tomatoapp.weather.ui.ForecastActivity;
+import com.android.tomatoapp.weather.data.OpenMeteoClient;
 import com.android.tomatoapp.workprogram.data.WorkProgramDataHelper;
 import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
 import com.android.tomatoapp.workprogram.ui.WorkProgramSelection;
@@ -137,6 +138,7 @@ public class MainActivity extends BaseBottomNavActivity {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
+        PhilippineLocations.debugCheckRegionSizes();
 
         NotificationChannels.ensureCreated(this);
         NotificationPermissionHelper.ensurePermission(this);
@@ -536,87 +538,40 @@ public class MainActivity extends BaseBottomNavActivity {
     }
 
     private void fetchWeatherFromOpenMeteo(double lat, double lon, String locality) {
-        HttpURLConnection conn = null;
-        BufferedReader reader = null;
+        Log.d("WeatherDebug", "Fetching lat=" + lat + " lon=" + lon + " name=" + locality);
         try {
-            String urlStr = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon +
-                    "&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=1&timezone=auto";
-            URL url = new URL(urlStr);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("GET");
-            conn.setConnectTimeout(10000);
-            conn.setReadTimeout(10000);
+            OpenMeteoClient.Result w = OpenMeteoClient.fetch(lat, lon);
+            OpenMeteoClient.Day today = w.days.get(0);
 
-            int code = conn.getResponseCode();
-            if (code == 200) {
-                reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) sb.append(line);
+            boolean useF = SettingsPreferences.getWeatherUnit(MainActivity.this)
+                    .equals(SettingsPreferences.WEATHER_UNIT_FAHRENHEIT);
+            String unit = useF ? "°F" : "°C";
 
-                JSONObject root = new JSONObject(sb.toString());
-                JSONObject current = root.getJSONObject("current");
-                double tempC = current.optDouble("temperature_2m", Double.NaN);
-                int wcode = current.optInt("weather_code", -1);
+            double now = useF ? w.nowTemp * 9.0 / 5.0 + 32.0 : w.nowTemp;
+            int mx = (int) Math.round(useF ? today.tMax * 9.0 / 5.0 + 32.0 : today.tMax);
+            int mn = (int) Math.round(useF ? today.tMin * 9.0 / 5.0 + 32.0 : today.tMin);
 
-                String condition = mapWeatherCode(wcode);
-                String weatherUnit = SettingsPreferences.getWeatherUnit(MainActivity.this);
-                boolean useFahrenheit = weatherUnit.equals(SettingsPreferences.WEATHER_UNIT_FAHRENHEIT);
-                
-                double displayTemp = tempC;
-                if (useFahrenheit && !Double.isNaN(tempC)) {
-                    displayTemp = (tempC * 9.0 / 5.0) + 32.0;
+            String tempText = Double.isNaN(now) ? "--" : Math.round(now) + unit;
+            String subText = w.nowCondition + " (" + mn + "°/" + mx + "°) · Rain " + today.rainProbMax + "%";
+            int icon = selectIconForCode(w.nowIconCode);
+
+            runOnUiThread(() -> {
+                if (weatherCondition != null) weatherCondition.setText(subText);
+                if (weatherTemp != null) weatherTemp.setText(tempText);
+                if (weatherLocation != null) {
+                    weatherLocation.setText(locality == null || locality.isEmpty() ? (lat + ", " + lon) : locality);
+                    weatherLocation.setSelected(true);
                 }
-                String tempUnit = useFahrenheit ? "°F" : "°C";
-                
-                String extra = "";
-                try {
-                    JSONObject daily = root.getJSONObject("daily");
-                    JSONArray tmax = daily.optJSONArray("temperature_2m_max");
-                    JSONArray tmin = daily.optJSONArray("temperature_2m_min");
-                    JSONArray pr = daily.optJSONArray("precipitation_probability_max");
-                    if (tmax != null && tmax.length() > 0 && tmin != null && tmin.length() > 0) {
-                        double mxC = tmax.optDouble(0);
-                        double mnC = tmin.optDouble(0);
-                        if (useFahrenheit) {
-                            mxC = (mxC * 9.0 / 5.0) + 32.0;
-                            mnC = (mnC * 9.0 / 5.0) + 32.0;
-                        }
-                        int mx = (int) Math.round(mxC);
-                        int mn = (int) Math.round(mnC);
-                        String prp = (pr != null && pr.length() > 0) ? (" · Rain " + pr.optInt(0) + "%") : "";
-                        extra = " (" + mn + "°/" + mx + "°" + ")" + prp;
-                    }
-                } catch (Exception ignored) {}
-
-                String tempText = (Double.isNaN(displayTemp) ? "--" : Math.round(displayTemp) + tempUnit);
-                String subText = condition + extra;
-
-                runOnUiThread(() -> {
-                    if (weatherCondition != null) weatherCondition.setText(subText);
-                    if (weatherTemp != null) weatherTemp.setText(tempText);
-                    if (weatherLocation != null) {
-                        weatherLocation.setText(locality == null || locality.isEmpty() ? (lat + ", " + lon) : locality);
-                        weatherLocation.setSelected(true); // For marquee if needed
-                    }
-                    if (weatherIcon != null) weatherIcon.setImageResource(selectIconForCode(wcode));
-                    updateGreeting(null, condition);
-                });
-            } else {
-                runOnUiThread(() -> {
-                    if (weatherCondition != null) weatherCondition.setText("Weather unavailable");
-                    if (weatherTemp != null) weatherTemp.setText("--");
-                    updateGreeting(null, null);
-                });
-            }
+                if (weatherIcon != null) weatherIcon.setImageResource(icon);
+                updateGreeting(null, w.nowCondition);
+            });
         } catch (Exception e) {
+            Log.e(TAG, "Weather fetch failed", e);
             runOnUiThread(() -> {
                 if (weatherCondition != null) weatherCondition.setText("Weather unavailable");
+                if (weatherTemp != null) weatherTemp.setText("--");
                 updateGreeting(null, null);
             });
-        } finally {
-            if (reader != null) try { reader.close(); } catch (Exception ignored) {}
-            if (conn != null) conn.disconnect();
         }
     }
 
@@ -711,8 +666,8 @@ public class MainActivity extends BaseBottomNavActivity {
             for (int i = 0; i <= 17; i++) {
                 String[] labels = getLabelsForRegion(i);
                 for (String label : labels) {
-                    if (label.contains(provinceSelected[0])) {
-                        citiesInProvince.add(label.split(", ")[0]);
+                    if (label.endsWith(", " + provinceSelected[0])) {
+                        citiesInProvince.add(label.substring(0, label.lastIndexOf(", ")));
                         finalRegionIndex[0] = i; // Store region for coordinate lookup
                     }
                 }
@@ -749,16 +704,6 @@ public class MainActivity extends BaseBottomNavActivity {
             double[] coords = PhilippineLocations.getCoordinatesForCity(citySelected[0], provinceSelected[0]);
             double lat = coords[0];
             double lon = coords[1];
-            if (lat == 14.5995 && lon == 120.9842 && finalRegionIndex[0] >= 0) {
-                String[] labels = getLabelsForRegion(finalRegionIndex[0]);
-                for (int i = 0; i < labels.length; i++) {
-                    if (labels[i].startsWith(citySelected[0])) {
-                        lat = getLatsForRegion(finalRegionIndex[0])[i];
-                        lon = getLonsForRegion(finalRegionIndex[0])[i];
-                        break;
-                    }
-                }
-            }
 
             // Save to Firebase for persistence
             if (user != null) {
@@ -783,7 +728,7 @@ public class MainActivity extends BaseBottomNavActivity {
                 }
             }
 
-            saveAndApplyLocation(finalRegionIndex[0], citySelected[0], fullLocation);
+            saveAndApplyLocation(lat, lon, fullLocation);
             dialog.dismiss();
         });
 
@@ -845,22 +790,7 @@ public class MainActivity extends BaseBottomNavActivity {
         }
     }
 
-    private void saveAndApplyLocation(int regionIndex, String city, String fullLabel) {
-        String[] labels = getLabelsForRegion(regionIndex);
-        double lat = 14.5995;
-        double lon = 120.9842;
-        
-        // Try to find original coordinates from city
-        for (int i = 0; i < labels.length; i++) {
-            if (labels[i].startsWith(city)) {
-                double[] lats = getLatsForRegion(regionIndex);
-                double[] lons = getLonsForRegion(regionIndex);
-                lat = lats[i];
-                lon = lons[i];
-                break;
-            }
-        }
-
+    private void saveAndApplyLocation(double lat, double lon, String fullLabel) {
         SharedPreferences wp = getSharedPreferences(WEATHER_PREF, MODE_PRIVATE);
         wp.edit()
                 .putLong(KEY_LAT, Double.doubleToLongBits(lat))
@@ -963,20 +893,6 @@ public class MainActivity extends BaseBottomNavActivity {
             case 16: return PhilippineLocations.getRegion16Lons();
             default: return PhilippineLocations.getRegion17Lons();
         }
-    }
-
-    private String mapWeatherCode(int code) {
-        if (code == 0) return "Fair Weather";
-        if (code == 1 || code == 2) return "Partly Cloudy to Cloudy";
-        if (code == 3) return "Cloudy Skies";
-        if (code >= 45 && code <= 48) return "Foggy";
-        if (code >= 51 && code <= 57) return "Rainshowers / Drizzle";
-        if (code >= 61 && code <= 67) return "Scattered Rainshowers";
-        if (code >= 71 && code <= 77) return "Light Snow (N/A)";
-        if (code >= 80 && code <= 82) return "Monsoon Rains / Showers";
-        if (code >= 85 && code <= 86) return "Occasional Rains";
-        if (code >= 95) return "Severe Thunderstorms";
-        return "Fair Weather";
     }
 
     private int selectIconForCode(int code) {

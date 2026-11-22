@@ -15,6 +15,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.settings.data.SettingsPreferences;
 import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
+import com.android.tomatoapp.weather.data.OpenMeteoClient;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -92,91 +93,57 @@ public class ForecastActivity extends BaseBottomNavActivity {
     }
 
     private void fetchForecast(double lat, double lon) {
+        // Guard against the (0,0) default when no location was saved yet
+        if (lat == 0 && lon == 0) { lat = 13.8855; lon = 122.2909; }
+        final double fLat = lat, fLon = lon;
+        android.util.Log.d("WeatherDebug", "Forecast lat=" + fLat + " lon=" + fLon);
+
         new Thread(() -> {
-            HttpURLConnection conn = null;
-            BufferedReader reader = null;
             try {
-                String urlStr = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon +
-                        "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=7&timezone=auto";
-                URL url = new URL(urlStr);
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("GET");
-                conn.setConnectTimeout(10000);
-                conn.setReadTimeout(10000);
+                OpenMeteoClient.Result w = OpenMeteoClient.fetch(fLat, fLon);
+                boolean useF = SettingsPreferences.getWeatherUnit(ForecastActivity.this)
+                        .equals(SettingsPreferences.WEATHER_UNIT_FAHRENHEIT);
+                String unit = useF ? "°F" : "°C";
 
-                if (conn.getResponseCode() == 200) {
-                    reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                    StringBuilder sb = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) sb.append(line);
+                SimpleDateFormat in = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+                SimpleDateFormat out = new SimpleDateFormat("EEE, MMM d", Locale.getDefault());
 
-                    JSONObject root = new JSONObject(sb.toString());
-                    JSONObject daily = root.getJSONObject("daily");
-                    JSONArray dates = daily.getJSONArray("time");
-                    JSONArray wcodes = daily.getJSONArray("weather_code");
-                    JSONArray tmax = daily.getJSONArray("temperature_2m_max");
-                    JSONArray tmin = daily.getJSONArray("temperature_2m_min");
-                    JSONArray pr = daily.optJSONArray("precipitation_probability_max");
-
-                    // Get weather unit setting
-                    String weatherUnit = SettingsPreferences.getWeatherUnit(ForecastActivity.this);
-                    boolean useFahrenheit = weatherUnit.equals(SettingsPreferences.WEATHER_UNIT_FAHRENHEIT);
-                    String tempUnit = useFahrenheit ? "°F" : "°C";
-                    
-                    List<Row> rows = new ArrayList<>();
-                    SimpleDateFormat in = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
-                    SimpleDateFormat out = new SimpleDateFormat("EEE, MMM d", Locale.getDefault());
-                    for (int i = 0; i < dates.length(); i++) {
-                        String d = dates.getString(i);
-                        int code = wcodes.optInt(i, -1);
-                        double mxC = tmax.optDouble(i);
-                        double mnC = tmin.optDouble(i);
-                        if (useFahrenheit) {
-                            mxC = (mxC * 9.0 / 5.0) + 32.0;
-                            mnC = (mnC * 9.0 / 5.0) + 32.0;
-                        }
-                        int mx = (int) Math.round(mxC);
-                        int mn = (int) Math.round(mnC);
-                        String prp = (pr != null && pr.length() > i) ? (" · Rain " + pr.optInt(i) + "%") : "";
-                        String label;
-                        try {
-                            Date dd = in.parse(d);
-                            label = out.format(dd);
-                        } catch (Exception e) {
-                            label = d;
-                        }
-                        Row row = new Row();
-                        row.date = label;
-                        row.condition = mapWeatherCode(code);
-                        row.tempRange = mn + "°/" + mx + "°";
-                        row.rainChance = (pr != null && pr.length() > i) ? pr.optInt(i) + "% Rain" : "";
-                        row.iconRes = selectIconForCode(code);
-                        row.weatherCode = code;
-                        row.maxTemp = mx;
-                        rows.add(row);
-                    }
-
-                    List<Row> finalRows = rows;
-                    runOnUiThread(() -> {
-                        updateTodayCard(finalRows.get(0));
-                        displayForecast(finalRows.subList(1, finalRows.size()));
-                    });
+                List<Row> rows = new ArrayList<>();
+                for (OpenMeteoClient.Day d : w.days) {
+                    double mxV = useF ? d.tMax * 9.0 / 5.0 + 32.0 : d.tMax;
+                    double mnV = useF ? d.tMin * 9.0 / 5.0 + 32.0 : d.tMin;
+                    Row r = new Row();
+                    try { r.date = out.format(in.parse(d.date)); } catch (Exception e) { r.date = d.date; }
+                    r.condition = d.condition;
+                    r.tempRange = Math.round(mnV) + "°/" + Math.round(mxV) + "°";
+                    r.rainChance = d.rainProbMax + "% Rain" + (d.precipMm >= 0.1
+                            ? String.format(Locale.US, " · %.1f mm", d.precipMm) : "");
+                    r.iconCode = d.iconCode;
+                    r.iconRes = selectIconForCode(d.iconCode);
+                    r.maxTempC = (int) Math.round(d.tMax);
+                    rows.add(r);
                 }
-            } catch (Exception ignored) {
+                // Today card shows the CURRENT temperature and condition, not the day's max
+                double nowV = useF ? w.nowTemp * 9.0 / 5.0 + 32.0 : w.nowTemp;
+                rows.get(0).nowTemp = Double.isNaN(nowV) ? "--" : Math.round(nowV) + unit;
+                rows.get(0).condition = w.nowCondition;
+                rows.get(0).iconRes = selectIconForCode(w.nowIconCode);
+
+                runOnUiThread(() -> {
+                    updateTodayCard(rows.get(0));
+                    displayForecast(rows.subList(1, rows.size()));
+                });
+            } catch (Exception e) {
+                android.util.Log.e("WeatherDebug", "Forecast failed", e);
                 runOnUiThread(() -> {
                     List<Row> fallback = new ArrayList<>();
                     Row r = new Row();
-                    r.date = "—";
-                    r.condition = "Failed to load forecast";
-                    r.tempRange = "";
-                    r.rainChance = "";
+                    r.date = "—"; r.condition = "Failed to load forecast";
+                    r.tempRange = ""; r.rainChance = "";
                     r.iconRes = android.R.drawable.ic_dialog_alert;
                     fallback.add(r);
                     displayForecast(fallback);
                 });
-            } finally {
-                if (reader != null) try { reader.close(); } catch (Exception ignored2) {}
-                if (conn != null) conn.disconnect();
             }
         }).start();
     }
@@ -215,34 +182,33 @@ public class ForecastActivity extends BaseBottomNavActivity {
         String condition;
         String tempRange;
         String rainChance;
+
         int iconRes;
-        int weatherCode;
-        int maxTemp;
+        int iconCode;
+        int maxTempC;
+
+        String nowTemp;
     }
 
     private void updateTodayCard(Row today) {
         if (todayDateText != null) todayDateText.setText(today.date);
-        if (todayTempText != null) todayTempText.setText(today.tempRange.split("/")[1]);
+        if (todayTempText != null) todayTempText.setText(today.nowTemp != null ? today.nowTemp : today.tempRange.split("/")[1]);
         if (todayConditionText != null) todayConditionText.setText(today.condition);
         if (todayRangeText != null) todayRangeText.setText(today.tempRange);
-        if (todayRainChanceText != null) todayRainChanceText.setText(today.rainChance.replace(" Rain", ""));
+        if (todayRainChanceText != null) todayRainChanceText.setText(today.rainChance.split(" ")[0].replace("Rain", "").trim());
         if (todayWeatherIcon != null) todayWeatherIcon.setImageResource(today.iconRes);
-        
-        if (weatherTipText != null) {
-            weatherTipText.setText(getWeatherTip(today.weatherCode, today.maxTemp));
-        }
+        if (weatherTipText != null) weatherTipText.setText(getWeatherTip(today.iconCode, today.maxTempC));
     }
 
-    private String getWeatherTip(int code, int maxTemp) {
+    private String getWeatherTip(int code, int maxTempC) {
         if (code >= 95) return "Thunderstorms expected. Secure loose equipment and avoid fieldwork.";
-        if (code >= 61) return "Heavy rain likely. Good for soil moisture, but avoid applying chemicals.";
-        if (code >= 51) return "Light drizzle. Ideal for transplanting seedlings as they won't dry out.";
-        if (code == 0) {
-            if (maxTemp > 32) return "High heat. Ensure intensive irrigation today to prevent tomato stress.";
-            return "Clear skies. Great day for harvesting or weeding.";
-        }
-        if (code <= 2) return "Mild weather. Perfect for general maintenance and monitoring.";
-        return "Normal conditions. Continue with your scheduled farming tasks.";
+        if (code == 63) return "Rain expected. Good for soil moisture, but postpone spraying and fertilizing.";
+        if (code == 80) return "Showers possible. Keep sprays and fertilizer for a dry window.";
+        if (code == 51) return "Small chance of light showers. Normal work is fine; watch the sky.";
+        if (code >= 45 && code <= 48) return "Foggy morning. Humid conditions favor fungal disease, so scout your plants.";
+        if (maxTempC > 33) return "High heat. Irrigate early or late in the day to reduce tomato stress.";
+        if (code <= 1) return "Clear and dry. Good day for harvesting, weeding or spraying.";
+        return "Mild conditions. Continue your scheduled farm tasks.";
     }
 
     private void displayForecast(List<Row> rows) {

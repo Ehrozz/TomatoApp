@@ -177,8 +177,8 @@ public class CityManagementActivity extends BaseBottomNavActivity {
             for (int i = 0; i <= 17; i++) {
                 String[] labels = getLabelsForRegion(i);
                 for (String label : labels) {
-                    if (label.contains(provinceSelected[0])) {
-                        citiesInProvince.add(label.split(", ")[0]);
+                    if (label.endsWith(", " + provinceSelected[0])) {
+                        citiesInProvince.add(label.substring(0, label.lastIndexOf(", ")));
                         finalRegionIndex[0] = i;
                     }
                 }
@@ -200,15 +200,8 @@ public class CityManagementActivity extends BaseBottomNavActivity {
 
         btnApply.setOnClickListener(v -> {
             // Save to Firebase
-            double lat = 14.5995, lon = 120.9842;
-            String[] labels = getLabelsForRegion(finalRegionIndex[0]);
-            for (int i = 0; i < labels.length; i++) {
-                if (labels[i].startsWith(citySelected[0])) {
-                    lat = getLatsForRegion(finalRegionIndex[0])[i];
-                    lon = getLonsForRegion(finalRegionIndex[0])[i];
-                    break;
-                }
-            }
+            double[] coords = PhilippineLocations.getCoordinatesForCity(citySelected[0], provinceSelected[0]);
+            double lat = coords[0], lon = coords[1];
 
             String locId = userLocationsRef.push().getKey();
             if (locId != null) {

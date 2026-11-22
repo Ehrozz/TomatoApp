@@ -50,6 +50,13 @@ public class WeatherDataCollector {
             WeatherDataDao weatherDao = db.weatherDataDao();
             
             WeatherData existing = weatherDao.getByProgramId(programId);
+
+            String todayStr = sdf.format(new Date());
+
+            if (existing != null && todayStr.equals(existing.weatherEndDate)) {
+                Log.d("WeatherDataCollector", "Already recorded today for program " + programId);
+                return; // Already recorded today
+            }
             
             FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
             String userId = user != null ? user.getUid() : null;
@@ -211,10 +218,6 @@ public class WeatherDataCollector {
         });
     }
     
-    /**
-     * Collect weather data for a program using location from SharedPreferences.
-     * This is a convenience method that gets location and calls collectCurrentWeather.
-     */
     public static void collectWeatherForProgram(Context context, String programId, String plantingDate) {
         if (context == null || programId == null || plantingDate == null) {
             return;
@@ -227,15 +230,10 @@ public class WeatherDataCollector {
             collectCurrentWeather(context, programId, plantingDate, lat, lon);
         } else {
             // Use default Philippines location (Lopez, Quezon)
-            collectCurrentWeather(context, programId, plantingDate, 13.8840, 122.2633);
+            collectCurrentWeather(context, programId, plantingDate, 13.8855, 122.2909);
         }
     }
-    
-    /**
-     * Update weather data for all active work programs.
-     * This should be called periodically (e.g., when app starts, or daily).
-     * Only updates programs that are still in their growing season.
-     */
+   
     public static void updateWeatherForAllActivePrograms(Context context) {
         if (context == null) {
             return;
@@ -265,8 +263,8 @@ public class WeatherDataCollector {
                     lon = Double.longBitsToDouble(wp.getLong("lon", Double.doubleToLongBits(0)));
                 } else {
                     // Use default Philippines location
-                    lat = 13.8840;
-                    lon = 122.2633;
+                    lat = 13.8855;
+                    lon = 122.2909;
                 }
                 
                 // Check if programs are still active (within growing season)

@@ -5,6 +5,10 @@ import java.util.Arrays;
 import java.util.List;
 
 public class PhilippineLocations {
+     private static final java.util.Map<String, double[]> VERIFIED = new java.util.HashMap<>();
+        static {
+            VERIFIED.put("lopez, quezon", new double[]{13.8855, 122.2909});
+        }
     
     // Region 1 (Ilocos Region) - All cities and municipalities
     public static final String[] REGION_1_LABELS = {
@@ -777,18 +781,18 @@ public class PhilippineLocations {
             14.2115, 14.0685, 14.3125, 14.3385, 14.2835, 14.3585, 14.1555, 14.1835, 14.1495, 14.2135,
             14.2435, 14.2175, 14.3235, 14.3235, 14.1345, 14.1655, 14.2985, 14.2985, 14.4295, 14.1995,
             14.1455, 14.1995, 14.2735, 14.3865, 14.4025, 14.2375, 14.1085, 14.1495, 14.2835, 14.4195,
-            14.1995, 14.2235,
+            14.1995,
             // Batangas
             13.7565, 13.9415, 14.0855, 13.4125, 13.9365, 13.8665, 13.9365, 13.9865, 13.7915, 13.9565,
             13.8315, 13.9065, 13.8215, 14.0515, 13.9365, 13.9565, 13.6565, 13.7065, 14.0515, 13.9365,
             14.0515, 13.9365, 13.8465, 13.8815, 13.8815, 13.8365, 13.8815, 13.8815, 13.8815, 14.0515,
-            13.8815, 14.0915, 13.8815, 13.6565, 13.8815, 14.0515,
+            13.8815, 14.0915, 13.8815, 13.6565, 13.8815,
             // Rizal
             14.6255, 14.5255, 14.5255, 14.4555, 14.5785, 14.4865, 14.3565, 14.5115, 14.4815, 14.7615,
             14.6915, 14.5365, 14.5695, 14.5565,
             // Quezon
             13.9311, 14.0291, 13.8761, 14.1011, 14.0011, 13.7261, 14.8461, 13.9561, 13.9311, 13.5911,
-            14.2681, 13.6911, 14.7611, 13.9011, 13.9261, 14.7361, 14.6961, 13.8840, 14.1131, 13.8511,
+            14.2681, 13.6911, 14.7611, 13.9011, 13.9261, 14.7361, 14.6961, 13.8855, 14.1131, 13.8511,
             14.1911, 13.5211, 13.9211, 13.9661, 14.6911, 14.7911, 14.1911, 13.8211, 13.9511, 14.7211,
             14.0011, 14.6611, 14.1861, 13.8211, 13.8511, 13.8511, 13.8811, 13.8761, 13.8811, 13.9561,
             13.8411
@@ -803,18 +807,18 @@ public class PhilippineLocations {
             121.1655, 121.3255, 121.0565, 121.1265, 121.1265, 121.0565, 121.2465, 121.2865, 121.2465, 121.2465,
             121.2865, 121.2465, 121.2865, 121.2465, 121.2865, 121.2465, 121.5065, 121.2865, 121.2865, 121.2865,
             121.2865, 121.2865, 121.2865, 121.2865, 121.2865, 121.2865, 121.2865, 121.2865, 121.2865, 121.2865,
-            121.2865, 121.2865,
+            121.2865,
             // Batangas
             121.0584, 121.1634, 121.0884, 121.1803, 120.9284, 120.9284, 120.7284, 121.0284, 120.9884, 120.7984,
             120.5984, 121.0284, 121.0284, 120.9884, 120.8984, 120.5984, 121.2584, 120.8984, 121.0584, 121.0284,
             120.6384, 121.0284, 120.8584, 121.0984, 121.0584, 121.0584, 120.9984, 121.0284, 121.0284, 121.0584,
-            120.9984, 120.9984, 121.0284, 121.2584, 121.0284, 121.0584,
+            120.9984, 120.9984, 121.0284, 121.2584, 121.0284,
             // Rizal
             121.1245, 121.1545, 121.2645, 121.1945, 121.1245, 121.2245, 121.3545, 121.2345, 121.3045, 121.1945,
             121.1245, 121.3245, 121.1245, 121.2345,
             // Quezon
             121.6130, 121.5930, 121.6130, 122.1530, 121.9230, 121.6130, 122.1030, 122.2930, 121.4230, 122.3230,
-            121.4030, 122.1730, 121.6130, 122.4930, 122.3730, 121.6130, 121.6130, 122.2633, 121.5530, 122.1030,
+            121.4030, 122.1730, 121.6130, 122.4930, 122.3730, 121.6130, 121.6130, 122.2909, 121.5530, 122.1030,
             121.7730, 122.3730, 121.8430, 121.7230, 121.6130, 122.1030, 121.7730, 122.3730, 121.8430, 121.9530,
             121.6130, 121.6130, 121.6130, 122.1030, 121.7730, 121.7730, 121.6130, 121.4230, 122.3730, 121.4230,
             121.6130
@@ -3254,15 +3258,43 @@ public class PhilippineLocations {
         }
     }
 
-    /**
-     * Resolves approximate latitude and longitude coordinates for a given city and province.
-     */
+    public static void debugCheckRegionSizes() {
+        for (int r = 0; r <= 17; r++) {
+            int labels = getLabelsForRegion(r).length;
+            int lats = getLatsForRegion(r).length;
+            int lons = getLonsForRegion(r).length;
+            if (labels != lats || labels != lons) {
+                android.util.Log.w("LocCheck", "Region index " + r
+                        + ": labels=" + labels + " lats=" + lats + " lons=" + lons);
+            }
+        }
+        // Spot check a town in the shifted area (expect about 14.7361, 121.613 after the fix)
+        double[] inf = getCoordinatesForCity("Infanta", "Quezon");
+        android.util.Log.w("LocCheck", "Infanta -> " + inf[0] + ", " + inf[1]);
+    }
+
     public static double[] getCoordinatesForCity(String city, String province) {
         if (city == null || city.trim().isEmpty()) {
             return new double[]{14.5995, 120.9842}; // Default to Manila
         }
         String cleanCity = city.trim().toLowerCase();
         String cleanProvince = province != null ? province.trim().toLowerCase() : "";
+
+        double[] verified = VERIFIED.get(cleanCity + ", " + cleanProvince);
+        if (verified != null) return verified;
+
+        // Pass 0: exact "City, Province" match (no dependence on list order or partial names)
+        String exact = cleanCity + ", " + cleanProvince;
+        for (int r = 0; r <= 17; r++) {
+            String[] labels = getLabelsForRegion(r);
+            double[] lats = getLatsForRegion(r);
+            double[] lons = getLonsForRegion(r);
+            for (int i = 0; i < labels.length; i++) {
+                if (labels[i].toLowerCase().equals(exact) && i < lats.length && i < lons.length) {
+                    return new double[]{lats[i], lons[i]};
+                }
+            }
+        }
 
         // First pass: exact start with city and province match
         for (int r = 0; r <= 17; r++) {
