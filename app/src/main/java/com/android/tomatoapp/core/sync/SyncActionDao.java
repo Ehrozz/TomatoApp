@@ -23,4 +23,10 @@ public interface SyncActionDao {
 
     @Query("SELECT COUNT(*) FROM sync_queue WHERE userId = :userId")
     int getPendingCount(String userId);
+
+    @Query("SELECT * FROM sync_queue WHERE entityId = :entityId AND entityType = :entityType")
+    List<SyncActionEntity> getForEntity(String entityId, String entityType);
+
+    @Query("SELECT COUNT(*) FROM sync_queue WHERE entityId = :entityId AND entityType = :entityType")
+    int countForEntity(String entityId, String entityType);
 }

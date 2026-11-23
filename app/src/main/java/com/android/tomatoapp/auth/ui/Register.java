@@ -187,6 +187,16 @@ public class Register extends AppCompatActivity {
                                         .setDisplayName(fullName)
                                         .build();
                         user.updateProfile(profileUpdates);
+                        user.sendEmailVerification()
+                                .addOnCompleteListener(verifyTask -> {
+                                    if (verifyTask.isSuccessful()) {
+                                        Toast.makeText(Register.this,
+                                                "Verification email sent. Check your inbox or spam.",
+                                                Toast.LENGTH_LONG).show();
+                                    } else {
+                                        Log.w("Register", "Failed to send verification email", verifyTask.getException());
+                                    }
+                                });
 
                         // Resolve location coordinates from the selected or typed address
                         String province = selectedProvince;

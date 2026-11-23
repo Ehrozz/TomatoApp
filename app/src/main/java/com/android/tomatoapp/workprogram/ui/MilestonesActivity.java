@@ -13,6 +13,7 @@ import androidx.appcompat.app.AlertDialog;
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.common.utils.AppClock;
+import com.android.tomatoapp.core.network.LocalDataManager;
 import com.google.firebase.database.DataSnapshot;
 import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
@@ -106,19 +107,27 @@ public class MilestonesActivity extends AppCompatActivity {
                 long count = Long.parseLong(value);
                 if (count <= 0) throw new NumberFormatException();
                 Map<String, Object> update = new HashMap<>();
-                update.put("plantCount", count);
-                reference.updateChildren(update).addOnSuccessListener(unused -> {
-                    plantCount = String.valueOf(count);
-                    refreshLabels();
-                    dialog.dismiss();
-                }).addOnFailureListener(error -> Toast.makeText(this,
-                        "Could not save planting details: " + error.getMessage(),
-                        Toast.LENGTH_LONG).show());
+                    update.put("plantCount", count);
+
+                    LocalDataManager.getInstance(this)
+                            .updateProgramFields(
+                                    FirebaseAuth.getInstance().getCurrentUser().getUid(),
+                                    programId,
+                                    update
+                            )
+                            .addOnSuccessListener(unused -> {
+                                plantCount = String.valueOf(count);
+                                refreshLabels();
+                                dialog.dismiss();
+                            })
+                            .addOnFailureListener(error -> Toast.makeText(this,
+                                    "Could not save planting details: " + error.getMessage(),
+                                    Toast.LENGTH_LONG).show());
             } catch (NumberFormatException error) {
-                Toast.makeText(this,
-                        "Enter a whole number greater than 0.",
-                        Toast.LENGTH_SHORT).show();
-            }
+                    Toast.makeText(this,
+                            "Enter a whole number greater than 0.",
+                            Toast.LENGTH_SHORT).show();
+                }
         });
     }
 
@@ -140,17 +149,28 @@ public class MilestonesActivity extends AppCompatActivity {
             if (!valid(field, value)) return;
             Map<String, Object> update = new HashMap<>();
             update.put(field, value);
-            reference.updateChildren(update).addOnSuccessListener(unused -> {
-                if ("seedsConfirmedDate".equals(field)) seeds = value;
-                if ("sowingDate".equals(field)) sowing = value;
-                if ("transplantDate".equals(field)) transplant = value;
-                if ("stopDate".equals(field)) stop = value;
-                refreshLabels();
-                Intent result = new Intent();
-                result.putExtra("milestoneChanged", true);
-                setResult(RESULT_OK, result);
-            }).addOnFailureListener(error -> Toast.makeText(this,
-                    "Could not save correction: " + error.getMessage(), Toast.LENGTH_LONG).show());
+
+            LocalDataManager.getInstance(this)
+                    .updateProgramFields(
+                            FirebaseAuth.getInstance().getCurrentUser().getUid(),
+                            programId,
+                            update
+                    )
+                    .addOnSuccessListener(unused -> {
+                        if ("seedsConfirmedDate".equals(field)) seeds = value;
+                        if ("sowingDate".equals(field)) sowing = value;
+                        if ("transplantDate".equals(field)) transplant = value;
+                        if ("stopDate".equals(field)) stop = value;
+
+                        refreshLabels();
+
+                        Intent result = new Intent();
+                        result.putExtra("milestoneChanged", true);
+                        setResult(RESULT_OK, result);
+                    })
+                    .addOnFailureListener(error -> Toast.makeText(this,
+                            "Could not save correction: " + error.getMessage(),
+                            Toast.LENGTH_LONG).show());
         }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH));
         try {
             Calendar appToday = Calendar.getInstance();

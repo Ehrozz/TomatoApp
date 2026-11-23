@@ -58,6 +58,24 @@ public class WorkProgramEntity {
     public double totalYield; // total kg harvested
     public String harvestDate; // Date when harvest was completed
     public long lastUpdated; // Timestamp for conflict resolution
+    public int plantCount;
+    public String seedsConfirmedDate;
+    public String sowingDate;
+    public String transplantDate;
+    public String stopDate;
+    public String phase3Date;
+    public String phase4Date;
+    public String phase5Date;
+    public double loggedExpensesTotal;
+    public double awf;
+    public double afp;
+    public double marketValue;
+    public double financeLossPct;
+    public double phaseBudget1;
+    public double phaseBudget2;
+    public double phaseBudget3;
+    public double phaseBudget4;
+    public double phaseBudget5;
 
     /**
      * Default constructor required for Room.

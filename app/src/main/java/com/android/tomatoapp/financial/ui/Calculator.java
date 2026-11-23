@@ -25,6 +25,8 @@ import com.android.tomatoapp.financial.data.DailyExpenseMath;
 import com.android.tomatoapp.settings.data.SettingsPreferences;
 import com.android.tomatoapp.task.data.TaskSchedule;
 import com.android.tomatoapp.workprogram.data.WorkProgramDataHelper;
+import com.android.tomatoapp.workprogram.data.WorkProgramEntity;
+import com.android.tomatoapp.core.network.LocalDataManager;
 import com.google.android.material.card.MaterialCardView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -54,10 +56,15 @@ public class Calculator extends BaseBottomNavActivity {
     private static final String TAG = "Calculator";
     
     EditText etHectare, etAWF, etAFP, etMarketValue;
+    EditText etFinanceLossPct, etPhaseBudget1, etPhaseBudget2, etPhaseBudget3, etPhaseBudget4, etPhaseBudget5;
+    TextView tvCostProjectionTitle, tvCostPerKg, tvBreakEvenPrice, tvBreakEvenYield, tvMargin, tvWhatIfPrices;
+    TextView tvPlannedCost, tvCompletionWarning;
+    LinearLayout advancedFieldsContainer;
+    com.google.android.material.button.MaterialButton btnAdvancedToggle;
     TextView tvCultivarName, tvCultivarNameTag, tvDateSaved, tvNP, tvSubTotalHarvest;
     Spinner spinnerHarvestUnit;
     TextView tvHarvestPredictionYieldPerHa, tvHarvestPredictionTotalYield, tvHarvestPredictionDate;
-    TextView tvNetIncomeCard, tvSummarySubtitle, tvCompletionRate, tvAdjustedNetIncome, tvAdjustedSubtitle, tvAdjustedExpenses, tvCompletionWarning;
+    TextView tvNetIncomeCard, tvSummarySubtitle, tvCompletionRate, tvAdjustedNetIncome, tvAdjustedSubtitle, tvAdjustedExpenses;
     TextView tvTotalExpenses;
     com.google.android.material.button.MaterialButton btnDailyExpensesHistory;
     com.google.android.material.button.MaterialButton btnSaveToAnalytics;
@@ -90,6 +97,10 @@ public class Calculator extends BaseBottomNavActivity {
     private String cultivarName; // For analytics/work program record
     private String dateSaved;    // For analytics/work program record (starting date)
     private WorkProgramDataHelper.CompletionStats completionStats;
+    private WorkProgramEntity loadedProgram;
+    private double plantsPlanted = 0;
+    private double financeLossPct = 0;
+    private double[] phaseBudgets = new double[5];
     
     // Daily expenses aggregation
     private double aggregatedLaborCost = 0;
@@ -167,6 +178,21 @@ public class Calculator extends BaseBottomNavActivity {
         etAWF = findViewById(R.id.etAWF);
         etAFP = findViewById(R.id.etAFP);
         etMarketValue = findViewById(R.id.etMarketValue);
+        etFinanceLossPct = findViewById(R.id.etFinanceLossPct);
+        etPhaseBudget1 = findViewById(R.id.etPhaseBudget1);
+        etPhaseBudget2 = findViewById(R.id.etPhaseBudget2);
+        etPhaseBudget3 = findViewById(R.id.etPhaseBudget3);
+        etPhaseBudget4 = findViewById(R.id.etPhaseBudget4);
+        etPhaseBudget5 = findViewById(R.id.etPhaseBudget5);
+        tvCostProjectionTitle = findViewById(R.id.tvCostProjectionTitle);
+        tvPlannedCost = findViewById(R.id.tvPlannedCost);
+        tvCostPerKg = findViewById(R.id.tvCostPerKg);
+        tvBreakEvenPrice = findViewById(R.id.tvBreakEvenPrice);
+        tvBreakEvenYield = findViewById(R.id.tvBreakEvenYield);
+        tvMargin = findViewById(R.id.tvMargin);
+        tvWhatIfPrices = findViewById(R.id.tvWhatIfPrices);
+        advancedFieldsContainer = findViewById(R.id.advancedFieldsContainer);
+        btnAdvancedToggle = findViewById(R.id.btnAdvancedToggle);
         
         tvCultivarName = findViewById(R.id.tvCultivarName);
         tvCultivarNameTag = findViewById(R.id.tvCultivarNameTag);
@@ -254,9 +280,6 @@ public class Calculator extends BaseBottomNavActivity {
             etHectare.setText(df2.format(prefilledHectare));
             // Trigger computation with prefilled hectare
             hectare = prefilledHectare;
-        } else if (programId != null && currentUser != null) {
-            // Also try to fetch hectare from Firebase if programId is available and hectare not prefilled
-            fetchHectareFromFirebase();
         }
         
         // TextWatcher to trigger computation
@@ -272,6 +295,15 @@ public class Calculator extends BaseBottomNavActivity {
         etAWF.addTextChangedListener(watcher);
         etAFP.addTextChangedListener(watcher);
         etMarketValue.addTextChangedListener(watcher);
+        if (etFinanceLossPct != null) etFinanceLossPct.addTextChangedListener(watcher);
+        EditText[] budgets = {etPhaseBudget1, etPhaseBudget2, etPhaseBudget3, etPhaseBudget4, etPhaseBudget5};
+        for (EditText budget : budgets) if (budget != null) budget.addTextChangedListener(watcher);
+        if (btnAdvancedToggle != null) btnAdvancedToggle.setOnClickListener(v -> {
+            if (advancedFieldsContainer == null) return;
+            boolean show = advancedFieldsContainer.getVisibility() != View.VISIBLE;
+            advancedFieldsContainer.setVisibility(show ? View.VISIBLE : View.GONE);
+            btnAdvancedToggle.setText(show ? "Advanced ▲" : "Advanced ▼");
+        });
         if (prefilledHectare > 0) compute();
         
         // Initial calculations
@@ -302,15 +334,156 @@ public class Calculator extends BaseBottomNavActivity {
         setupSaveToAnalyticsButton();
 
         if (programId != null) {
-            loadFarmMetrics();
+            reloadProgramInputs();
         }
 
         // Show the estimated harvest date (same timeline as the work program)
         loadEstimatedHarvestDate();
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        com.google.firebase.auth.FirebaseUser u =
+                com.google.firebase.auth.FirebaseAuth
+                        .getInstance()
+                        .getCurrentUser();
+
+        if (u != null) {
+            com.android.tomatoapp.core.network.LocalDataManager
+                    .getInstance(this)
+                    .processSyncQueue(this, u.getUid());
+        }
+        reloadProgramInputs();
+    }
+
+    private void reloadProgramInputs() {
+        if (programId == null || currentUser == null) return;
+        LocalDataManager manager = LocalDataManager.getInstance(this);
+        List<WorkProgramEntity> programs = manager.getWorkProgramsFromLocal(currentUser.getUid());
+        WorkProgramEntity found = null;
+        for (WorkProgramEntity entity : programs) {
+            if (programId.equals(entity.id)) { found = entity; break; }
+        }
+        if (found != null) applyLoadedProgram(found);
+        else fallbackLoadProgramFromFirebase();
+    }
+
+    private void applyLoadedProgram(WorkProgramEntity entity) {
+        loadedProgram = entity;
+        plantsPlanted = entity.plantCount;
+        etHectare.setEnabled(false);
+        etHectare.setText(plantsPlanted > 0 ? df.format(plantsPlanted) : "0");
+        tvNP.setText(String.format(Locale.getDefault(), "Plants planted: %s",
+                plantsPlanted > 0 ? df.format(plantsPlanted) : "not recorded"));
+        if (entity.awf > 0) etAWF.setText(plainNumber(entity.awf));
+        if (entity.afp > 0) etAFP.setText(plainNumber(entity.afp));
+        if (entity.marketValue > 0) etMarketValue.setText(plainNumber(entity.marketValue));
+        if (entity.financeLossPct >= 0 && etFinanceLossPct != null) {
+            etFinanceLossPct.setText(plainNumber(entity.financeLossPct));
+        }
+        setBudgetFromEntity(etPhaseBudget1, entity.phaseBudget1);
+        setBudgetFromEntity(etPhaseBudget2, entity.phaseBudget2);
+        setBudgetFromEntity(etPhaseBudget3, entity.phaseBudget3);
+        setBudgetFromEntity(etPhaseBudget4, entity.phaseBudget4);
+        setBudgetFromEntity(etPhaseBudget5, entity.phaseBudget5);
+        completionStats = new WorkProgramDataHelper.CompletionStats();
+        completionStats.completionRate = entity.completionRate;
+        completionStats.totalTasks = entity.totalTasks;
+        completionStats.completedTasks = entity.completedTasks;
+        completionStats.missedTasks = entity.missedTasks;
+        completionStats.skippedTasks = entity.skippedTasks;
+        completionStats.phaseTotals[0] = entity.totalTasks;
+        completionStats.phaseCompleted[0] = entity.completedTasks;
+        applyRoomCompletionWarning(entity);
+        showEstimatedHarvestDate(entity.sowingDate, entity.transplantDate);
+        compute();
+    }
+
+    private void setBudgetFromEntity(EditText field, double value) {
+        if (field != null && value > 0) field.setText(plainNumber(value));
+    }
+
+    private String plainNumber(double value) {
+        return String.format(Locale.US, "%.2f", value).replaceAll("\\.?0+$", "");
+    }
+
+    private void applyRoomCompletionWarning(WorkProgramEntity entity) {
+        if (tvCompletionWarning == null) return;
+        if (entity == null) {
+            tvCompletionWarning.setVisibility(View.GONE);
+            return;
+        }
+        double[] rates = {entity.phase1Completion, entity.phase2Completion, entity.phase3Completion,
+                entity.phase4Completion, entity.phase5Completion};
+        int weakest = -1;
+        for (int i = 0; i < rates.length; i++) {
+            if (rates[i] > 0 && rates[i] < 100 && (weakest < 0 || rates[i] < rates[weakest])) {
+                weakest = i;
+            }
+        }
+        if (weakest >= 0) {
+            tvCompletionWarning.setText(String.format(Locale.getDefault(),
+                    "Phase %d completion is %.0f%%, yields may be lower",
+                    weakest + 1, rates[weakest]));
+            tvCompletionWarning.setVisibility(View.VISIBLE);
+            return;
+        }
+        if (entity.completionRate > 0 && entity.completionRate < 100) {
+            tvCompletionWarning.setText(String.format(Locale.getDefault(),
+                    "Completion is %.0f%%, yields may be lower", entity.completionRate));
+            tvCompletionWarning.setVisibility(View.VISIBLE);
+            return;
+        }
+        tvCompletionWarning.setVisibility(View.GONE);
+    }
+
+    private void fallbackLoadProgramFromFirebase() {
+        FirebaseDatabase.getInstance().getReference("users")
+                .child(currentUser.getUid()).child("workPrograms").child(programId)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        WorkProgramEntity entity = new WorkProgramEntity();
+                        entity.id = programId;
+                        entity.plantCount = DailyExpenseMath.asInt(snapshot.child("plantCount").getValue());
+                        if (entity.plantCount == 0) {
+                            entity.plantCount = DailyExpenseMath.asInt(
+                                    snapshot.child("intake").child("plantCount").getValue());
+                        }
+                        entity.areaSize = DailyExpenseMath.asDouble(snapshot.child("areaSize").getValue());
+                        entity.startingDate = DailyExpenseMath.asString(snapshot.child("startingDate").getValue());
+                        entity.sowingDate = DailyExpenseMath.asString(snapshot.child("sowingDate").getValue());
+                        entity.transplantDate = DailyExpenseMath.asString(snapshot.child("transplantDate").getValue());
+                        entity.stopDate = DailyExpenseMath.asString(snapshot.child("stopDate").getValue());
+                        entity.phase3Date = DailyExpenseMath.asString(snapshot.child("phase3Date").getValue());
+                        entity.phase4Date = DailyExpenseMath.asString(snapshot.child("phase4Date").getValue());
+                        entity.phase5Date = DailyExpenseMath.asString(snapshot.child("phase5Date").getValue());
+                        entity.awf = DailyExpenseMath.asDouble(snapshot.child("farmMetrics").child("awf").getValue());
+                        entity.afp = DailyExpenseMath.asDouble(snapshot.child("farmMetrics").child("afp").getValue());
+                        entity.marketValue = DailyExpenseMath.asDouble(
+                                snapshot.child("farmMetrics").child("marketValue").getValue());
+                        entity.financeLossPct = DailyExpenseMath.asDouble(snapshot.child("financeLossPct").getValue());
+                        entity.phaseBudget1 = DailyExpenseMath.asDouble(snapshot.child("phaseBudget1").getValue());
+                        entity.phaseBudget2 = DailyExpenseMath.asDouble(snapshot.child("phaseBudget2").getValue());
+                        entity.phaseBudget3 = DailyExpenseMath.asDouble(snapshot.child("phaseBudget3").getValue());
+                        entity.phaseBudget4 = DailyExpenseMath.asDouble(snapshot.child("phaseBudget4").getValue());
+                        entity.phaseBudget5 = DailyExpenseMath.asDouble(snapshot.child("phaseBudget5").getValue());
+                        entity.completionRate = DailyExpenseMath.asDouble(snapshot.child("completionRate").getValue());
+                        entity.phase1Completion = DailyExpenseMath.asDouble(snapshot.child("phase1Completion").getValue());
+                        entity.phase2Completion = DailyExpenseMath.asDouble(snapshot.child("phase2Completion").getValue());
+                        entity.phase3Completion = DailyExpenseMath.asDouble(snapshot.child("phase3Completion").getValue());
+                        entity.phase4Completion = DailyExpenseMath.asDouble(snapshot.child("phase4Completion").getValue());
+                        entity.phase5Completion = DailyExpenseMath.asDouble(snapshot.child("phase5Completion").getValue());
+                        applyLoadedProgram(entity);
+                    }
+                    @Override public void onCancelled(@NonNull DatabaseError error) {}
+                });
+    }
+
     private void setMetricsLocked(boolean locked) {
-        etHectare.setEnabled(!locked);
+        etHectare.setEnabled(false);
         etAWF.setEnabled(!locked);
         etAFP.setEnabled(!locked);
         etMarketValue.setEnabled(!locked);
@@ -370,7 +543,7 @@ public class Calculator extends BaseBottomNavActivity {
         setMetricsLocked(false);
         btnSaveToAnalytics.setOnClickListener(v -> {
             // Validate that calculation is complete
-            if (hectare <= 0 || grossIncome <= 0) {
+            if (plantsPlanted <= 0 || grossIncome <= 0) {
                 showSingleToast("Please complete the calculation before saving to analytics", Toast.LENGTH_SHORT);
                 return;
             }
@@ -1266,33 +1439,28 @@ public class Calculator extends BaseBottomNavActivity {
             return;
         }
         
-        if (hectare <= 0 || grossIncome <= 0) {
+        if (plantsPlanted <= 0 || grossIncome <= 0) {
             Toast.makeText(this, "Please complete the calculation before saving to analytics", Toast.LENGTH_SHORT).show();
             return;
         }
         
-        DatabaseReference workProgramRef = FirebaseDatabase.getInstance()
-                .getReference("users")
-                .child(currentUser.getUid())
-                .child("workPrograms")
-                .child(programId);
-
         Map<String, Object> updates = new HashMap<>();
-        // Legacy fields (already used in the app)
-        updates.put("cultivar", cultivarName);
-        updates.put("landArea", hectare);
-        // Analytics-friendly fields
-        updates.put("cultivarName", cultivarName);
-        updates.put("areaSize", hectare);
         updates.put("projectedIncome", grossIncome);
         updates.put("projectedExpenses", totalExpenses);
         updates.put("farmMetrics/awf", AWF);
         updates.put("farmMetrics/afp", AFP);
         updates.put("farmMetrics/marketValue", marketValue);
+        updates.put("financeLossPct", financeLossPct);
+        updates.put("phaseBudget1", phaseBudgets[0]);
+        updates.put("phaseBudget2", phaseBudgets[1]);
+        updates.put("phaseBudget3", phaseBudgets[2]);
+        updates.put("phaseBudget4", phaseBudgets[3]);
+        updates.put("phaseBudget5", phaseBudgets[4]);
 
         if (btnSaveToAnalytics != null) btnSaveToAnalytics.setEnabled(false);
 
-        workProgramRef.updateChildren(updates)
+        LocalDataManager.getInstance(this)
+                .updateProgramFields(currentUser.getUid(), programId, updates)
                 .addOnSuccessListener(aVoid -> {
                     Toast.makeText(this, "Successfully saved to Analytics and Season Comparison", Toast.LENGTH_SHORT).show();
                     setMetricsLocked(true);
@@ -1305,31 +1473,32 @@ public class Calculator extends BaseBottomNavActivity {
 
     private void compute() {
         try {
-            hectare = parse(etHectare);
             AWF = parse(etAWF);
             AFP = parse(etAFP);
             marketValue = parse(etMarketValue);
-
-            // 🔹 Update NP immediately when hectare changes
-            currentNP = baseNP * hectare;
-            if (hectare > 0) {
-                tvNP.setText(String.format(Locale.getDefault(), "Number of Plants (NP): %s", df.format(currentNP)));
-            } else {
-                tvNP.setText(String.format(Locale.getDefault(), "Number of Plants (NP): %s", df.format(baseNP)));
+            financeLossPct = etFinanceLossPct == null ? 0 : parse(etFinanceLossPct);
+            financeLossPct = Math.max(0, Math.min(100, financeLossPct));
+            for (int i = 0; i < 5; i++) {
+                EditText field = i == 0 ? etPhaseBudget1 : i == 1 ? etPhaseBudget2 :
+                        i == 2 ? etPhaseBudget3 : i == 3 ? etPhaseBudget4 : etPhaseBudget5;
+                phaseBudgets[i] = field == null ? 0 : Math.max(0, parse(field));
             }
+            currentNP = plantsPlanted;
+            tvNP.setText(String.format(Locale.getDefault(), "Plants planted: %s",
+                    plantsPlanted > 0 ? df.format(plantsPlanted) : "not recorded"));
 
-            // 🔹 Compute totals only when all fields are filled
-            if (hectare > 0 && AWF > 0 && AFP > 0 && marketValue > 0) {
-                double AWP = AWF * AFP;           // Average Weight per Plant
-                totalHarvestGrams = AWP * currentNP;      // Total Harvest (grams)
-                totalHarvestKg = totalHarvestGrams / 1000;          // Total Harvest (kilograms)
-                grossIncome = totalHarvestKg * marketValue; // ₱
+            if (plantsPlanted > 0 && AWF > 0 && AFP > 0) {
+                totalHarvestKg = plantsPlanted * AFP * AWF / 1000.0
+                        * (1 - financeLossPct / 100.0);
+                totalHarvestGrams = totalHarvestKg * 1000;
+                grossIncome = marketValue > 0 ? totalHarvestKg * marketValue : 0;
 
                 // Update harvest display based on selected unit
                 updateHarvestDisplay();
                 
                 // Update Harvest Prediction card
-                updateHarvestPrediction(totalHarvestKg, hectare);
+                updateHarvestPrediction(totalHarvestKg,
+                        loadedProgram != null && loadedProgram.areaSize > 0 ? loadedProgram.areaSize : 1);
             } else {
                 grossIncome = 0;
                 totalHarvestGrams = 0;
@@ -1364,32 +1533,67 @@ public class Calculator extends BaseBottomNavActivity {
     
     private void computeExpenses() {
         try {
-            // Use aggregated values from daily expenses
-            // manpower is already set from aggregatedLaborCost in populateExpenseFields()
-            double equipmentCost = aggregatedEquipmentCost;
-            double materialCost = aggregatedMaterialCost;
-            double miscCost = aggregatedMiscCost;
-            
-            // Calculate total expenses from all categories
-            totalExpenses = manpower + equipmentCost + materialCost + miscCost;
-            
-            // Calculate net income = Gross Income - Total Expenses
+            double[] actualByPhase = new double[5];
+            Collections.sort(dayLogs, (left, right) -> left.dateKey.compareTo(right.dateKey));
+            for (DayLog log : dayLogs) {
+                int phase = log.catchUp ? log.phase : getPhaseForDate(log.dateKey);
+                if (phase >= 1 && phase <= 5) actualByPhase[phase - 1] += log.dayTotal;
+            }
+
+            boolean budgetsEntered = false;
+            for (double budget : phaseBudgets) if (budget > 0) budgetsEntered = true;
+            int currentPhase = getCurrentPhase();
+            totalExpenses = 0;
+            if (budgetsEntered) {
+                for (int i = 0; i < 5; i++) {
+                    double cost = i + 1 < currentPhase
+                            ? actualByPhase[i]
+                            : (currentPhase > 0 && i + 1 >= currentPhase
+                                ? Math.max(actualByPhase[i], phaseBudgets[i])
+                                : actualByPhase[i]);
+                    totalExpenses += cost;
+                }
+            } else {
+                for (double actual : actualByPhase) totalExpenses += actual;
+            }
+
             netIncome = grossIncome - totalExpenses;
-            
-            // Display results
+
             if (tvTotalExpenses != null) {
                 tvTotalExpenses.setText(String.format(Locale.getDefault(), "Total Expenses: ₱%s", df2.format(totalExpenses)));
             }
-
-            // Update card net income (default to zero if no calculation)
             if (tvNetIncomeCard != null) {
                 if (grossIncome > 0 || totalExpenses > 0) {
-                tvNetIncomeCard.setText(String.format(Locale.getDefault(), "₱%s", df2.format(netIncome)));
+                    tvNetIncomeCard.setText(String.format(Locale.getDefault(), "₱%s", df2.format(netIncome)));
                 } else {
                     tvNetIncomeCard.setText("₱0.00");
                 }
             }
-
+            if (tvCostProjectionTitle != null) {
+                tvCostProjectionTitle.setText(budgetsEntered ? "Projected costs" : "Costs logged so far");
+            }
+            if (tvPlannedCost != null) tvPlannedCost.setText(String.format(Locale.getDefault(),
+                    budgetsEntered ? "Projected cost: ₱%s" : "Net so far: ₱%s",
+                    df2.format(budgetsEntered ? totalExpenses : netIncome)));
+            double costPerKg = totalHarvestKg > 0 ? totalExpenses / totalHarvestKg : 0;
+            double breakEvenPrice = totalHarvestKg > 0 ? totalExpenses / totalHarvestKg : 0;
+            double breakEvenYield = marketValue > 0 ? totalExpenses / marketValue : 0;
+            double margin = grossIncome > 0 ? netIncome / grossIncome * 100 : 0;
+            if (tvCostPerKg != null) tvCostPerKg.setText(String.format(Locale.getDefault(),
+                    "Cost/kg: ₱%s", df2.format(costPerKg)));
+            if (tvBreakEvenPrice != null) tvBreakEvenPrice.setText(String.format(Locale.getDefault(),
+                    "Break-even price: ₱%s/kg", df2.format(breakEvenPrice)));
+            if (tvBreakEvenYield != null) tvBreakEvenYield.setText(String.format(Locale.getDefault(),
+                    "Break-even yield: %s kg", df2.format(breakEvenYield)));
+            if (tvMargin != null) tvMargin.setText(String.format(Locale.getDefault(),
+                    "Margin: %.2f%%", margin));
+            if (tvWhatIfPrices != null) {
+                tvWhatIfPrices.setText(String.format(Locale.getDefault(),
+                        "what-if, not a forecast\n-20%%: ₱%s  |  0%%: ₱%s  |  +20%%: ₱%s",
+                        df2.format(totalHarvestKg * marketValue * 0.80 - totalExpenses),
+                        df2.format(netIncome),
+                        df2.format(totalHarvestKg * marketValue * 1.20 - totalExpenses)));
+            }
             applyAdjustedProjection();
         } catch (Exception e) {
             Log.e(TAG, "Error calculating income/expenses", e);
@@ -1412,8 +1616,43 @@ public class Calculator extends BaseBottomNavActivity {
         }
     }
 
+    private int getCurrentPhase() {
+        try {
+            LocalDate today = LocalDate.now();
+            return getPhaseForDate(today.toString());
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private int getPhaseForDate(String dateKey) {
+        try {
+            LocalDate date = LocalDate.parse(dateKey);
+            if (loadedProgram != null) {
+                LocalDate planting = parseDate(loadedProgram.startingDate);
+                if (planting == null) planting = parseDate(dateSaved);
+                LocalDate transplant = parseDate(loadedProgram.transplantDate);
+                LocalDate stop = parseDate(loadedProgram.stopDate);
+                return TaskSchedule.getPhaseNumber(planting, transplant, stop, date,
+                        parseDate(loadedProgram.phase3Date),
+                        parseDate(loadedProgram.phase4Date),
+                        parseDate(loadedProgram.phase5Date));
+            }
+            return dateSaved == null ? 0 : TaskSchedule.getPhaseNumber(
+                    parseDate(dateSaved), null, null, date, null, null, null);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private LocalDate parseDate(String value) {
+        if (value == null || value.trim().isEmpty()) return null;
+        try { return LocalDate.parse(value.trim()); } catch (Exception e) { return null; }
+    }
+
     private double parse(EditText et) {
-        String value = et.getText().toString().trim();
+        if (et == null) return 0;
+        String value = et.getText().toString().trim().replace(",", "");
         try {
             return value.isEmpty() ? 0 : Double.parseDouble(value);
         } catch (NumberFormatException e) {
@@ -1424,28 +1663,11 @@ public class Calculator extends BaseBottomNavActivity {
 
     private void updateCompletionWarning() {
         if (tvCompletionWarning == null) return;
-        if (completionStats == null || completionStats.totalTasks <= 0) {
+        if (loadedProgram == null) {
             tvCompletionWarning.setVisibility(View.GONE);
             return;
         }
-        double rate = completionStats.completionRate;
-        if (rate >= 85 && completionStats.missedTasks == 0 && completionStats.skippedTasks == 0) {
-            tvCompletionWarning.setVisibility(View.GONE);
-            return;
-        }
-        StringBuilder warning = new StringBuilder();
-        warning.append(String.format(Locale.getDefault(), "Completion logged at %.0f%%.", rate));
-        if (completionStats.missedTasks > 0) {
-            warning.append(" Missed days are lowering projected harvest.");
-        } else if (completionStats.skippedTasks > 0) {
-            warning.append(" Skipped days may defer income.");
-        }
-        String phaseHint = getWeakPhaseHint();
-        if (!phaseHint.isEmpty()) {
-            warning.append("\n").append(phaseHint);
-        }
-        tvCompletionWarning.setText(warning.toString());
-        tvCompletionWarning.setVisibility(View.VISIBLE);
+        applyRoomCompletionWarning(loadedProgram);
     }
 
     private String getWeakPhaseHint() {
@@ -1484,65 +1706,28 @@ public class Calculator extends BaseBottomNavActivity {
     }
 
     private void loadCompletionStats() {
-        if (tvCompletionRate != null) {
-            tvCompletionRate.setText("Completion rate: syncing...");
+        if (tvCompletionRate != null && (programId == null || currentUser == null)) {
+            tvCompletionRate.setText("0% Complete");
         }
-        if (programId == null || currentUser == null) {
-            if (tvCompletionRate != null) {
-                tvCompletionRate.setText("Completion rate: N/A");
-            }
-            return;
-        }
-
-        WorkProgramDataHelper.fetchCompletionStats(
-                currentUser.getUid(),
-                programId,
-                cultivarName,
-                dateSaved,
-                stats -> runOnUiThread(() -> {
-                    completionStats = stats;
-                    applyAdjustedProjection();
-                })
-        );
     }
 
     private void applyAdjustedProjection() {
         if (tvCompletionRate != null) {
-            if (completionStats != null && completionStats.totalTasks > 0) {
-                tvCompletionRate.setText(String.format(Locale.getDefault(),
-                        "Completion rate: %.0f%%", completionStats.completionRate));
-            } else {
-                tvCompletionRate.setText("Completion rate: N/A");
-            }
+            double rate = loadedProgram != null ? loadedProgram.completionRate
+                    : (completionStats != null ? completionStats.completionRate : 0);
+            tvCompletionRate.setText(String.format(Locale.getDefault(), "%.0f%% Complete", rate));
         }
 
         if (tvAdjustedNetIncome == null || tvAdjustedExpenses == null) {
             return;
         }
-
-        if (completionStats == null || completionStats.totalTasks <= 0 || grossIncome <= 0) {
-            tvAdjustedNetIncome.setText("₱—");
-            if (tvAdjustedExpenses != null) {
-                tvAdjustedExpenses.setText("Adjusted Expenses (₱): —");
-            }
-            if (tvCompletionWarning != null) {
-                tvCompletionWarning.setVisibility(View.GONE);
-            }
-            return;
-        }
-
-        WorkProgramDataHelper.AdjustedProjection projection =
-                WorkProgramDataHelper.adjustProjectionsByCompletionRate(
-                        grossIncome,
-                        totalExpenses,
-                        completionStats
-                );
-        double adjustedNetIncome = projection.adjustedIncome - projection.adjustedExpenses;
+        double adjustedNetIncome = netIncome;
         tvAdjustedNetIncome.setText(String.format(Locale.getDefault(), "₱%s", df2.format(adjustedNetIncome)));
         if (tvAdjustedSubtitle != null) {
-            tvAdjustedSubtitle.setText("Adjusted net income (based on completion)");
+            tvAdjustedSubtitle.setText("Adjusted net income");
         }
-        tvAdjustedExpenses.setText(String.format(Locale.getDefault(), "Adjusted Expenses: ₱%s", df2.format(projection.adjustedExpenses)));
+        tvAdjustedExpenses.setText(String.format(Locale.getDefault(),
+                "Adjusted Expenses: ₱%s", df2.format(totalExpenses)));
         updateCompletionWarning();
     }
 }

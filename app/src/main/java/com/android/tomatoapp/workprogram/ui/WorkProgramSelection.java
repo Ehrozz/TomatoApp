@@ -101,6 +101,7 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
         
         userId = currentUser.getUid();
         dbRef = FirebaseDatabase.getInstance().getReference("users").child(userId).child("workPrograms");
+        dbRef.keepSynced(true);
 
         // Load data with offline fallback
         loadWorkPrograms();
@@ -420,6 +421,12 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
                 put("placementDate", AppClock.today(WorkProgramSelection.this).toString());
             }});
             data.put("placementSource", "onboarding");
+            if (answers.plantCount != null && !answers.plantCount.isEmpty()) {
+                try {
+                    data.put("plantCount", Long.parseLong(answers.plantCount));
+                } catch (NumberFormatException ignored) {
+                }
+            }
         }
 
         // Calculate phases JSON
@@ -432,6 +439,18 @@ public class WorkProgramSelection extends BaseBottomNavActivity {
                 0.0, 0.0, 0.0, 0.0, 0.0,
                 0, 0, 0, 0, 0.0
         );
+        
+        if (answers != null) {
+            entity.seedsConfirmedDate = answers.seedsConfirmedDate;
+            entity.sowingDate = answers.sowingDate;
+            entity.transplantDate = answers.transplantDate;
+            entity.stopDate = answers.stopDate;
+
+            try {
+                entity.plantCount = Integer.parseInt(answers.plantCount);
+            } catch (NumberFormatException ignored) {
+            }
+        }
 
         LocalDataManager.getInstance(this).saveWorkProgramToLocal(entity, "CREATE");
         LocalDataManager.getInstance(this).processSyncQueue(this, userId);

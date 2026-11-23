@@ -198,8 +198,21 @@
                 android:textSize="16sp"
                 android:textStyle="bold"
                 app:cornerRadius="16dp"
-                android:layout_marginBottom="40dp"
+                android:layout_marginBottom="12dp"
                 app:backgroundTint="@color/green" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSetPassword"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginBottom="40dp"
+                android:text="Set password"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                app:backgroundTint="@color/red"
+                app:cornerRadius="16dp" />
 
             <!-- Progress Bar -->
             <ProgressBar

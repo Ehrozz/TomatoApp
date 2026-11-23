@@ -248,8 +248,8 @@
                             android:paddingVertical="8dp"
                             android:background="@drawable/bottom_nav_gradient"
                             android:backgroundTint="@color/border">
-                            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Area / Hectare" android:textSize="12sp" android:textColor="@color/muted" />
-                            <EditText android:id="@+id/etHectare" android:layout_width="100dp" android:layout_height="wrap_content" android:background="@drawable/bg_pill_input" android:paddingHorizontal="12dp" android:paddingVertical="6dp" android:textSize="13sp" android:textStyle="bold" android:gravity="end" android:inputType="numberDecimal" />
+                            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Plants planted" android:textSize="12sp" android:textColor="@color/muted" />
+                            <EditText android:id="@+id/etHectare" android:layout_width="100dp" android:layout_height="wrap_content" android:enabled="false" android:focusable="false" android:background="@drawable/bg_pill_input" android:paddingHorizontal="12dp" android:paddingVertical="6dp" android:textSize="13sp" android:textStyle="bold" android:gravity="end" android:inputType="number" />
                         </LinearLayout>
 
                         <LinearLayout
@@ -297,6 +297,64 @@
                                 android:layout_weight="1" />
                             <TextView android:id="@+id/tvSubTotalHarvest" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0 kg" android:textSize="15sp" android:textStyle="bold" android:textColor="@color/green" android:fontFamily="serif" />
                         </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnAdvancedToggle"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginBottom="12dp"
+                    android:text="Advanced ▼"
+                    android:textAllCaps="false"
+                    app:cornerRadius="24dp" />
+
+                <LinearLayout
+                    android:id="@+id/advancedFieldsContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    android:layout_marginBottom="12dp">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="2dp"
+                        app:cardBackgroundColor="@color/white">
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:paddingVertical="6dp">
+                                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Expected losses (%)" android:textSize="12sp" android:textColor="@color/muted"/>
+                                <EditText android:id="@+id/etFinanceLossPct" android:layout_width="100dp" android:layout_height="wrap_content" android:background="@drawable/bg_pill_input" android:gravity="end" android:inputType="numberDecimal" android:padding="8dp" android:text="0"/>
+                            </LinearLayout>
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Per-phase budgets (₱)" android:textStyle="bold" android:textSize="12sp" android:layout_marginTop="8dp"/>
+                            <EditText android:id="@+id/etPhaseBudget1" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Phase 1 budget" android:inputType="numberDecimal"/>
+                            <EditText android:id="@+id/etPhaseBudget2" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Phase 2 budget" android:inputType="numberDecimal"/>
+                            <EditText android:id="@+id/etPhaseBudget3" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Phase 3 budget" android:inputType="numberDecimal"/>
+                            <EditText android:id="@+id/etPhaseBudget4" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Phase 4 budget" android:inputType="numberDecimal"/>
+                            <EditText android:id="@+id/etPhaseBudget5" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Phase 5 budget" android:inputType="numberDecimal"/>
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+                </LinearLayout>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="@color/white">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                        <TextView android:id="@+id/tvCostProjectionTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Costs logged so far" android:textStyle="bold" android:textSize="13sp" android:textColor="@color/text"/>
+                        <TextView android:id="@+id/tvPlannedCost" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Net so far: ₱0.00" android:textSize="15sp" android:textStyle="bold" android:textColor="@color/green" android:layout_marginTop="6dp"/>
+                        <TextView android:id="@+id/tvCostPerKg" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cost/kg: ₱0.00" android:layout_marginTop="8dp"/>
+                        <TextView android:id="@+id/tvBreakEvenPrice" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Break-even price: ₱0.00/kg"/>
+                        <TextView android:id="@+id/tvBreakEvenYield" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Break-even yield: 0 kg"/>
+                        <TextView android:id="@+id/tvMargin" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Margin: 0.00%"/>
+                        <TextView android:id="@+id/tvWhatIfPrices" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="what-if, not a forecast" android:textStyle="italic" android:layout_marginTop="8dp"/>
+                        <TextView android:id="@+id/tvCompletionWarning" android:layout_width="match_parent" android:layout_height="wrap_content" android:visibility="gone" android:textColor="#A33A18" android:layout_marginTop="8dp"/>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -353,7 +411,6 @@
                 <TextView android:id="@+id/tvSummarySubtitle" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
                 <TextView android:id="@+id/tvDateSaved" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
                 <TextView android:id="@+id/tvAdjustedSubtitle" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
-                <TextView android:id="@+id/tvCompletionWarning" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
                 <TextView android:id="@+id/tvCultivarName" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
                 <com.google.android.material.button.MaterialButton android:id="@+id/btnDailyExpensesHistory" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
                 <TextView android:id="@+id/tvNP" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>

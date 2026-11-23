@@ -38,7 +38,9 @@ import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.common.ui.dialogs.TermsDialog;
@@ -54,6 +56,7 @@ public class Login extends AppCompatActivity {
     private FirebaseAuth mAuth;
     private ProgressBar progressBar;
     private TextView textView;
+    private TextView forgotPassword;
     private DatabaseReference usersRef;
 
     // Google Sign-In
@@ -119,11 +122,13 @@ public class Login extends AppCompatActivity {
         progressBar = findViewById(R.id.progressBar);
         mAuth = FirebaseAuth.getInstance();
         textView = findViewById(R.id.registerNow);
+        forgotPassword = findViewById(R.id.forgotPassword);
         timeoutHandler = new Handler(Looper.getMainLooper());
         
         // Null checks
         if (editTextEmail == null || editTextPassword == null || buttonLogin == null ||
-                buttonGoogleSignIn == null || progressBar == null || textView == null) {
+                buttonGoogleSignIn == null || progressBar == null || textView == null ||
+                forgotPassword == null) {
             Toast.makeText(this, getString(R.string.info_ui_elements_missing), Toast.LENGTH_LONG).show();
             finish();
             return;
@@ -149,6 +154,8 @@ public class Login extends AppCompatActivity {
             Intent intent = new Intent(getApplicationContext(), Register.class);
             startActivity(intent);
         });
+
+        forgotPassword.setOnClickListener(v -> onForgotPasswordClicked());
 
         // Email/Username/Phone login
         usersRef = FirebaseDatabase.getInstance().getReference("users");
@@ -263,6 +270,7 @@ public class Login extends AppCompatActivity {
                     if (task.isSuccessful()) {
                         FirebaseUser user = mAuth.getCurrentUser();
                         if (user != null) {
+                            ensureRealtimeUser(user);
                             // Check if terms are accepted before proceeding
                             if (!TermsDialog.areTermsAccepted(this, user.getUid())) {
                                 showTermsDialogBeforeLogin(user.getUid());
@@ -306,12 +314,64 @@ public class Login extends AppCompatActivity {
                             }
                         } else {
                             String errorMessage = FirebaseErrorHandler.getErrorMessage(Login.this, task.getException());
-                            Toast.makeText(Login.this, errorMessage, Toast.LENGTH_SHORT).show();
+                            errorMessage = errorMessage + " If you signed up with Google, use Google Sign-In or tap Forgot password.";
+                            Toast.makeText(Login.this, errorMessage, Toast.LENGTH_LONG).show();
                         }
                     }
                 });
     }
     
+    private void onForgotPasswordClicked() {
+        String identifier = editTextEmail.getText() != null
+                ? editTextEmail.getText().toString().trim()
+                : "";
+        if (Patterns.EMAIL_ADDRESS.matcher(identifier).matches()) {
+            sendPasswordReset(identifier);
+            return;
+        }
+        if (TextUtils.isEmpty(identifier)) {
+            Toast.makeText(this, "Enter your email above first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        resolveEmailForIdentifier(identifier, resolvedEmail -> {
+            if (resolvedEmail == null || !Patterns.EMAIL_ADDRESS.matcher(resolvedEmail).matches()) {
+                Toast.makeText(Login.this, "Enter your email above first", Toast.LENGTH_SHORT).show();
+            } else {
+                sendPasswordReset(resolvedEmail);
+            }
+        });
+    }
+
+    private void sendPasswordReset(String email) {
+        mAuth.sendPasswordResetEmail(email).addOnCompleteListener(task ->
+                Toast.makeText(Login.this,
+                        "If this email has an account, a reset link was sent.",
+                        Toast.LENGTH_LONG).show());
+    }
+
+    private void ensureRealtimeUser(FirebaseUser user) {
+        DatabaseReference ref = (usersRef != null ? usersRef : FirebaseDatabase.getInstance().getReference("users"))
+                .child(user.getUid());
+        ref.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    return;
+                }
+                Map<String, Object> profile = new HashMap<>();
+                profile.put("fullName", user.getDisplayName() != null ? user.getDisplayName() : "");
+                profile.put("email", user.getEmail() != null ? user.getEmail() : "");
+                profile.put("address", "");
+                ref.updateChildren(profile);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.w("Login", "Failed to check user profile: " + error.getMessage());
+            }
+        });
+    }
+
     private void proceedToMainActivity() {
         Toast.makeText(Login.this, getString(R.string.success_login), Toast.LENGTH_SHORT).show();
         Intent intent = new Intent(getApplicationContext(), MainActivity.class);

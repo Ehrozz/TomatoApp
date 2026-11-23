@@ -7,6 +7,7 @@ import com.android.tomatoapp.core.database.AppDatabase;
 import com.android.tomatoapp.core.network.LocalDataManager;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.FirebaseDatabase;
 
 public class TomatoAppApplication extends Application {
     private static final String TAG = "TomatoAppApplication";
@@ -15,8 +16,12 @@ public class TomatoAppApplication extends Application {
     public void onCreate() {
         super.onCreate();
         Log.d(TAG, "Application onCreate");
-        
-        // Initialize database
+
+        // Enable Firebase Realtime Database offline persistence.
+        // Must execute before other Realtime Database operations.
+        FirebaseDatabase.getInstance().setPersistenceEnabled(true);
+
+        // Initialize local Room database
         AppDatabase.getInstance(this);
     }
 

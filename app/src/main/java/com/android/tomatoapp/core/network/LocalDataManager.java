@@ -36,15 +36,23 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.TaskCompletionSource;
+import com.google.android.gms.tasks.Tasks;
 
 public class LocalDataManager {
     private static final String TAG = "LocalDataManager";
     private static LocalDataManager instance;
     private final AppDatabase database;
     private final ExecutorService executorService;
+    private final Context context;
+    private final AtomicBoolean syncQueueRunning = new AtomicBoolean(false);
 
     private LocalDataManager(Context context) {
-        database = AppDatabase.getInstance(context);
+        this.context = context.getApplicationContext();
+        database = AppDatabase.getInstance(this.context);
         executorService = Executors.newFixedThreadPool(2);
     }
 
@@ -79,6 +87,9 @@ public class LocalDataManager {
                                 for (DataSnapshot child : snapshot.getChildren()) {
                                     String programId = child.getKey();
                                     if (programId == null) continue;
+                                    if (database.syncActionDao().countForEntity(programId, "work_program") > 0) {
+                                        continue;
+                                    }
 
                                     WorkProgramEntity remoteEntity = parseWorkProgramFromSnapshot(child, programId, userId);
                                     if (remoteEntity != null) {
@@ -110,6 +121,7 @@ public class LocalDataManager {
 
     // Process Sync Queue (Upload offline changes to Firebase)
     public void processSyncQueue(Context context, String userId) {
+        if (!syncQueueRunning.compareAndSet(false, true)) return;
         executorService.execute(() -> {
             try {
                 if (!isOnline(context)) return;
@@ -130,38 +142,39 @@ public class LocalDataManager {
                     }
 
                     if (targetRef == null) continue;
-
-                    if ("DELETE".equals(action.action)) {
-                        targetRef.removeValue().addOnSuccessListener(
-                                aVoid -> executorService.execute(() -> database.syncActionDao().delete(action))
-                        );
-                    } else {
-                        // CREATE or UPDATE
-                        if ("work_program".equals(action.entityType)) {
+                    try {
+                        if ("DELETE".equals(action.action)) {
+                            Tasks.await(targetRef.removeValue());
+                        } else if ("work_program".equals(action.entityType)) {
                             WorkProgramEntity entity = database.workProgramDao().getById(action.entityId);
-                            if (entity != null) {
-                                java.util.Map<String, Object> data = serializeWorkProgram(entity);
-                                targetRef.updateChildren(data).addOnSuccessListener(
-                                        aVoid -> executorService.execute(() -> database.syncActionDao().delete(action))
-                                );
-                            } else {
-                                // Entity no longer exists locally, remove from queue
-                                executorService.execute(() -> database.syncActionDao().delete(action));
+                            if (entity == null) {
+                                database.syncActionDao().delete(action);
+                                continue;
                             }
+                            java.util.Map<String, Object> data;
+                            if ("UPDATE".equals(action.action) && action.dataJson != null) {
+                                data = jsonObjectToMap(action.dataJson);
+                            } else {
+                                data = serializeWorkProgram(entity);
+                            }
+                            Tasks.await(targetRef.updateChildren(data));
                         } else if ("location".equals(action.entityType)) {
                             UserLocationEntity entity = database.userLocationDao().getById(action.entityId);
-                            if (entity != null) {
-                                targetRef.setValue(serializeUserLocation(entity)).addOnSuccessListener(
-                                        aVoid -> executorService.execute(() -> database.syncActionDao().delete(action))
-                                );
-                            } else {
-                                executorService.execute(() -> database.syncActionDao().delete(action));
+                            if (entity == null) {
+                                database.syncActionDao().delete(action);
+                                continue;
                             }
+                            Tasks.await(targetRef.setValue(serializeUserLocation(entity)));
                         }
+                        database.syncActionDao().delete(action);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Sync queue action failed: " + action.action + " " + action.entityId, e);
                     }
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Error processing sync queue", e);
+            } finally {
+                syncQueueRunning.set(false);
             }
         });
     }
@@ -188,6 +201,24 @@ public class LocalDataManager {
         data.put("phase4Completion", entity.phase4Completion);
         data.put("phase5Completion", entity.phase5Completion);
         if (entity.harvestDate != null) data.put("harvestDate", entity.harvestDate);
+        if (entity.plantCount != 0) data.put("plantCount", entity.plantCount);
+        if (entity.seedsConfirmedDate != null && !entity.seedsConfirmedDate.isEmpty()) data.put("seedsConfirmedDate", entity.seedsConfirmedDate);
+        if (entity.sowingDate != null && !entity.sowingDate.isEmpty()) data.put("sowingDate", entity.sowingDate);
+        if (entity.transplantDate != null && !entity.transplantDate.isEmpty()) data.put("transplantDate", entity.transplantDate);
+        if (entity.stopDate != null && !entity.stopDate.isEmpty()) data.put("stopDate", entity.stopDate);
+        if (entity.phase3Date != null && !entity.phase3Date.isEmpty()) data.put("phase3Date", entity.phase3Date);
+        if (entity.phase4Date != null && !entity.phase4Date.isEmpty()) data.put("phase4Date", entity.phase4Date);
+        if (entity.phase5Date != null && !entity.phase5Date.isEmpty()) data.put("phase5Date", entity.phase5Date);
+        if (entity.loggedExpensesTotal != 0) data.put("loggedExpensesTotal", entity.loggedExpensesTotal);
+        if (entity.awf != 0) data.put("farmMetrics/awf", entity.awf);
+        if (entity.afp != 0) data.put("farmMetrics/afp", entity.afp);
+        if (entity.marketValue != 0) data.put("farmMetrics/marketValue", entity.marketValue);
+        if (entity.financeLossPct != 0) data.put("financeLossPct", entity.financeLossPct);
+        if (entity.phaseBudget1 != 0) data.put("phaseBudget1", entity.phaseBudget1);
+        if (entity.phaseBudget2 != 0) data.put("phaseBudget2", entity.phaseBudget2);
+        if (entity.phaseBudget3 != 0) data.put("phaseBudget3", entity.phaseBudget3);
+        if (entity.phaseBudget4 != 0) data.put("phaseBudget4", entity.phaseBudget4);
+        if (entity.phaseBudget5 != 0) data.put("phaseBudget5", entity.phaseBudget5);
         return data;
     }
 
@@ -813,11 +844,48 @@ public class LocalDataManager {
             try {
                 entity.lastUpdated = System.currentTimeMillis();
                 database.workProgramDao().upsert(entity);
-                
-                // Add to sync queue
-                SyncActionEntity syncAction = new SyncActionEntity(
-                    entity.userId, "work_program", entity.id, actionType, null);
-                database.syncActionDao().insert(syncAction);
+
+                java.util.List<SyncActionEntity> existing =
+                        database.syncActionDao().getForEntity(entity.id, "work_program");
+                if ("DELETE".equals(actionType)) {
+                    database.syncActionDao().deleteForEntity(entity.id, "work_program");
+                    database.syncActionDao().insert(new SyncActionEntity(
+                            entity.userId, "work_program", entity.id, "DELETE", null));
+                } else if ("CREATE".equals(actionType)) {
+                    for (SyncActionEntity action : existing) {
+                        if ("CREATE".equals(action.action)) {
+                            return;
+                        }
+                    }
+                    database.syncActionDao().deleteForEntity(entity.id, "work_program");
+                    database.syncActionDao().insert(new SyncActionEntity(
+                            entity.userId, "work_program", entity.id, "CREATE", null));
+                } else {
+                    for (SyncActionEntity action : existing) {
+                        if ("DELETE".equals(action.action) || "CREATE".equals(action.action)) {
+                            return;
+                        }
+                    }
+                    JSONObject merged = new JSONObject();
+                    for (SyncActionEntity action : existing) {
+                        if ("UPDATE".equals(action.action) && action.dataJson != null) {
+                            JSONObject prior = new JSONObject(action.dataJson);
+                            java.util.Iterator<String> keys = prior.keys();
+                            while (keys.hasNext()) {
+                                String key = keys.next();
+                                merged.put(key, prior.get(key));
+                            }
+                        }
+                    }
+                    java.util.Map<String, Object> full = serializeWorkProgram(entity);
+                    for (java.util.Map.Entry<String, Object> entry : full.entrySet()) {
+                        merged.put(entry.getKey(), entry.getValue());
+                    }
+                    merged.put("lastUpdated", entity.lastUpdated);
+                    database.syncActionDao().deleteForEntity(entity.id, "work_program");
+                    database.syncActionDao().insert(new SyncActionEntity(
+                            entity.userId, "work_program", entity.id, "UPDATE", merged.toString()));
+                }
                 
                 Log.d(TAG, "Saved work program " + entity.id + " and queued " + actionType);
             } catch (Exception e) {
@@ -826,12 +894,123 @@ public class LocalDataManager {
         });
     }
 
+    public Task<Void> updateProgramFields(String userId, String programId, java.util.Map<String, Object> fields) {
+        java.util.Map<String, Object> firebaseFields = new java.util.HashMap<>();
+        firebaseFields.putAll(fields);
+        long lastUpdated = System.currentTimeMillis();
+        firebaseFields.put("lastUpdated", lastUpdated);
+        TaskCompletionSource<Void> result = new TaskCompletionSource<>();
+
+        executorService.execute(() -> {
+            try {
+                WorkProgramEntity entity = database.workProgramDao().getById(programId);
+                if (entity != null) {
+                    for (java.util.Map.Entry<String, Object> entry : fields.entrySet()) {
+                        String key = entry.getKey();
+                        Object value = entry.getValue();
+                        switch (key) {
+                        case "plantCount":
+                            entity.plantCount = numberAsInt(value);
+                            break;
+                        case "seedsConfirmedDate": entity.seedsConfirmedDate = stringValue(value); break;
+                        case "sowingDate": entity.sowingDate = stringValue(value); break;
+                        case "transplantDate": entity.transplantDate = stringValue(value); break;
+                        case "stopDate": entity.stopDate = stringValue(value); break;
+                        case "phase3Date": entity.phase3Date = stringValue(value); break;
+                        case "phase4Date": entity.phase4Date = stringValue(value); break;
+                        case "phase5Date": entity.phase5Date = stringValue(value); break;
+                        case "loggedExpensesTotal": entity.loggedExpensesTotal = numberAsDouble(value); break;
+                        case "farmMetrics/awf":
+                        case "awf": entity.awf = numberAsDouble(value); break;
+                        case "farmMetrics/afp":
+                        case "afp": entity.afp = numberAsDouble(value); break;
+                        case "farmMetrics/marketValue":
+                        case "marketValue": entity.marketValue = numberAsDouble(value); break;
+                        case "financeLossPct": entity.financeLossPct = numberAsDouble(value); break;
+                        case "phaseBudget1": entity.phaseBudget1 = numberAsDouble(value); break;
+                        case "phaseBudget2": entity.phaseBudget2 = numberAsDouble(value); break;
+                        case "phaseBudget3": entity.phaseBudget3 = numberAsDouble(value); break;
+                        case "phaseBudget4": entity.phaseBudget4 = numberAsDouble(value); break;
+                        case "phaseBudget5": entity.phaseBudget5 = numberAsDouble(value); break;
+                        case "cultivarName": entity.cultivarName = stringValue(value); break;
+                        case "startingDate": entity.startingDate = stringValue(value); break;
+                        case "areaSize": entity.areaSize = numberAsDouble(value); break;
+                        case "projectedIncome": entity.projectedIncome = numberAsDouble(value); break;
+                        case "projectedExpenses": entity.projectedExpenses = numberAsDouble(value); break;
+                        case "adjustedIncome": entity.adjustedIncome = numberAsDouble(value); break;
+                        case "adjustedExpenses": entity.adjustedExpenses = numberAsDouble(value); break;
+                        case "completionRate": entity.completionRate = numberAsDouble(value); break;
+                        case "phase1Completion": entity.phase1Completion = numberAsDouble(value); break;
+                        case "phase2Completion": entity.phase2Completion = numberAsDouble(value); break;
+                        case "phase3Completion": entity.phase3Completion = numberAsDouble(value); break;
+                        case "phase4Completion": entity.phase4Completion = numberAsDouble(value); break;
+                        case "phase5Completion": entity.phase5Completion = numberAsDouble(value); break;
+                        case "season": entity.season = stringValue(value); break;
+                        case "seasonMonth": entity.seasonMonth = numberAsInt(value); break;
+                        case "isOffSeason": entity.isOffSeason = booleanValue(value); break;
+                        case "actualYield": entity.actualYield = numberAsDouble(value); break;
+                        case "totalYield": entity.totalYield = numberAsDouble(value); break;
+                        case "harvestDate": entity.harvestDate = stringValue(value); break;
+                            default: break;
+                        }
+                    }
+                    entity.lastUpdated = lastUpdated;
+                    database.workProgramDao().upsert(entity);
+
+                    if (!isOnline(context)) {
+                        java.util.List<SyncActionEntity> existing =
+                                database.syncActionDao().getForEntity(programId, "work_program");
+                        JSONObject merged = new JSONObject();
+                        boolean protectedAction = false;
+                        for (SyncActionEntity action : existing) {
+                            if ("CREATE".equals(action.action) || "DELETE".equals(action.action)) {
+                                protectedAction = true;
+                                break;
+                            }
+                            if ("UPDATE".equals(action.action) && action.dataJson != null) {
+                                JSONObject prior = new JSONObject(action.dataJson);
+                                java.util.Iterator<String> keys = prior.keys();
+                                while (keys.hasNext()) {
+                                    String key = keys.next();
+                                    merged.put(key, prior.get(key));
+                                }
+                            }
+                        }
+                        if (!protectedAction) {
+                            for (java.util.Map.Entry<String, Object> entry : firebaseFields.entrySet()) {
+                                merged.put(entry.getKey(), entry.getValue());
+                            }
+                            database.syncActionDao().deleteForEntity(programId, "work_program");
+                            database.syncActionDao().insert(new SyncActionEntity(
+                                    userId, "work_program", programId, "UPDATE", merged.toString()));
+                        }
+                    }
+                }
+
+                Task<Void> firebaseTask = FirebaseDatabase.getInstance()
+                        .getReference("users")
+                        .child(userId)
+                        .child("workPrograms")
+                        .child(programId)
+                        .updateChildren(firebaseFields);
+                firebaseTask.addOnSuccessListener(aVoid -> result.setResult(null));
+                firebaseTask.addOnFailureListener(result::setException);
+            } catch (Exception e) {
+                Log.e(TAG, "Error updating work program fields", e);
+                result.setException(e);
+            }
+        });
+
+        return result.getTask();
+    }
+
     public void deleteWorkProgramLocally(String userId, String programId) {
         executorService.execute(() -> {
             try {
                 database.workProgramDao().deleteById(programId);
                 database.taskDao().deleteByProgram(userId, programId);
                 // Add to sync queue
+                database.syncActionDao().deleteForEntity(programId, "work_program");
                 SyncActionEntity syncAction = new SyncActionEntity(
                     userId, "work_program", programId, "DELETE", null);
                 database.syncActionDao().insert(syncAction);
@@ -853,84 +1032,83 @@ public class LocalDataManager {
         });
     }
 
+    private static double numberAsDouble(Object value) {
+        if (value instanceof Number) return ((Number) value).doubleValue();
+        if (value != null) {
+            try { return Double.parseDouble(value.toString()); } catch (NumberFormatException ignored) {}
+        }
+        return 0;
+    }
+
+    private static int numberAsInt(Object value) {
+        return (int) numberAsDouble(value);
+    }
+
+    private static String stringValue(Object value) {
+        return value == null ? null : value.toString();
+    }
+
+    private static boolean booleanValue(Object value) {
+        if (value instanceof Boolean) return (Boolean) value;
+        if (value != null) return Boolean.parseBoolean(value.toString());
+        return false;
+    }
+
+    private static double snapshotDouble(DataSnapshot snapshot, String key) {
+        return numberAsDouble(snapshot.child(key).getValue());
+    }
+
+    private static int snapshotInt(DataSnapshot snapshot, String key) {
+        return numberAsInt(snapshot.child(key).getValue());
+    }
+
+    private static long snapshotLong(DataSnapshot snapshot, String key) {
+        Object value = snapshot.child(key).getValue();
+        if (value instanceof Number) return ((Number) value).longValue();
+        if (value != null) {
+            try { return Long.parseLong(value.toString()); } catch (NumberFormatException ignored) {}
+        }
+        return 0;
+    }
+
+    private static String snapshotString(DataSnapshot snapshot, String key) {
+        Object value = snapshot.child(key).getValue();
+        return value == null ? null : value.toString();
+    }
+
+    private static boolean snapshotBoolean(DataSnapshot snapshot, String key) {
+        return booleanValue(snapshot.child(key).getValue());
+    }
+
+    private java.util.Map<String, Object> jsonObjectToMap(String json) {
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        try {
+            JSONObject object = new JSONObject(json);
+            java.util.Iterator<String> keys = object.keys();
+            while (keys.hasNext()) {
+                String key = keys.next();
+                result.put(key, object.get(key));
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Error parsing queued work program fields", e);
+        }
+        return result;
+    }
+
     // Helper method to parse WorkProgram from Firebase snapshot
     private WorkProgramEntity parseWorkProgramFromSnapshot(DataSnapshot snapshot, String programId, String userId) {
         try {
-            String cultivarName = snapshot.child("cultivarName").getValue(String.class);
-            if (cultivarName == null) {
-                cultivarName = snapshot.child("cultivar").getValue(String.class);
-            }
-            String startingDate = snapshot.child("startingDate").getValue(String.class);
-            if (startingDate == null) {
-                startingDate = snapshot.child("startDate").getValue(String.class);
-            }
+            String cultivarName = snapshotString(snapshot, "cultivarName");
+            if (cultivarName == null) cultivarName = snapshotString(snapshot, "cultivar");
+            String startingDate = snapshotString(snapshot, "startingDate");
+            if (startingDate == null) startingDate = snapshotString(snapshot, "startDate");
 
-            // Safely parse numeric fields
-            double areaSize = 0;
-            Object areaSizeObj = snapshot.child("areaSize").getValue();
-            if (areaSizeObj != null) {
-                if (areaSizeObj instanceof Double) {
-                    areaSize = (Double) areaSizeObj;
-                } else if (areaSizeObj instanceof Long) {
-                    areaSize = ((Long) areaSizeObj).doubleValue();
-                } else if (areaSizeObj instanceof String) {
-                    try {
-                        areaSize = Double.parseDouble((String) areaSizeObj);
-                    } catch (NumberFormatException ignored) { }
-                }
-            } else {
-                // Fallback to legacy landArea
-                Object legacyAreaValue = snapshot.child("landArea").getValue();
-                if (legacyAreaValue instanceof Double) {
-                    areaSize = (Double) legacyAreaValue;
-                } else if (legacyAreaValue instanceof Long) {
-                    areaSize = ((Long) legacyAreaValue).doubleValue();
-                } else if (legacyAreaValue instanceof String) {
-                    try {
-                        areaSize = Double.parseDouble((String) legacyAreaValue);
-                    } catch (NumberFormatException ignored) { }
-                }
-            }
-
-            double projectedIncome = 0;
-            Object incomeValue = snapshot.child("projectedIncome").getValue();
-            if (incomeValue instanceof Double) {
-                projectedIncome = (Double) incomeValue;
-            } else if (incomeValue instanceof Long) {
-                projectedIncome = ((Long) incomeValue).doubleValue();
-            } else if (incomeValue instanceof String) {
-                try {
-                    projectedIncome = Double.parseDouble((String) incomeValue);
-                } catch (NumberFormatException ignored) { }
-            }
-
-            double projectedExpenses = 0;
-            Object expensesValue = snapshot.child("projectedExpenses").getValue();
-            if (expensesValue instanceof Double) {
-                projectedExpenses = (Double) expensesValue;
-            } else if (expensesValue instanceof Long) {
-                projectedExpenses = ((Long) expensesValue).doubleValue();
-            } else if (expensesValue instanceof String) {
-                try {
-                    projectedExpenses = Double.parseDouble((String) expensesValue);
-                } catch (NumberFormatException ignored) { }
-            }
-
-            double adjustedIncome = 0;
-            Object adjustedIncomeValue = snapshot.child("adjustedIncome").getValue();
-            if (adjustedIncomeValue instanceof Double) {
-                adjustedIncome = (Double) adjustedIncomeValue;
-            } else if (adjustedIncomeValue instanceof Long) {
-                adjustedIncome = ((Long) adjustedIncomeValue).doubleValue();
-            }
-
-            double adjustedExpenses = 0;
-            Object adjustedExpensesValue = snapshot.child("adjustedExpenses").getValue();
-            if (adjustedExpensesValue instanceof Double) {
-                adjustedExpenses = (Double) adjustedExpensesValue;
-            } else if (adjustedExpensesValue instanceof Long) {
-                adjustedExpenses = ((Long) adjustedExpensesValue).doubleValue();
-            }
+            double areaSize = snapshotDouble(snapshot, "areaSize");
+            if (areaSize == 0) areaSize = snapshotDouble(snapshot, "landArea");
+            double projectedIncome = snapshotDouble(snapshot, "projectedIncome");
+            double projectedExpenses = snapshotDouble(snapshot, "projectedExpenses");
+            double adjustedIncome = snapshotDouble(snapshot, "adjustedIncome");
+            double adjustedExpenses = snapshotDouble(snapshot, "adjustedExpenses");
 
             // Calculate phases JSON if we have cultivar and start date
             String phasesJson = null;
@@ -939,25 +1117,24 @@ public class LocalDataManager {
             }
 
             // Parse research fields
-            String season = snapshot.child("season").getValue(String.class);
-            Integer seasonMonthObj = snapshot.child("seasonMonth").getValue(Integer.class);
-            Boolean isOffSeasonObj = snapshot.child("isOffSeason").getValue(Boolean.class);
-            Double actualYieldObj = snapshot.child("actualYield").getValue(Double.class);
-            Double totalYieldObj = snapshot.child("totalYield").getValue(Double.class);
-            String harvestDate = snapshot.child("harvestDate").getValue(String.class);
-            Long lastUpdated = snapshot.child("lastUpdated").getValue(Long.class);
+            String season = snapshotString(snapshot, "season");
+            int seasonMonth = snapshotInt(snapshot, "seasonMonth");
+            boolean isOffSeason = snapshotBoolean(snapshot, "isOffSeason");
+            double actualYield = snapshotDouble(snapshot, "actualYield");
+            double totalYield = snapshotDouble(snapshot, "totalYield");
+            String harvestDate = snapshotString(snapshot, "harvestDate");
+            long lastUpdated = snapshotLong(snapshot, "lastUpdated");
 
             // Auto-detect season if not set
             if (season == null && startingDate != null) {
                 season = SeasonHelper.getSeason(startingDate);
             }
-            int seasonMonth = seasonMonthObj != null ? seasonMonthObj :
-                             (startingDate != null ? SeasonHelper.getSeasonMonth(startingDate) : 0);
-            boolean isOffSeason = isOffSeasonObj != null
-                    ? isOffSeasonObj
-                    : (startingDate != null && SeasonHelper.isOffSeason(startingDate));
-            double actualYield = actualYieldObj != null ? actualYieldObj : 0.0;
-            double totalYield = totalYieldObj != null ? totalYieldObj : 0.0;
+            if (seasonMonth == 0 && startingDate != null) {
+                seasonMonth = SeasonHelper.getSeasonMonth(startingDate);
+            }
+            if (!snapshot.hasChild("isOffSeason") && startingDate != null) {
+                isOffSeason = SeasonHelper.isOffSeason(startingDate);
+            }
 
             // Create entity with all fields
             WorkProgramEntity entity = new WorkProgramEntity(
@@ -981,9 +1158,7 @@ public class LocalDataManager {
                     totalYield,
                     harvestDate
             );
-            Object completionRate = snapshot.child("completionRate").getValue();
-            entity.completionRate = completionRate instanceof Number
-                    ? ((Number) completionRate).doubleValue() : 0;
+            entity.completionRate = snapshotDouble(snapshot, "completionRate");
             for (int i = 1; i <= 5; i++) {
                 Object phaseCompletion = snapshot.child("phase" + i + "Completion").getValue();
                 double value = phaseCompletion instanceof Number
@@ -994,7 +1169,28 @@ public class LocalDataManager {
                 else if (i == 4) entity.phase4Completion = value;
                 else entity.phase5Completion = value;
             }
-            if (lastUpdated != null) entity.lastUpdated = lastUpdated;
+            entity.lastUpdated = lastUpdated;
+            entity.plantCount = snapshotInt(snapshot, "plantCount");
+            if (!snapshot.hasChild("plantCount")) {
+                entity.plantCount = snapshotInt(snapshot.child("intake"), "plantCount");
+            }
+            entity.seedsConfirmedDate = snapshotString(snapshot, "seedsConfirmedDate");
+            entity.sowingDate = snapshotString(snapshot, "sowingDate");
+            entity.transplantDate = snapshotString(snapshot, "transplantDate");
+            entity.stopDate = snapshotString(snapshot, "stopDate");
+            entity.phase3Date = snapshotString(snapshot, "phase3Date");
+            entity.phase4Date = snapshotString(snapshot, "phase4Date");
+            entity.phase5Date = snapshotString(snapshot, "phase5Date");
+            entity.loggedExpensesTotal = snapshotDouble(snapshot, "loggedExpensesTotal");
+            entity.awf = snapshotDouble(snapshot.child("farmMetrics"), "awf");
+            entity.afp = snapshotDouble(snapshot.child("farmMetrics"), "afp");
+            entity.marketValue = snapshotDouble(snapshot.child("farmMetrics"), "marketValue");
+            entity.financeLossPct = snapshotDouble(snapshot, "financeLossPct");
+            entity.phaseBudget1 = snapshotDouble(snapshot, "phaseBudget1");
+            entity.phaseBudget2 = snapshotDouble(snapshot, "phaseBudget2");
+            entity.phaseBudget3 = snapshotDouble(snapshot, "phaseBudget3");
+            entity.phaseBudget4 = snapshotDouble(snapshot, "phaseBudget4");
+            entity.phaseBudget5 = snapshotDouble(snapshot, "phaseBudget5");
             return entity;
         } catch (Exception e) {
             Log.e(TAG, "Error parsing work program", e);

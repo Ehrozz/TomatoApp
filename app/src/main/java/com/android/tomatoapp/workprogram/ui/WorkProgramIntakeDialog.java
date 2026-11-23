@@ -171,7 +171,9 @@ public class WorkProgramIntakeDialog {
                 if (IntakeAnswers.YES.equals(answers.transplanted)
                         || IntakeAnswers.ONGOING.equals(answers.transplanted)) {
                     TextView plantCountLabel = new TextView(context);
-                    plantCountLabel.setText("How many plants have you transplanted? (optional)");
+                    plantCountLabel.setText(IntakeAnswers.YES.equals(answers.transplanted)
+                            ? "How many plants did you transplant?"
+                            : "Estimated number of plants you will transplant (you can update it later)");
                     plantCountLabel.setTextColor(android.graphics.Color.BLACK);
                     plantCountLabel.setTextSize(13);
                     plantCountLabel.setPadding(0, 16, 0, 4);
@@ -510,6 +512,10 @@ public class WorkProgramIntakeDialog {
         }
 
         if (currentStep == Step.TRANSPLANT) {
+            if (IntakeAnswers.YES.equals(answers.transplanted) && answers.plantCount.isEmpty()) {
+                showError("Enter how many plants you transplanted.");
+                return;
+            }
             if (!answers.plantCount.isEmpty()) {
                 try {
                     long plantCount = Long.parseLong(answers.plantCount);

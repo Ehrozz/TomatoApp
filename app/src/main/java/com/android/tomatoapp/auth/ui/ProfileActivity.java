@@ -2,9 +2,11 @@ package com.android.tomatoapp.auth.ui;
 
 import android.os.Bundle;
 import android.content.Intent;
+import android.text.InputType;
 import android.text.TextUtils;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -16,6 +18,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 
 import com.android.tomatoapp.R;
 import com.android.tomatoapp.auth.data.User;
@@ -25,8 +28,11 @@ import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
 import android.content.SharedPreferences;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+import com.google.firebase.auth.EmailAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.UserInfo;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -50,6 +56,7 @@ public class ProfileActivity extends BaseBottomNavActivity {
     private TextInputLayout layoutAddress;
     
     private Button btnSave;
+    private Button btnSetPassword;
     private ProgressBar progressBar;
     private TextView profileNameHeader;
     private TextView profileEmailHeader;
@@ -90,6 +97,7 @@ public class ProfileActivity extends BaseBottomNavActivity {
         initializeViews();
         setupPhotoPicker();
         setupSaveButton();
+        setupSetPasswordButton();
         loadUserData();
     }
     
@@ -102,6 +110,7 @@ public class ProfileActivity extends BaseBottomNavActivity {
         layoutEmail = findViewById(R.id.layoutEmail);
         layoutAddress = findViewById(R.id.layoutAddress);
         btnSave = findViewById(R.id.btnSaveProfile);
+        btnSetPassword = findViewById(R.id.btnSetPassword);
         progressBar = findViewById(R.id.progressBarProfile);
         profileNameHeader = findViewById(R.id.profileNameHeader);
         profileEmailHeader = findViewById(R.id.profileEmailHeader);
@@ -131,6 +140,89 @@ public class ProfileActivity extends BaseBottomNavActivity {
                 saveUserData();
             }
         });
+    }
+
+    private void setupSetPasswordButton() {
+        if (btnSetPassword == null) {
+            return;
+        }
+        boolean hasPassword = hasPasswordProvider();
+        btnSetPassword.setVisibility(hasPassword ? View.GONE : View.VISIBLE);
+        btnSetPassword.setOnClickListener(v -> showSetPasswordDialog());
+    }
+
+    private boolean hasPasswordProvider() {
+        if (currentUser == null) {
+            return false;
+        }
+        for (UserInfo info : currentUser.getProviderData()) {
+            if (info != null && "password".equals(info.getProviderId())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void showSetPasswordDialog() {
+        EditText input = new EditText(this);
+        input.setHint("Password");
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        int pad = (int) (16 * getResources().getDisplayMetrics().density);
+        input.setPadding(pad, pad, pad, pad);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Set password")
+                .setMessage("At least 6 characters, with upper, lower, and a digit.")
+                .setView(input)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Confirm", (dialog, which) -> {
+                    String password = input.getText() != null ? input.getText().toString() : "";
+                    if (!isPasswordStrong(password)) {
+                        Toast.makeText(this,
+                                "Password must be at least 6 characters with upper, lower, and a digit.",
+                                Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    linkPassword(password);
+                })
+                .show();
+    }
+
+    private boolean isPasswordStrong(String password) {
+        if (password == null || password.length() < 6) {
+            return false;
+        }
+        boolean hasUpper = false;
+        boolean hasLower = false;
+        boolean hasDigit = false;
+        for (char c : password.toCharArray()) {
+            if (Character.isUpperCase(c)) hasUpper = true;
+            else if (Character.isLowerCase(c)) hasLower = true;
+            else if (Character.isDigit(c)) hasDigit = true;
+        }
+        return hasUpper && hasLower && hasDigit;
+    }
+
+    private void linkPassword(String password) {
+        if (currentUser == null || TextUtils.isEmpty(currentUser.getEmail())) {
+            Toast.makeText(this, "No email on this account.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        currentUser.linkWithCredential(EmailAuthProvider.getCredential(currentUser.getEmail(), password))
+                .addOnSuccessListener(result -> {
+                    Toast.makeText(this, "Password added. You can now log in either way.", Toast.LENGTH_LONG).show();
+                    if (btnSetPassword != null) {
+                        btnSetPassword.setVisibility(View.GONE);
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    if (e instanceof FirebaseAuthRecentLoginRequiredException) {
+                        Toast.makeText(this, "Please log out and sign in again, then retry.", Toast.LENGTH_LONG).show();
+                    } else {
+                        String message = e.getMessage() != null ? e.getMessage() : "Could not set password.";
+                        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+                    }
+                });
     }
     
     private void loadUserData() {

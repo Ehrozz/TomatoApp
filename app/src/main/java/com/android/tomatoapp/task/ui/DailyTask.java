@@ -8,6 +8,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -74,6 +75,7 @@ public class DailyTask extends BaseBottomNavActivity {
     private String seedsConfirmedDate;
     private String sowingDate;
     private String transplantDate;
+    private boolean programHasPlantCount;
     private String stopDate;
     private String phase3Date, phase4Date, phase5Date;
     private String placementDate;
@@ -229,6 +231,22 @@ public class DailyTask extends BaseBottomNavActivity {
         loadProgramState(currentUser);
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        com.google.firebase.auth.FirebaseUser u =
+                com.google.firebase.auth.FirebaseAuth
+                        .getInstance()
+                        .getCurrentUser();
+
+        if (u != null) {
+            com.android.tomatoapp.core.network.LocalDataManager
+                    .getInstance(this)
+                    .processSyncQueue(this, u.getUid());
+        }
+    }
+
     //Allow preview tasks
     private void applyPreviewLock() {
         if (!previewMode) return;
@@ -332,6 +350,8 @@ public class DailyTask extends BaseBottomNavActivity {
                             readNonEmptyString(intake, "transplantDate"),
                             readNonEmptyString(placementAnswers, "transplantDate"),
                             transplantDate);
+                    programHasPlantCount = hasPositivePlantCount(snapshot.child("plantCount").getValue())
+                            || hasPositivePlantCount(intake.child("plantCount").getValue());
                     stopDate = firstNonEmpty(
                             readNonEmptyString(snapshot, "stopDate"),
                             readNonEmptyString(intake, "stopDate"),
@@ -545,11 +565,13 @@ public class DailyTask extends BaseBottomNavActivity {
         if (previewMode) return;
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser == null || programId == null || programId.isEmpty()) return;
-        DatabaseReference programRef = FirebaseDatabase.getInstance().getReference("users")
-                .child(currentUser.getUid()).child("workPrograms").child(programId);
+
         java.util.Map<String, Object> update = new java.util.HashMap<>();
         update.put(field, value);
-        programRef.updateChildren(update).addOnSuccessListener(unused -> {
+
+        LocalDataManager.getInstance(this)
+        .updateProgramFields(currentUser.getUid(), programId, update)
+        .addOnSuccessListener(unused -> {
             if ("seedsConfirmedDate".equals(field)) seedsConfirmedDate = value;
             if ("sowingDate".equals(field)) sowingDate = value;
             if ("transplantDate".equals(field)) transplantDate = value;
@@ -729,9 +751,10 @@ public class DailyTask extends BaseBottomNavActivity {
                 || update == null || update.isEmpty()) {
             return;
         }
-        DatabaseReference programRef = FirebaseDatabase.getInstance().getReference("users")
-                .child(currentUser.getUid()).child("workPrograms").child(programId);
-        programRef.updateChildren(update).addOnSuccessListener(unused -> {
+
+        LocalDataManager.getInstance(this)
+        .updateProgramFields(currentUser.getUid(), programId, update)
+        .addOnSuccessListener(unused -> {
             if (update.containsKey("phase3Date")) phase3Date = String.valueOf(update.get("phase3Date"));
             if (update.containsKey("phase4Date")) phase4Date = String.valueOf(update.get("phase4Date"));
             if (update.containsKey("phase5Date")) phase5Date = String.valueOf(update.get("phase5Date"));
@@ -839,8 +862,62 @@ public class DailyTask extends BaseBottomNavActivity {
 
         showSurveyDialog("Work Program Milestone", "Do seedlings have 3-5 true leaves?",
                 null, true, min, today,
-                chosen -> saveMilestone("transplantDate", chosen),
+                chosen -> {
+                    saveMilestone("transplantDate", chosen);
+                    askPlantCount();
+                },
                 null);
+    }
+
+    private void askPlantCount() {
+        if (previewMode) return;
+        if (programHasPlantCount) return;
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null || programId == null || programId.isEmpty()) return;
+
+        EditText input = new EditText(this);
+        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        input.setTextColor(android.graphics.Color.BLACK);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("How many plants did you transplant?")
+                .setMessage("An estimate is fine. You can change it later in Milestones.")
+                .setView(input)
+                .setPositiveButton("Save", null)
+                .setNegativeButton("Later", null)
+                .create();
+        dialog.show();
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            long count;
+            try {
+                count = Long.parseLong(input.getText().toString().trim());
+                if (count <= 0) throw new NumberFormatException();
+            } catch (NumberFormatException error) {
+                Toast.makeText(this, "Enter a whole number greater than 0.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            java.util.Map<String, Object> update = new java.util.HashMap<>();
+            update.put("plantCount", count);
+            LocalDataManager.getInstance(this)
+                    .updateProgramFields(currentUser.getUid(), programId, update)
+                    .addOnSuccessListener(unused -> {
+                        programHasPlantCount = true;
+                        dialog.dismiss();
+                    })
+                    .addOnFailureListener(error -> Toast.makeText(this,
+                            "Could not save plant count: " + error.getMessage(),
+                            Toast.LENGTH_LONG).show());
+        });
+    }
+
+    private boolean hasPositivePlantCount(Object value) {
+        if (value instanceof Number) return ((Number) value).longValue() > 0;
+        if (value == null) return false;
+        try {
+            return Long.parseLong(String.valueOf(value).trim()) > 0;
+        } catch (NumberFormatException error) {
+            return false;
+        }
     }
 
     private void loadPersistedDailyState(FirebaseUser currentUser) {
