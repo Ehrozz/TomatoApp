@@ -99,7 +99,11 @@ public class Workprogram extends BaseBottomNavActivity {
     private ImageView headerCultivarImage;
     private TextView headerCultivarName;
     private TextView headerStartDate;
-    private View taskWarningBanner;     
+    private TextView taskWarningBanner;
+    private TextView progressCareGaps;
+    private final int[] carePhaseDays = new int[6];
+    private final int[] carePhaseNotDone = new int[6];
+    private final java.util.HashMap<String, Integer> careNotDonePhase = new java.util.HashMap<>();     
     private MaterialButton btnCurrentExpenses;
     private MaterialButton btnMilestones;
     private TextView summaryDaysActive;
@@ -175,7 +179,8 @@ public class Workprogram extends BaseBottomNavActivity {
         headerCultivarImage = findViewById(R.id.headerCultivarImage); // dummy <ImageView>
         headerCultivarName  = findViewById(R.id.headerCultivarName);  // dummy <TextView>
         headerStartDate     = findViewById(R.id.headerStartDate);     // dummy <TextView>
-        taskWarningBanner   = findViewById(R.id.taskWarningBanner);  // dummy <LinearLayout>
+        taskWarningBanner   = findViewById(R.id.taskWarningBanner);
+        progressCareGaps    = findViewById(R.id.progressCareGaps);
         btnCurrentExpenses  = findViewById(R.id.btnCurrentExpenses);
         btnMilestones = findViewById(R.id.btnMilestones);
         summaryDaysActive   = findViewById(R.id.summaryDaysActive);
@@ -865,8 +870,20 @@ public class Workprogram extends BaseBottomNavActivity {
             taskWarningBanner.setVisibility(View.GONE);
             return;
         }
-        // Banner is a dummy view in redesigned layout; just show it as a visual indicator
-        taskWarningBanner.setVisibility(View.GONE); // hidden since dummy has no text UI
+        String text = missedCount + " missed, " + skippedCount + " skipped";
+        String hint = buildPhaseCatchUpHint();
+        if (hint != null && !hint.isEmpty()) {
+            text = text + "\n" + hint;
+        }
+        taskWarningBanner.setText(text);
+        taskWarningBanner.setVisibility(View.VISIBLE);
+        taskWarningBanner.setOnClickListener(v -> {
+            CalendarDay target = findEarliestDate(missedDates);
+            if (target == null) target = findEarliestDate(skippedDates);
+            if (target != null && calendarView != null) {
+                calendarView.setCurrentDate(target);
+            }
+        });
     }
 
     private String buildPhaseCatchUpHint() {
@@ -950,6 +967,9 @@ public class Workprogram extends BaseBottomNavActivity {
 
             CalendarDay selectedDay = CalendarDay.from(date.getYear(), date.getMonth(), date.getDay());
             boolean preview = !accessibleDates.contains(selectedDay);
+            if (missedDates.contains(selectedDay) || skippedDates.contains(selectedDay)) {
+                preview = false;
+            }
             try { // a date after today can never be worked on early
                 if (java.time.LocalDate.parse(clickedDate).isAfter(appTodayLocal())) preview = true;
             } catch (RuntimeException ignored) { }
@@ -1269,6 +1289,9 @@ public class Workprogram extends BaseBottomNavActivity {
         missedDates.clear();
         skippedDates.clear();
         accessibleDates.clear();
+        java.util.Arrays.fill(carePhaseDays, 0);
+        java.util.Arrays.fill(carePhaseNotDone, 0);
+        careNotDonePhase.clear();
         Date today = appTodayDate();
 
         // Store all task statuses
@@ -1389,20 +1412,29 @@ public class Workprogram extends BaseBottomNavActivity {
                         || activePhaseThroughToday)) {
                     accessibleDates.add(cd);
                 }
+                boolean countableTasks = false;
+                if (!historicalOrFuture && phase >= 1 && phase <= 5) {
+                    countableTasks = getScheduledActionTaskCount(checkCal.getTime()) > 0;
+                }
                 if ("completed".equals(status)) {
                     completedDates.add(cd);
-                } else if (!future && "missed".equals(status)) {
-                    missedDates.add(cd);
                 } else if (!future && "skipped".equals(status)) {
                     skippedDates.add(cd);
                 } else if (!historicalOrFuture && !"completed".equals(status)
                         && !"skipped".equals(status)
-                        && !"missed".equals(status)
                         && ProgramHistory.isEligibleForMissed(
                         phaseDate, placement, appTodayLocal(), phase, intakeStartPhase,
-                        getScheduledActionTaskCount(checkCal.getTime()) > 0
-                        )) {
+                        countableTasks)) {
                     missedDates.add(cd);
+                }
+                if (countableTasks && ProgramHistory.isEligibleForMissed(
+                        phaseDate, placement, appTodayLocal(), phase, intakeStartPhase,
+                        true)) {
+                    carePhaseDays[phase]++;
+                    if (!"completed".equals(status)) {
+                        carePhaseNotDone[phase]++;
+                        careNotDonePhase.put(dateKey, phase);
+                    }
                 }
                 previousDateKey = dateKey;
                 checkCal.add(Calendar.DAY_OF_YEAR, 1);
@@ -1489,6 +1521,7 @@ public class Workprogram extends BaseBottomNavActivity {
             if (progressStatCompleted != null) progressStatCompleted.setText(String.valueOf(result.completed));
             if (progressStatMissed != null) progressStatMissed.setText(String.valueOf(missed));
             if (progressStatSkipped != null) progressStatSkipped.setText(String.valueOf(skipped));
+            loadCareGapReasons();
 
             if (programId != null && !programId.isEmpty() && userId != null && dbRef != null) {
                 int currentPhase = com.android.tomatoapp.task.data.TaskSchedule.getPhaseNumber(
@@ -1547,6 +1580,64 @@ public class Workprogram extends BaseBottomNavActivity {
 
     private java.time.LocalDate appTodayLocal() {
         return AppClock.today(this);
+    }
+
+    private void loadCareGapReasons() {
+        if (progressCareGaps == null) return;
+        final int[] days = java.util.Arrays.copyOf(carePhaseDays, carePhaseDays.length);
+        final int[] notDone = java.util.Arrays.copyOf(carePhaseNotDone, carePhaseNotDone.length);
+        final java.util.Map<String, Integer> dates = new java.util.HashMap<>(careNotDonePhase);
+        final String uid = userId;
+        final String pid = programId;
+        new Thread(() -> {
+            int[] rain = new int[6];
+            int[] disease = new int[6];
+            if (uid != null && pid != null) {
+                for (TaskEntity task : LocalDataManager.getInstance(Workprogram.this)
+                        .getTasksFromLocal(uid, pid)) {
+                    Integer phase = task.dateKey == null ? null : dates.get(task.dateKey);
+                    if (phase == null || phase < 1 || phase > 5) continue;
+                    if ("Rain / bad weather".equals(task.skipReason)) rain[phase]++;
+                    else if ("Saw signs of disease or pests".equals(task.skipReason)) disease[phase]++;
+                }
+            }
+            String text = formatCareGaps(days, notDone, rain, disease);
+            runOnUiThread(() -> {
+                if (progressCareGaps == null || isFinishing() || isDestroyed()) return;
+                if (text.isEmpty()) {
+                    progressCareGaps.setVisibility(View.GONE);
+                } else {
+                    progressCareGaps.setText(text);
+                    progressCareGaps.setVisibility(View.VISIBLE);
+                }
+            });
+        }).start();
+    }
+
+    private String formatCareGaps(int[] days, int[] notDone, int[] rain, int[] disease) {
+        StringBuilder text = new StringBuilder();
+        for (int phase = 1; phase <= 5; phase++) {
+            if (notDone[phase] <= 0) continue;
+            if (text.length() > 0) text.append('\n');
+            text.append("Phase ").append(phase).append(": ")
+                    .append(notDone[phase]).append(" of ").append(days[phase])
+                    .append(" days not done");
+            String reasons = formatCareReasons(rain[phase], disease[phase]);
+            if (!reasons.isEmpty()) text.append(' ').append(reasons);
+        }
+        return text.toString();
+    }
+
+    private String formatCareReasons(int rain, int disease) {
+        if (rain <= 0 && disease <= 0) return "";
+        StringBuilder text = new StringBuilder("(");
+        if (rain > 0) text.append(rain).append(" rain");
+        if (disease > 0) {
+            if (rain > 0) text.append(", ");
+            text.append(disease).append(" disease signs");
+        }
+        text.append(')');
+        return text.toString();
     }
 
     private void setPhaseBar(android.widget.ProgressBar bar, TextView label, int pct) {

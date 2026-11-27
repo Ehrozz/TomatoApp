@@ -21,6 +21,11 @@ public class TaskEntity {
     public String phase;
     public String status; // "pending", "completed", "missed", "skipped"
     public long lastSynced;
+    public String skipReason;
+    public String skipNote;
+    public String weatherNote;
+    public boolean late;
+    public boolean scanLinked;
 
     public TaskEntity() {
         // Default constructor required for Room

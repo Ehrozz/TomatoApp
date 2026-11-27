@@ -45,13 +45,18 @@ import com.android.tomatoapp.auth.ui.Login;
 import com.android.tomatoapp.common.utils.CultivarImageHelper;
 import com.android.tomatoapp.core.network.LocalDataManager;
 import com.android.tomatoapp.core.ui.BaseBottomNavActivity;
+import com.android.tomatoapp.detection.data.DetectionHistoryManager;
 import com.android.tomatoapp.financial.ui.DailyExpensesActivity;
 import com.android.tomatoapp.monitoring.ui.PlantMonitoringActivity;
 import com.android.tomatoapp.settings.data.SettingsPreferences;
+import com.android.tomatoapp.task.data.ScheduledTask;
+import com.android.tomatoapp.task.data.TaskEntity;
 import com.android.tomatoapp.task.data.TaskModel;
 import com.android.tomatoapp.task.data.TaskSchedule;
+import com.android.tomatoapp.task.data.TaskTemplate;
 import com.android.tomatoapp.task.data.TomatoWorkProgramScheduler;
 import com.android.tomatoapp.common.utils.AppClock;
+import com.android.tomatoapp.workprogram.data.ProgramHistory;
 
 public class DailyTask extends BaseBottomNavActivity {
 
@@ -83,6 +88,19 @@ public class DailyTask extends BaseBottomNavActivity {
     private DatabaseReference taskRef;
     private boolean dayCompleted;
     private boolean previewMode;
+    private TextView missedDayBanner;
+    private String dayStatus;
+    private volatile Double fetchedPrecip;
+    private boolean scanLinked;
+    private final List<OverdueTask> overdueTasks = new ArrayList<>();
+
+    private static final String[] SKIP_REASONS = {
+            "Rain / bad weather",
+            "Saw signs of disease or pests",
+            "No labor",
+            "No materials or money",
+            "Other"
+    };
 
 
     private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
@@ -104,6 +122,7 @@ public class DailyTask extends BaseBottomNavActivity {
         btnMonitor = findViewById(R.id.btnMonitorPlant);
         btnDailyExpenses = findViewById(R.id.btnDailyExpenses);
         taskRecyclerView = findViewById(R.id.taskRecyclerView);
+        missedDayBanner = findViewById(R.id.missedDayBanner);
 
         // Get intent data
         cultivar = getIntent().getStringExtra("cultivar");
@@ -244,6 +263,7 @@ public class DailyTask extends BaseBottomNavActivity {
             com.android.tomatoapp.core.network.LocalDataManager
                     .getInstance(this)
                     .processSyncQueue(this, u.getUid());
+            refreshScanLinked();
         }
     }
 
@@ -507,6 +527,7 @@ public class DailyTask extends BaseBottomNavActivity {
                         }
                         
                         Toast.makeText(this, "Marked as complete!", Toast.LENGTH_SHORT).show();
+                        saveLateMeta();
 
                         Intent resultIntent = new Intent();
                         resultIntent.putExtra("date", date);
@@ -532,13 +553,150 @@ public class DailyTask extends BaseBottomNavActivity {
         if (taskRef == null) {
             return;
         }
+        if (hasUnrecordedMilestone()) {
+            Toast.makeText(this, "Record the milestone first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        showSkipDialog();
+    }
 
+    private boolean hasUnrecordedMilestone() {
+        for (TaskModel task : taskList) {
+            if ("MILESTONE".equals(task.type) && !isMilestoneHistory(task)) return true;
+        }
+        return false;
+    }
+
+    private void showSkipDialog() {
+        fetchedPrecip = null;
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        int pad = (int) (16 * getResources().getDisplayMetrics().density);
+        layout.setPadding(pad, pad, pad, 0);
+
+        final android.widget.RadioGroup reasons = new android.widget.RadioGroup(this);
+        reasons.setOrientation(android.widget.RadioGroup.VERTICAL);
+        for (String reason : SKIP_REASONS) {
+            android.widget.RadioButton button = new android.widget.RadioButton(this);
+            button.setId(View.generateViewId());
+            button.setText(reason);
+            button.setTextColor(android.graphics.Color.BLACK);
+            reasons.addView(button);
+        }
+        layout.addView(reasons);
+
+        final TextView rainHint = new TextView(this);
+        rainHint.setTextColor(android.graphics.Color.BLACK);
+        rainHint.setVisibility(View.GONE);
+        rainHint.setPadding(0, pad / 2, 0, 0);
+        layout.addView(rainHint);
+
+        final EditText noteInput = new EditText(this);
+        noteInput.setHint("Note (optional)");
+        noteInput.setTextColor(android.graphics.Color.BLACK);
+        noteInput.setVisibility(View.GONE);
+        layout.addView(noteInput);
+        reasons.setOnCheckedChangeListener((group, checkedId) -> {
+            int index = group.indexOfChild(group.findViewById(checkedId));
+            noteInput.setVisibility(index == SKIP_REASONS.length - 1 ? View.VISIBLE : View.GONE);
+        });
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Skip tasks")
+                .setView(layout)
+                .setPositiveButton("Save", null)
+                .setNegativeButton("Cancel", null)
+                .create();
+        dialog.setOnShowListener(shown -> {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                int checkedId = reasons.getCheckedRadioButtonId();
+                if (checkedId == -1) {
+                    Toast.makeText(this, "Select a reason", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                int index = reasons.indexOfChild(reasons.findViewById(checkedId));
+                String reason = SKIP_REASONS[Math.max(0, Math.min(index, SKIP_REASONS.length - 1))];
+                String note = index == SKIP_REASONS.length - 1
+                        ? noteInput.getText().toString().trim() : "";
+                dialog.dismiss();
+                commitSkip(reason, note);
+            });
+            fetchSkipWeather(reasons, rainHint, dialog);
+        });
+        dialog.show();
+    }
+
+    private void fetchSkipWeather(android.widget.RadioGroup reasons, TextView rainHint, AlertDialog dialog) {
+        if (!LocalDataManager.isOnline(this) || date == null) return;
+        final String viewed = date;
+        new Thread(() -> {
+            Double mm = fetchPrecipitationMm(viewed);
+            if (mm == null) return;
+            fetchedPrecip = mm;
+            if (mm < 1.0) return;
+            final String hint = "Rain recorded: " + formatMm(mm) + " mm";
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed() || !dialog.isShowing()) return;
+                if (reasons.getCheckedRadioButtonId() == -1 && reasons.getChildCount() > 0) {
+                    reasons.check(reasons.getChildAt(0).getId());
+                }
+                rainHint.setText(hint);
+                rainHint.setVisibility(View.VISIBLE);
+            });
+        }).start();
+    }
+
+    private Double fetchPrecipitationMm(String day) {
+        android.content.SharedPreferences wp = getSharedPreferences("WeatherPref", MODE_PRIVATE);
+        double lat = Double.longBitsToDouble(wp.getLong("lat", Double.doubleToRawLongBits(13.8855)));
+        double lon = Double.longBitsToDouble(wp.getLong("lon", Double.doubleToRawLongBits(122.2909)));
+        boolean past;
+        try {
+            past = java.time.LocalDate.parse(day).isBefore(AppClock.today(this));
+        } catch (RuntimeException error) {
+            return null;
+        }
+        String base = past
+                ? "https://archive-api.open-meteo.com/v1/archive"
+                : "https://api.open-meteo.com/v1/forecast";
+        String url = String.format(Locale.US,
+                "%s?latitude=%f&longitude=%f&daily=precipitation_sum&timezone=auto&start_date=%s&end_date=%s",
+                base, lat, lon, day, day);
+        java.net.HttpURLConnection conn = null;
+        try {
+            conn = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+            conn.setConnectTimeout(10000);
+            conn.setReadTimeout(10000);
+            conn.setRequestMethod("GET");
+            if (conn.getResponseCode() != 200) return null;
+            java.io.BufferedReader reader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(conn.getInputStream(), java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder body = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) body.append(line);
+            reader.close();
+            org.json.JSONArray sums = new org.json.JSONObject(body.toString())
+                    .getJSONObject("daily").getJSONArray("precipitation_sum");
+            if (sums.length() == 0 || sums.isNull(0)) return null;
+            return sums.getDouble(0);
+        } catch (Exception error) {
+            return null;
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    private static String formatMm(double mm) {
+        if (Math.abs(mm - Math.rint(mm)) < 0.05) return String.valueOf((int) Math.rint(mm));
+        return String.format(Locale.US, "%.1f", mm);
+    }
+
+    private void commitSkip(String reason, String note) {
+        if (taskRef == null || date == null) return;
         taskRef.child(date).setValue("skipped")
                 .addOnSuccessListener(unused -> {
-                    // Save to local database
                     FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
                     if (currentUser != null && programId != null && !taskList.isEmpty()) {
-                        // Save first task as representative (all tasks share the same status)
                         TaskModel firstTask = taskList.get(0);
                         LocalDataManager.getInstance(DailyTask.this).saveTaskStatus(
                                 currentUser.getUid(),
@@ -552,13 +710,112 @@ public class DailyTask extends BaseBottomNavActivity {
                                 "skipped"
                         );
                     }
-                    
+                    saveSkipMeta(reason, note);
                     Toast.makeText(this, "Tasks marked as skipped.", Toast.LENGTH_SHORT).show();
-                    finish();
+                    if ("Saw signs of disease or pests".equals(reason)) {
+                        new AlertDialog.Builder(this)
+                                .setMessage("Scan a plant now?")
+                                .setPositiveButton("Yes", (dialog, which) -> {
+                                    openMonitoring();
+                                    finish();
+                                })
+                                .setNegativeButton("Later", (dialog, which) -> finish())
+                                .setCancelable(false)
+                                .show();
+                    } else {
+                        finish();
+                    }
                 })
                 .addOnFailureListener(e ->
                         Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show()
                 );
+    }
+
+    private void saveSkipMeta(String reason, String note) {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null || programId == null || date == null) return;
+        final String uid = currentUser.getUid();
+        final Double precip = fetchedPrecip;
+        final String weatherNote = precip == null ? null : "rain " + formatMm(precip) + " mm";
+        final boolean linked = scanLinked;
+        new Thread(() -> {
+            TaskEntity existing = findLocalTask(uid);
+            LocalDataManager.getInstance(DailyTask.this).saveTaskMeta(
+                    uid,
+                    programId,
+                    date,
+                    reason,
+                    note,
+                    false,
+                    weatherNote != null ? weatherNote : (existing == null ? null : existing.weatherNote),
+                    linked || (existing != null && existing.scanLinked));
+        }).start();
+    }
+
+    private void saveLateMeta() {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null || programId == null || date == null) return;
+        try {
+            if (!java.time.LocalDate.parse(date).isBefore(AppClock.today(this))) return;
+        } catch (RuntimeException error) {
+            return;
+        }
+        final String uid = currentUser.getUid();
+        final boolean linked = scanLinked;
+        new Thread(() -> {
+            TaskEntity existing = findLocalTask(uid);
+            LocalDataManager.getInstance(DailyTask.this).saveTaskMeta(
+                    uid,
+                    programId,
+                    date,
+                    existing == null ? null : existing.skipReason,
+                    existing == null ? null : existing.skipNote,
+                    true,
+                    existing == null ? null : existing.weatherNote,
+                    linked || (existing != null && existing.scanLinked));
+        }).start();
+    }
+
+    private TaskEntity findLocalTask(String uid) {
+        if (uid == null || programId == null || date == null) return null;
+        for (TaskEntity task : LocalDataManager.getInstance(this).getTasksFromLocal(uid, programId)) {
+            if (date.equals(task.dateKey)) return task;
+        }
+        return null;
+    }
+
+    private void refreshScanLinked() {
+        if (previewMode || isNewProgram || programId == null || date == null) return;
+        final String pid = programId;
+        final String viewed = date;
+        final android.content.Context app = getApplicationContext();
+        new Thread(() -> {
+            boolean linked = false;
+            try {
+                SimpleDateFormat day = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+                for (org.json.JSONObject entry : DetectionHistoryManager.getHistory(app)) {
+                    if (!pid.equals(entry.optString("programId", ""))) continue;
+                    if (viewed.equals(day.format(new Date(entry.optLong("timestamp", 0))))) {
+                        linked = true;
+                        break;
+                    }
+                }
+            } catch (Exception ignored) { }
+            if (!linked) return;
+            scanLinked = true;
+            FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+            if (currentUser == null) return;
+            TaskEntity existing = findLocalTask(currentUser.getUid());
+            LocalDataManager.getInstance(DailyTask.this).saveTaskMeta(
+                    currentUser.getUid(),
+                    pid,
+                    viewed,
+                    existing == null ? null : existing.skipReason,
+                    existing == null ? null : existing.skipNote,
+                    existing != null && existing.late,
+                    existing == null ? null : existing.weatherNote,
+                    true);
+        }).start();
     }
 
     private void saveMilestone(String field, String value) {
@@ -605,26 +862,10 @@ public class DailyTask extends BaseBottomNavActivity {
             return new ArrayList<>();
         }
         try {
-            java.time.LocalDate planting = java.time.LocalDate.parse(startDate);
             java.time.LocalDate current = java.time.LocalDate.parse(date);
-            java.time.LocalDate sowing = sowingDate == null ? null : java.time.LocalDate.parse(sowingDate);
-            java.time.LocalDate seeds = seedsConfirmedDate == null ? null : java.time.LocalDate.parse(seedsConfirmedDate);
-            java.time.LocalDate transplant = transplantDate == null ? null : java.time.LocalDate.parse(transplantDate);
-            java.time.LocalDate stop = stopDate == null ? null : java.time.LocalDate.parse(stopDate);
-            java.time.LocalDate placement = placementDate == null ? null : java.time.LocalDate.parse(placementDate);
-            java.time.LocalDate phase3 = phase3Date == null ? null : java.time.LocalDate.parse(phase3Date);
-            java.time.LocalDate phase4 = phase4Date == null ? null : java.time.LocalDate.parse(phase4Date);
-            java.time.LocalDate phase5 = phase5Date == null ? null : java.time.LocalDate.parse(phase5Date);
-            transplant = com.android.tomatoapp.workprogram.data.ProgramHistory.effectiveTransplantDate(
-                    transplant, placement, intakeStartPhase);
-            double area = getIntent().getDoubleExtra("farmAreaHectares", 1.0);
-            TomatoWorkProgramScheduler.Input input = new TomatoWorkProgramScheduler.Input(
-                    planting, area, growthHabit, seeds, sowing, transplant, stop, current,
-                    TomatoWorkProgramScheduler.DEFAULT_HECTARES_PER_PLOWING_DAY, 0,
-                    phase3, phase4, phase5);
             // Ongoing planting uses the same scheduler as a normal program. Earlier
             // work is represented by onboarding completion state, not a second mode.
-            return TomatoWorkProgramScheduler.getTasksForDate(input, current);
+            return TomatoWorkProgramScheduler.getTasksForDate(schedulerInput(current), current);
         } catch (java.time.format.DateTimeParseException | IllegalArgumentException e) {
             Toast.makeText(this, "Unable to load scheduled tasks for this date.", Toast.LENGTH_SHORT).show();
             return new ArrayList<>();
@@ -931,8 +1172,8 @@ public class DailyTask extends BaseBottomNavActivity {
         }
 
         taskRef.child(date).get().addOnSuccessListener(taskSnapshot -> {
-            dayCompleted = isOnboardingCompletedDate()
-                    || "completed".equals(taskSnapshot.getValue(String.class));
+            dayStatus = taskSnapshot.getValue(String.class);
+            dayCompleted = isOnboardingCompletedDate() || "completed".equals(dayStatus);
             dayNumber = calculateDayNumber(startDate, date);
             if (dayNumber > 0 && maturityDays > 0) {
                 refreshTaskList();
@@ -994,6 +1235,7 @@ public class DailyTask extends BaseBottomNavActivity {
         updateTaskCount();
         updateEmptyTaskState();
         applyIntakeSkipNotice();
+        loadOverdueTasks();
     }
 
     private void updateEmptyTaskState() {
@@ -1007,6 +1249,192 @@ public class DailyTask extends BaseBottomNavActivity {
         if (btnSkip != null) btnSkip.setEnabled(!empty && getActionTaskCount() > 0);
 
         applyPreviewLock();
+        updateMissedBanner();
+    }
+
+    private void updateMissedBanner() {
+        if (missedDayBanner == null) return;
+        boolean show = !previewMode && isViewedDateMissed();
+        missedDayBanner.setVisibility(show ? View.VISIBLE : View.GONE);
+        if (show) {
+            missedDayBanner.setText("This day was missed. Complete it late or skip it with a reason.");
+        }
+    }
+
+    private boolean isViewedDateMissed() {
+        if (previewMode || date == null || dayCompleted) return false;
+        if ("completed".equals(dayStatus) || "skipped".equals(dayStatus)) return false;
+        try {
+            java.time.LocalDate viewed = java.time.LocalDate.parse(date);
+            java.time.LocalDate today = AppClock.today(this);
+            int phase = phaseNumber(viewed);
+            return ProgramHistory.isEligibleForMissed(
+                    viewed, parseDateOrNull(placementDate), today, phase, intakeStartPhase,
+                    getActionTaskCount() > 0);
+        } catch (RuntimeException error) {
+            return false;
+        }
+    }
+
+    private int phaseNumber(java.time.LocalDate day) {
+        if (day == null || startDate == null) return 0;
+        try {
+            return TaskSchedule.getPhaseNumber(
+                    java.time.LocalDate.parse(startDate),
+                    effectiveTransplant(),
+                    parseDateOrNull(stopDate),
+                    day,
+                    parseDateOrNull(phase3Date),
+                    parseDateOrNull(phase4Date),
+                    parseDateOrNull(phase5Date));
+        } catch (RuntimeException error) {
+            return 0;
+        }
+    }
+
+    private java.time.LocalDate effectiveTransplant() {
+        return ProgramHistory.effectiveTransplantDate(
+                parseDateOrNull(transplantDate), parseDateOrNull(placementDate), intakeStartPhase);
+    }
+
+    private void loadOverdueTasks() {
+        overdueTasks.clear();
+        if (taskAdapter != null) taskAdapter.setOverdue(overdueTasks);
+        if (previewMode || isNewProgram || programId == null || date == null || startDate == null) return;
+        java.time.LocalDate today = AppClock.today(this);
+        java.time.LocalDate viewed;
+        try {
+            viewed = java.time.LocalDate.parse(date);
+        } catch (RuntimeException error) {
+            return;
+        }
+        if (!viewed.equals(today)) return;
+        final String uid = FirebaseAuth.getInstance().getCurrentUser() == null
+                ? null : FirebaseAuth.getInstance().getCurrentUser().getUid();
+        final String pid = programId;
+        final DatabaseReference tasks = taskRef;
+        new Thread(() -> {
+            java.util.Map<String, String> statuses = new java.util.HashMap<>();
+            if (uid != null) {
+                for (TaskEntity task : LocalDataManager.getInstance(DailyTask.this).getTasksFromLocal(uid, pid)) {
+                    if (task.dateKey != null && task.status != null) {
+                        statuses.put(task.dateKey, task.status);
+                    }
+                }
+            }
+            if (LocalDataManager.isOnline(DailyTask.this) && tasks != null) {
+                try {
+                    DataSnapshot snapshot = com.google.android.gms.tasks.Tasks.await(tasks.get());
+                    java.util.Map<String, String> remote = new java.util.HashMap<>();
+                    for (DataSnapshot child : snapshot.getChildren()) {
+                        String key = child.getKey();
+                        String status = child.getValue(String.class);
+                        if (key != null && status != null) remote.put(key, status);
+                    }
+                    for (java.util.Map.Entry<String, String> entry : remote.entrySet()) {
+                        statuses.put(entry.getKey(), entry.getValue());
+                    }
+                } catch (Exception ignored) { }
+            }
+            List<OverdueTask> late = collectOverdue(today, statuses);
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                overdueTasks.clear();
+                overdueTasks.addAll(late);
+                if (taskAdapter != null) taskAdapter.setOverdue(overdueTasks);
+            });
+        }).start();
+    }
+
+    private List<OverdueTask> collectOverdue(java.time.LocalDate today,
+                                             java.util.Map<String, String> statuses) {
+        List<OverdueTask> late = new ArrayList<>();
+        java.time.LocalDate start;
+        try {
+            start = java.time.LocalDate.parse(startDate);
+        } catch (RuntimeException error) {
+            return late;
+        }
+        java.time.LocalDate placement = parseDateOrNull(placementDate);
+        java.util.LinkedHashMap<String, ScheduledTask> carry = new java.util.LinkedHashMap<>();
+        for (java.time.LocalDate day = start; day.isBefore(today); day = day.plusDays(1)) {
+            String status = statuses.get(day.toString());
+            if ("completed".equals(status) || "skipped".equals(status)) {
+                if (!"skipped".equals(status)) continue;
+            }
+            boolean skipped = "skipped".equals(status);
+            boolean missed = !skipped && !"completed".equals(status)
+                    && ProgramHistory.isEligibleForMissed(
+                    day, placement, today, phaseNumber(day), intakeStartPhase,
+                    scheduledCountable(day) > 0);
+            if (!missed && !skipped) continue;
+            for (ScheduledTask task : oneTimeMainTasks(day)) {
+                if (task.id != null && !carry.containsKey(task.id)) carry.put(task.id, task);
+            }
+        }
+        java.time.LocalDate transplant = effectiveTransplant();
+        int todayPhase = phaseNumber(today);
+        for (ScheduledTask task : carry.values()) {
+            if (task.endDate == null || !today.isAfter(task.endDate)) continue;
+            if (windowCompleted(task, statuses, placement)) continue;
+            if (todayPhase <= 0 || todayPhase > task.phase) continue;
+            if (todayPhase != task.phase) continue;
+            String detail = "Late";
+            if (transplant != null && task.startDate != null) {
+                long from = java.time.temporal.ChronoUnit.DAYS.between(transplant, task.startDate);
+                long to = java.time.temporal.ChronoUnit.DAYS.between(transplant, task.endDate);
+                long now = java.time.temporal.ChronoUnit.DAYS.between(transplant, today);
+                detail = detail + "\nWas due DAT " + from + "-" + to + ", today is DAT " + now;
+            }
+            late.add(new OverdueTask(task.title, detail));
+        }
+        return late;
+    }
+
+    private boolean windowCompleted(ScheduledTask task, java.util.Map<String, String> statuses,
+                                    java.time.LocalDate placement) {
+        if (task.startDate == null || task.endDate == null) return false;
+        for (java.time.LocalDate day = task.startDate; !day.isAfter(task.endDate); day = day.plusDays(1)) {
+            if (ProgramHistory.shouldTreatAsCompleted(day, placement)) return true;
+            if ("completed".equals(statuses.get(day.toString()))) return true;
+        }
+        return false;
+    }
+
+    private int scheduledCountable(java.time.LocalDate day) {
+        int count = 0;
+        try {
+            TomatoWorkProgramScheduler.Input input = schedulerInput(day);
+            for (TaskModel task : TomatoWorkProgramScheduler.getTasksForDate(input, day)) {
+                if ("MAIN".equals(task.type) || "MAINTENANCE".equals(task.type)) count++;
+            }
+        } catch (RuntimeException ignored) { }
+        return count;
+    }
+
+    private List<ScheduledTask> oneTimeMainTasks(java.time.LocalDate day) {
+        List<ScheduledTask> found = new ArrayList<>();
+        try {
+            for (ScheduledTask task : TomatoWorkProgramScheduler.generate(schedulerInput(day), day)) {
+                if (!task.occursOn(day)) continue;
+                if (task.type != TaskTemplate.Type.MAIN) continue;
+                if (task.frequencyDays != 0) continue;
+                found.add(task);
+            }
+        } catch (RuntimeException ignored) { }
+        return found;
+    }
+
+    private TomatoWorkProgramScheduler.Input schedulerInput(java.time.LocalDate current) {
+        java.time.LocalDate planting = java.time.LocalDate.parse(startDate);
+        java.time.LocalDate sowing = parseDateOrNull(sowingDate);
+        java.time.LocalDate seeds = parseDateOrNull(seedsConfirmedDate);
+        java.time.LocalDate stop = parseDateOrNull(stopDate);
+        double area = getIntent().getDoubleExtra("farmAreaHectares", 1.0);
+        return new TomatoWorkProgramScheduler.Input(
+                planting, area, growthHabit, seeds, sowing, effectiveTransplant(), stop, current,
+                TomatoWorkProgramScheduler.DEFAULT_HECTARES_PER_PLOWING_DAY, 0,
+                parseDateOrNull(phase3Date), parseDateOrNull(phase4Date), parseDateOrNull(phase5Date));
     }
 
     private void applyIntakeSkipNotice() {
@@ -1144,10 +1572,27 @@ public class DailyTask extends BaseBottomNavActivity {
     private class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder> {
         private final List<TaskModel> tasks;
         private final List<Object> rows = new ArrayList<>();
+        private final List<OverdueTask> overdue = new ArrayList<>();
         private final java.util.Set<Integer> expandedTasks = new java.util.HashSet<>();
 
         TaskAdapter(List<TaskModel> tasks) {
             this.tasks = tasks;
+            rebuildRows();
+        }
+
+        void setOverdue(List<OverdueTask> items) {
+            overdue.clear();
+            if (items != null) overdue.addAll(items);
+            rebuildRows();
+            notifyDataSetChanged();
+        }
+
+        private void rebuildRows() {
+            rows.clear();
+            if (!overdue.isEmpty()) {
+                rows.add("Overdue (" + overdue.size() + ")");
+                rows.addAll(overdue);
+            }
             addSection("Milestones", "MILESTONE");
             addSection("Main tasks", "MAIN");
             addSection("Notes", "NOTE");
@@ -1187,6 +1632,20 @@ public class DailyTask extends BaseBottomNavActivity {
 
         @Override
         public void onBindViewHolder(@NonNull TaskViewHolder holder, int position) {
+            if (rows.get(position) instanceof OverdueTask) {
+                OverdueTask item = (OverdueTask) rows.get(position);
+                holder.taskName.setText(item.name);
+                holder.taskSubtext.setText(item.detail);
+                holder.taskIcon.setBackground(ContextCompat.getDrawable(
+                        holder.itemView.getContext(), R.drawable.circle_green));
+                holder.milestoneAction.setVisibility(View.GONE);
+                holder.taskCheckbox.setVisibility(View.GONE);
+                holder.taskCheckbox.setOnCheckedChangeListener(null);
+                holder.itemView.setOnClickListener(null);
+                holder.taskName.setAlpha(1.0f);
+                holder.taskSubtext.setAlpha(1.0f);
+                return;
+            }
             if (rows.get(position) instanceof String) {
                 String title = (String) rows.get(position);
                 holder.sectionTitle.setText(title);
@@ -1327,6 +1786,16 @@ public class DailyTask extends BaseBottomNavActivity {
                 }
             }
             return count;
+        }
+    }
+
+    private static final class OverdueTask {
+        final String name;
+        final String detail;
+
+        OverdueTask(String name, String detail) {
+            this.name = name;
+            this.detail = detail;
         }
     }
 

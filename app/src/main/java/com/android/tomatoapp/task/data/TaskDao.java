@@ -25,6 +25,9 @@ public interface TaskDao {
     @Query("UPDATE tasks SET status = :status WHERE id = :id")
     void updateStatus(String id, String status);
 
+    @Query("UPDATE tasks SET skipReason = :skipReason, skipNote = :skipNote, weatherNote = :weatherNote, late = :late, scanLinked = :scanLinked WHERE id = :id")
+    void updateMeta(String id, String skipReason, String skipNote, String weatherNote, boolean late, boolean scanLinked);
+
     @Delete
     void delete(TaskEntity task);
 

@@ -483,6 +483,15 @@
                                 </LinearLayout>
                             </LinearLayout>
 
+                            <TextView
+                                android:id="@+id/progressCareGaps"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="12dp"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="12sp"
+                                android:visibility="gone" />
+
                         </LinearLayout>
                         <!-- End collapsible section -->
 
@@ -512,6 +521,19 @@
                             android:textSize="18sp"
                             android:textStyle="bold"
                             android:layout_marginBottom="16dp" />
+
+                        <TextView
+                            android:id="@+id/taskWarningBanner"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="12dp"
+                            android:background="#FFF3E0"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:padding="12dp"
+                            android:textColor="@color/red_dark"
+                            android:textSize="14sp"
+                            android:visibility="gone" />
                         
                         <com.prolificinteractive.materialcalendarview.MaterialCalendarView 
                             android:id="@+id/CalendarView" 
@@ -738,5 +760,4 @@
     <ImageView android:id="@+id/headerCultivarImage" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
     <TextView android:id="@+id/headerCultivarName" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
     <TextView android:id="@+id/headerStartDate" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
-    <LinearLayout android:id="@+id/taskWarningBanner" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
 </RelativeLayout>

@@ -139,6 +139,8 @@ public class LocalDataManager {
                         targetRef = rootRef.child("workPrograms").child(action.entityId);
                     } else if ("location".equals(action.entityType)) {
                         targetRef = rootRef.child("locations").child(action.entityId);
+                    } else if ("task_meta".equals(action.entityType)) {
+                        targetRef = taskMetaRef(rootRef, action.entityId);
                     }
 
                     if (targetRef == null) continue;
@@ -165,6 +167,17 @@ public class LocalDataManager {
                                 continue;
                             }
                             Tasks.await(targetRef.setValue(serializeUserLocation(entity)));
+                        } else if ("task_meta".equals(action.entityType)) {
+                            java.util.Map<String, Object> data = action.dataJson != null
+                                    ? jsonObjectToMap(action.dataJson)
+                                    : null;
+                            if (data == null || data.isEmpty()) {
+                                data = taskMetaPayloadFromRoom(action.userId, action.entityId);
+                            }
+                            if (data == null || data.isEmpty()) {
+                                continue;
+                            }
+                            Tasks.await(targetRef.updateChildren(data));
                         }
                         database.syncActionDao().delete(action);
                     } catch (Exception e) {
@@ -329,65 +342,88 @@ public class LocalDataManager {
     public void syncTasksFromFirebase(String userId, String programId) {
         executorService.execute(() -> {
             try {
-                DatabaseReference dbRef = FirebaseDatabase.getInstance()
+                DatabaseReference userRef = FirebaseDatabase.getInstance()
                         .getReference("users")
-                        .child(userId)
-                        .child("workPrograms")
-                        .child(programId)
-                        .child("logs");
+                        .child(userId);
+                DataSnapshot logsSnapshot = Tasks.await(
+                        userRef.child("workPrograms").child(programId).child("logs").get());
+                DataSnapshot metaSnapshot = Tasks.await(
+                        userRef.child("routineLogs").child(programId).child("taskMeta").get());
 
-                dbRef.addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        executorService.execute(() -> {
-                            try {
-                                List<TaskEntity> entities = new ArrayList<>();
-                                for (DataSnapshot child : snapshot.getChildren()) {
-                                    String dateKey = child.getKey();
-                                    if (dateKey == null) continue;
+                java.util.Set<String> dateKeys = new java.util.LinkedHashSet<>();
+                for (DataSnapshot child : logsSnapshot.getChildren()) {
+                    if (child.getKey() != null) dateKeys.add(child.getKey());
+                }
+                for (DataSnapshot child : metaSnapshot.getChildren()) {
+                    if (child.getKey() != null) dateKeys.add(child.getKey());
+                }
 
-                                    String status = child.getValue(String.class);
-                                    if (status != null) {
-                                        String taskId = programId + "_" + dateKey;
-                                        // Note: We need task details from the work program phases
-                                        // For now, create a basic entity
-                                        TaskEntity entity = new TaskEntity(
-                                                taskId,
-                                                userId,
-                                                programId,
-                                                dateKey,
-                                                "", // taskName - would need to fetch from phases
-                                                "", // category
-                                                "", // iconType
-                                                0,  // dayNumber
-                                                "", // phase
-                                                status,
-                                                System.currentTimeMillis()
-                                        );
-                                        entities.add(entity);
-                                    }
-                                }
-
-                                // Save to local database
-                                if (!entities.isEmpty()) {
-                                    database.taskDao().insertAll(entities);
-                                }
-                                Log.d(TAG, "Synced " + entities.size() + " tasks for program " + programId);
-                            } catch (Exception e) {
-                                Log.e(TAG, "Error syncing tasks", e);
-                            }
-                        });
+                int updatedCount = 0;
+                for (String dateKey : dateKeys) {
+                    if (database.syncActionDao().countForEntity(programId + "|" + dateKey, "task_meta") > 0) {
+                        continue;
                     }
-
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {
-                        Log.e(TAG, "Error reading tasks", error.toException());
+                    String status = null;
+                    DataSnapshot logChild = logsSnapshot.child(dateKey);
+                    if (logChild.exists()) {
+                        status = logChild.getValue(String.class);
                     }
-                });
+                    DataSnapshot metaChild = metaSnapshot.child(dateKey);
+                    if (mergeRemoteTask(userId, programId, dateKey, status, metaChild)) {
+                        updatedCount++;
+                    }
+                }
+                Log.d(TAG, "Synced " + updatedCount + " tasks for program " + programId);
             } catch (Exception e) {
                 Log.e(TAG, "Error syncing tasks", e);
             }
         });
+    }
+
+    private boolean mergeRemoteTask(String userId, String programId, String dateKey,
+                                    String remoteStatus, DataSnapshot meta) {
+        boolean hasMeta = meta != null && meta.exists();
+        if (remoteStatus == null && !hasMeta) return false;
+
+        TaskEntity existing = database.taskDao().getByDate(userId, programId, dateKey);
+        if (existing == null) {
+            TaskEntity entity = new TaskEntity(
+                    programId + "_" + dateKey,
+                    userId,
+                    programId,
+                    dateKey,
+                    "",
+                    "",
+                    "",
+                    0,
+                    "",
+                    remoteStatus != null ? remoteStatus : "pending",
+                    System.currentTimeMillis()
+            );
+            if (hasMeta) {
+                entity.skipReason = snapshotString(meta, "reason");
+                entity.skipNote = snapshotString(meta, "note");
+                entity.weatherNote = snapshotString(meta, "weatherNote");
+                entity.late = snapshotBoolean(meta, "late");
+                entity.scanLinked = snapshotBoolean(meta, "scanLinked");
+            }
+            database.taskDao().insert(entity);
+            return true;
+        }
+
+        if (remoteStatus != null) {
+            database.taskDao().updateStatus(existing.id, remoteStatus);
+        }
+        if (hasMeta) {
+            database.taskDao().updateMeta(
+                    existing.id,
+                    snapshotString(meta, "reason"),
+                    snapshotString(meta, "note"),
+                    snapshotString(meta, "weatherNote"),
+                    snapshotBoolean(meta, "late"),
+                    snapshotBoolean(meta, "scanLinked"));
+        }
+        return true;
     }
 
     // Sync Settings to Local Database
@@ -506,6 +542,14 @@ public class LocalDataManager {
                         status,
                         System.currentTimeMillis()
                 );
+                TaskEntity existing = database.taskDao().getByDate(userId, programId, dateKey);
+                if (existing != null) {
+                    entity.skipReason = existing.skipReason;
+                    entity.skipNote = existing.skipNote;
+                    entity.weatherNote = existing.weatherNote;
+                    entity.late = existing.late;
+                    entity.scanLinked = existing.scanLinked;
+                }
                 database.taskDao().insert(entity);
                 Log.d(TAG, "Saved task status to local database");
             } catch (Exception e) {
@@ -822,6 +866,69 @@ public class LocalDataManager {
         }
     }
 
+    public List<TaskEntity> getTaskMetaFromLocal(String userId, String programId) {
+        return getTasksFromLocal(userId, programId);
+    }
+
+    public void saveTaskMeta(String userId, String programId, String dateKey,
+                             String reason, String note, boolean late,
+                             String weatherNote, boolean scanLinked) {
+        executorService.execute(() -> {
+            try {
+                String taskId = programId + "_" + dateKey;
+                String entityId = programId + "|" + dateKey;
+                long updatedAt = System.currentTimeMillis();
+                TaskEntity existing = database.taskDao().getByDate(userId, programId, dateKey);
+                if (existing == null) {
+                    TaskEntity entity = new TaskEntity(
+                            taskId,
+                            userId,
+                            programId,
+                            dateKey,
+                            "",
+                            "",
+                            "",
+                            0,
+                            "",
+                            "pending",
+                            updatedAt
+                    );
+                    entity.skipReason = reason;
+                    entity.skipNote = note;
+                    entity.weatherNote = weatherNote;
+                    entity.late = late;
+                    entity.scanLinked = scanLinked;
+                    database.taskDao().insert(entity);
+                } else {
+                    database.taskDao().updateMeta(
+                            existing.id, reason, note, weatherNote, late, scanLinked);
+                }
+
+                java.util.Map<String, Object> data = taskMetaChildren(
+                        reason, note, late, weatherNote, scanLinked, updatedAt);
+                if (isOnline(context)) {
+                    try {
+                        Tasks.await(FirebaseDatabase.getInstance()
+                                .getReference("users")
+                                .child(userId)
+                                .child("routineLogs")
+                                .child(programId)
+                                .child("taskMeta")
+                                .child(dateKey)
+                                .updateChildren(data));
+                        database.syncActionDao().deleteForEntity(entityId, "task_meta");
+                        return;
+                    } catch (Exception e) {
+                        Log.e(TAG, "Task meta upload failed, queued", e);
+                    }
+                }
+                queueTaskMeta(userId, entityId, data);
+            } catch (Exception e) {
+                Log.e(TAG, "Error saving task meta", e);
+            }
+        });
+    }
+
     // Check if device is online
     public static boolean isOnline(Context context) {
         try {
@@ -1078,6 +1185,56 @@ public class LocalDataManager {
 
     private static boolean snapshotBoolean(DataSnapshot snapshot, String key) {
         return booleanValue(snapshot.child(key).getValue());
+    }
+
+    private DatabaseReference taskMetaRef(DatabaseReference userRef, String entityId) {
+        if (userRef == null || entityId == null) return null;
+        int sep = entityId.indexOf('|');
+        if (sep <= 0 || sep >= entityId.length() - 1) return null;
+        return userRef.child("routineLogs")
+                .child(entityId.substring(0, sep))
+                .child("taskMeta")
+                .child(entityId.substring(sep + 1));
+    }
+
+    private java.util.Map<String, Object> taskMetaChildren(String reason, String note, boolean late,
+                                                           String weatherNote, boolean scanLinked,
+                                                           long updatedAt) {
+        java.util.Map<String, Object> data = new java.util.HashMap<>();
+        data.put("reason", reason == null ? "" : reason);
+        data.put("note", note == null ? "" : note);
+        data.put("late", late);
+        data.put("weatherNote", weatherNote == null ? "" : weatherNote);
+        data.put("scanLinked", scanLinked);
+        data.put("updatedAt", updatedAt);
+        return data;
+    }
+
+    private void queueTaskMeta(String userId, String entityId, java.util.Map<String, Object> data) throws JSONException {
+        JSONObject payload = new JSONObject();
+        for (java.util.Map.Entry<String, Object> entry : data.entrySet()) {
+            payload.put(entry.getKey(), entry.getValue());
+        }
+        database.syncActionDao().deleteForEntity(entityId, "task_meta");
+        database.syncActionDao().insert(new SyncActionEntity(
+                userId, "task_meta", entityId, "UPDATE", payload.toString()));
+    }
+
+    private java.util.Map<String, Object> taskMetaPayloadFromRoom(String userId, String entityId) {
+        if (entityId == null) return null;
+        int sep = entityId.indexOf('|');
+        if (sep <= 0 || sep >= entityId.length() - 1) return null;
+        String programId = entityId.substring(0, sep);
+        String dateKey = entityId.substring(sep + 1);
+        TaskEntity entity = database.taskDao().getByDate(userId, programId, dateKey);
+        if (entity == null) return null;
+        return taskMetaChildren(
+                entity.skipReason,
+                entity.skipNote,
+                entity.late,
+                entity.weatherNote,
+                entity.scanLinked,
+                entity.lastSynced);
     }
 
     private java.util.Map<String, Object> jsonObjectToMap(String json) {

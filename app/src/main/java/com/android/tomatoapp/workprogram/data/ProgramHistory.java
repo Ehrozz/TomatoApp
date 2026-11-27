@@ -35,8 +35,8 @@ public final class ProgramHistory {
     public static boolean isEligibleForMissed(LocalDate date, LocalDate placementDate,
                                               LocalDate today, int phase, int startPhase,
                                               boolean hasCountableTasks) {
-        return placementDate != null && today != null
-                && !date.isBefore(placementDate)
+        return date != null && today != null
+                && (placementDate == null || !date.isBefore(placementDate))
                 && date.isBefore(today)
                 && phase >= startPhase
                 && hasCountableTasks;

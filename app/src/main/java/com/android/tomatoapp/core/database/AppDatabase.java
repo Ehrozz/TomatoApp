@@ -37,7 +37,7 @@ import com.android.tomatoapp.core.sync.SyncActionEntity;
         TaskEntity.class,
         SettingsEntity.class,
         SyncActionEntity.class
-}, version = 7, exportSchema = false)
+}, version = 8, exportSchema = false)
 public abstract class AppDatabase extends RoomDatabase {
 
     private static volatile AppDatabase INSTANCE;
@@ -66,6 +66,17 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    public static final Migration MIGRATION_7_8 = new Migration(7, 8) {
+        @Override
+        public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE tasks ADD COLUMN skipReason TEXT");
+            database.execSQL("ALTER TABLE tasks ADD COLUMN skipNote TEXT");
+            database.execSQL("ALTER TABLE tasks ADD COLUMN weatherNote TEXT");
+            database.execSQL("ALTER TABLE tasks ADD COLUMN late INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE tasks ADD COLUMN scanLinked INTEGER NOT NULL DEFAULT 0");
+        }
+    };
+
     public abstract WorkProgramDao workProgramDao();
     public abstract PlantMonitoringDao plantMonitoringDao();
     public abstract WeatherDataDao weatherDataDao();
@@ -85,7 +96,7 @@ public abstract class AppDatabase extends RoomDatabase {
                                     AppDatabase.class,
                                     "tomatoapp_db"
                             )
-                            .addMigrations(MIGRATION_6_7)
+                            .addMigrations(MIGRATION_6_7, MIGRATION_7_8)
                             .fallbackToDestructiveMigrationFrom(1, 2, 3, 4, 5)
                             .build();
                 }
